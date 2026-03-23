@@ -1,30 +1,58 @@
-// TireWMS Service Worker v3
-const CACHE = 'tirewms-v3';
+// TireWMS Service Worker — עדכון אוטומטי מיידי
+const VERSION = 'tirewms-' + Date.now(); // גרסה חדשה בכל deploy
+const CACHE = VERSION;
 
 self.addEventListener('install', e=>{
-  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['/','./index.html']).catch(()=>{})));
+  // התקן מיד — לא מחכה לסגירת הלשוניות הישנות
   self.skipWaiting();
-});
-
-self.addEventListener('activate', e=>{
-  e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));
-  self.clients.claim();
-});
-
-self.addEventListener('fetch', e=>{
-  const url=new URL(e.request.url);
-  if(url.hostname.includes('firebase')||url.hostname.includes('gstatic')){
-    e.respondWith(fetch(e.request).catch(()=>new Response('',{status:503})));
-    return;
-  }
-  e.respondWith(
-    fetch(e.request).then(res=>{
-      if(res.ok){const c=res.clone();caches.open(CACHE).then(ca=>ca.put(e.request,c));}
-      return res;
-    }).catch(()=>caches.match(e.request).then(c=>c||caches.match('/index.html')))
+  e.waitUntil(
+    caches.open(CACHE).then(cache=>
+      cache.addAll(['/', '/index.html']).catch(()=>{})
+    )
   );
 });
 
-self.addEventListener('message', e=>{
-  if(e.data&&e.data.type==='SKIP_WAITING') self.skipWaiting();
+self.addEventListener('activate', e=>{
+  // מחק את כל המטמון הישן מיד
+  e.waitUntil(
+    caches.keys().then(keys=>
+      Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))
+    ).then(()=> self.clients.claim()) // השתלט על כל הלשוניות מיד
+  );
+});
+
+self.addEventListener('fetch', e=>{
+  const url = new URL(e.request.url);
+
+  // Firebase — תמיד מהרשת
+  if(url.hostname.includes('firebase')||url.hostname.includes('firestore')||url.hostname.includes('gstatic')){
+    e.respondWith(fetch(e.request).catch(()=>new Response('',{status:503})));
+    return;
+  }
+
+  // האפליקציה — network first תמיד (עדכון מיידי)
+  e.respondWith(
+    fetch(e.request)
+      .then(res=>{
+        if(res.ok){
+          const clone=res.clone();
+          caches.open(CACHE).then(c=>c.put(e.request,clone));
+        }
+        return res;
+      })
+      .catch(()=>
+        caches.match(e.request).then(cached=>{
+          if(cached) return cached;
+          if(e.request.mode==='navigate') return caches.match('/index.html');
+          return new Response('Offline',{status:503});
+        })
+      )
+  );
+});
+
+// כשיש גרסה חדשה — עדכן את כל הלשוניות אוטומטית
+self.addEventListener('activate', ()=>{
+  self.clients.matchAll({includeUncontrolled:true}).then(clients=>{
+    clients.forEach(client=> client.postMessage({type:'RELOAD'}));
+  });
 });
