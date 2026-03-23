@@ -304,7 +304,7 @@ if('serviceWorker' in navigator){
     <span style="color:var(--muted);font-size:18px;">🔍</span>
     <input id="mainSearch" type="text" placeholder="חיפוש לפי מידה, מותג, מיקום..."
       inputmode="numeric" maxlength="10"
-      oninput="formatSize(this);document.getElementById('clearSearchBtn').style.display=this.value?'flex':'none';renderTable();"
+      oninput="formatSize(this);document.getElementById('clearSearchBtn').style.display=this.value?'flex':'none';currentPage=0;renderTable();"
       style="flex:1;background:none;border:none;outline:none;color:var(--text);font-size:16px;font-family:inherit;direction:rtl;"/>
     <button onclick="clearSearch()" id="clearSearchBtn"
       style="display:none;background:var(--card2);border:1px solid var(--border);border-radius:7px;color:var(--muted);font-size:14px;cursor:pointer;padding:3px 9px;line-height:1.4;">✕</button>
@@ -465,7 +465,7 @@ if('serviceWorker' in navigator){
         <label>📐 מידה * <span style="color:var(--muted);font-size:10px;font-weight:400;">(רוחב / פרופיל R קוטר)</span></label>
         <input id="aSz" type="text" placeholder="205/55R16" inputmode="numeric" maxlength="10" oninput="formatSize(this)" style="font-family:monospace;font-size:16px;font-weight:800;letter-spacing:1px;text-align:center;"/>
       </div>
-      <div class="fi"><label>🏷️ מותג *</label><input id="aBr" type="text" placeholder="שם מותג"/></div>
+      <div class="fi"><label>🏷️ מותג *</label><input id="aBr" type="text" placeholder="שם מותג" list="brandList" autocomplete="off" oninput="updateAutoComplete()"/><datalist id="brandList"></datalist></div>
       <div class="fi full"><label>🔖 דגם</label><input id="aMo" type="text" placeholder="שם דגם (אופציונלי)"/></div>
 
       <div class="fi"><label>📝 הערות</label><input id="aNo" type="text" placeholder="אופציונלי"/></div>
@@ -641,7 +641,28 @@ function renderTable(){
       <th>${editingId?'↵·Esc':'פעולות'}</th>
     </tr></thead><tbody>`;
   data.forEach(it=>{html+=it.id===editingId?editRow(it):viewRow(it);});
+  // Pagination
+  const totalPages = Math.ceil(data.length / PAGE_SIZE);
+  if(currentPage >= totalPages) currentPage = Math.max(0, totalPages-1);
+  const start = currentPage * PAGE_SIZE;
+  const pageData = data.slice(start, start + PAGE_SIZE);
+
+  pageData.forEach(it=>{ html += editingId===it.id ? editRow(it) : viewRow(it); });
   html+=`</tbody></table></div>`;
+
+  // Pagination controls
+  if(totalPages > 1){
+    html = html.replace('</div>', '') // remove last </div> temp
+    let pgHtml = `<div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:10px;background:var(--surface);border-top:1px solid var(--border);flex-shrink:0;">`;
+    pgHtml += `<button onclick="prevPage()" ${currentPage===0?'disabled':''} style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 14px;color:${currentPage===0?'var(--muted)':'var(--text)'};cursor:pointer;font-family:inherit;font-size:13px;">→ הקודם</button>`;
+    pgHtml += `<span style="font-size:12px;color:var(--muted);">${currentPage+1} / ${totalPages} (${data.length} פריטים)</span>`;
+    pgHtml += `<button onclick="nextPage(${totalPages})" ${currentPage>=totalPages-1?'disabled':''} style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 14px;color:${currentPage>=totalPages-1?'var(--muted)':'var(--text)'};cursor:pointer;font-family:inherit;font-size:13px;">הבא ←</button>`;
+    pgHtml += `</div>`;
+    area.innerHTML = html;
+    area.insertAdjacentHTML('beforeend', pgHtml);
+    return;
+  }
+
   area.innerHTML=html;
 }
 
@@ -847,7 +868,7 @@ function doDelete(){
 
 /* SORT / FILTER */
 function sortBy(c){sortCol===c?sortDir*=-1:(sortCol=c,sortDir=1);renderTable();}
-function applyFilters(){renderTable();}
+function applyFilters(){ currentPage=0;renderTable();}
 function clearFilters(){
   ['fBrand','fSize'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('mainSearch').value='';
@@ -1746,6 +1767,20 @@ function parseSize(v){
   if(!m)return null;
   return {w:+m[1],p:+m[2],d:+m[3]};
 }
+function prevPage(){ if(currentPage>0){currentPage--;renderTable();} }
+function nextPage(total){ if(currentPage<total-1){currentPage++;renderTable();} }
+window.prevPage=prevPage;
+function updateAutoComplete(){
+  const brands=[...new Set(items.map(it=>it.brand).filter(Boolean))].sort();
+  const bl=document.getElementById('brandList');
+  if(bl) bl.innerHTML=brands.map(b=>`<option value="${b}">`).join('');
+  const sb=document.getElementById('aBr')?document.getElementById('aBr').value:'';
+  const models=[...new Set(items.filter(it=>!sb||it.brand===sb).map(it=>it.model).filter(Boolean))].sort();
+  const ml=document.getElementById('modelList');
+  if(ml) ml.innerHTML=models.map(m=>`<option value="${m}">`).join('');
+}
+window.updateAutoComplete=updateAutoComplete;
+window.nextPage=nextPage;
 window.toggleLang=toggleLang;
 window.formatSize=formatSize;
 window.parseSize=parseSize;
@@ -1771,7 +1806,12 @@ const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 const itemsCol = collection(db, 'tires');
 
-const ADMIN_PASS = 'Orenbentora1979';
+const ADMIN_PASS_HASH = '61270cb789566f5b26c4e12e11bb7a0d9e3e1b1922ef31b7e014b015c5214e3d';
+function hashPass(p){
+  // Simple hash check using SubtleCrypto
+  return crypto.subtle.digest('SHA-256', new TextEncoder().encode(p))
+    .then(b => Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join(''));
+}
 let isAdminMode = false;
 
 function setStatus(s){
@@ -1957,16 +1997,19 @@ function showBiometricScreen(admin){
 
 function checkPass(){
   const val=document.getElementById('adminPassInput').value;
-  if(val===ADMIN_PASS){
-    const remember = document.getElementById('rememberMe');
-    if(remember && remember.checked) saveSession(true);
-    isAdminMode=true;
-    enterApp(true);
-  } else {
-    document.getElementById('passErr').style.display='block';
-    document.getElementById('passErr').textContent='סיסמא שגויה';
-    document.getElementById('adminPassInput').value='';
-  }
+  if(!val) return;
+  hashPass(val).then(h=>{
+    if(h===ADMIN_PASS_HASH){
+      const remember = document.getElementById('rememberMe');
+      if(remember && remember.checked) saveSession(true);
+      isAdminMode=true;
+      enterApp(true);
+    } else {
+      document.getElementById('passErr').style.display='block';
+      document.getElementById('passErr').textContent='סיסמא שגויה';
+      document.getElementById('adminPassInput').value='';
+    }
+  });
 }
 
 function enterApp(admin){
