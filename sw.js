@@ -17,7 +17,13 @@ self.addEventListener('activate', e=>{
   e.waitUntil(
     caches.keys().then(keys=>
       Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))
-    ).then(()=> self.clients.claim()) // השתלט על כל הלשוניות מיד
+    ).then(()=>{
+      self.clients.claim(); // השתלט על כל הלשוניות מיד
+      // כשיש גרסה חדשה — עדכן את כל הלשוניות אוטומטית
+      self.clients.matchAll({includeUncontrolled:true}).then(clients=>{
+        clients.forEach(client=> client.postMessage({type:'RELOAD'}));
+      });
+    })
   );
 });
 
@@ -50,9 +56,3 @@ self.addEventListener('fetch', e=>{
   );
 });
 
-// כשיש גרסה חדשה — עדכן את כל הלשוניות אוטומטית
-self.addEventListener('activate', ()=>{
-  self.clients.matchAll({includeUncontrolled:true}).then(clients=>{
-    clients.forEach(client=> client.postMessage({type:'RELOAD'}));
-  });
-});

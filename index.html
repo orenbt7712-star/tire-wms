@@ -1982,11 +1982,6 @@ function initMapEditor(){
     window._mapResizeListener = ()=>{ resizeCanvas(); drawMap(); };
     window.addEventListener('resize', window._mapResizeListener);
   }
-  if(!window._mapKeyListener){
-    window._mapKeyListener=true;
-    window.addEventListener('keydown', onMapKey);
-    window.addEventListener('keyup',   onMapKeyUp);
-  }
 }
 
 function resizeCanvas(){
