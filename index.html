@@ -3406,6 +3406,7 @@ if(typeof undoMap!=="undefined") window.undoMap=undoMap;
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBd8xA9EpA7JRJv-YcOxMWfunef1d4t6yc",
@@ -3418,7 +3419,11 @@ const firebaseConfig = {
 
 const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
+const auth = getAuth(fbApp);
 const itemsCol = collection(db, 'tires');
+
+// ── אימות אנונימי — חוסם גישה ישירה ל-Firestore מחוץ לאפליקציה ──
+signInAnonymously(auth).catch(e => console.warn('Auth error:', e));
 
 // ── אבטחה: isAdminMode קריאה בלבד — לא ניתן לשינוי מ-DevTools ──
 const ADMIN_PASS_HASH = '61270cb789566f5b26c4e12e11bb7a0d9e3e1b1922ef31b7e014b015c5214e3d';
