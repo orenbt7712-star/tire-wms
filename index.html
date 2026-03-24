@@ -450,7 +450,8 @@ if('serviceWorker' in navigator){
         <button onclick="zoomIn()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 10px;font-size:14px;font-weight:700;cursor:pointer;">＋</button>
         <button onclick="zoomOut()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 10px;font-size:14px;font-weight:700;cursor:pointer;">－</button>
         <button onclick="centerMap()" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;">⊙</button>
-        <button onclick="undoMap()" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;">↩️</button>
+        <button onclick="undoMap()" title="בטל (Ctrl+Z)" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;">↩️</button>
+        <button id="btnRedo" onclick="redoMap()" title="חזור (Ctrl+Y)" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;">↪️</button>
         <button onclick="saveMapLayout()" style="background:var(--accent);border:none;color:#111;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">💾</button>
         <button onclick="clearMap()" style="background:var(--red-dim);border:1px solid var(--red);color:var(--red);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;">✕</button>
       </div>
@@ -509,6 +510,40 @@ if('serviceWorker' in navigator){
         <button onclick="rotateCage()" style="flex:1;background:var(--blue-dim);border:1px solid var(--blue);color:var(--blue);border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">↻ סובב</button>
         <button onclick="saveCageEdit()" style="flex:2;background:var(--accent);border:none;color:#111;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">✓ אישור</button>
         <button onclick="deleteCage()" style="flex:1;background:var(--red-dim);border:1px solid var(--red);color:var(--red);border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">🗑️</button>
+      </div>
+    </div>
+    <!-- פאנל הוספת שורת כלובים -->
+    <div id="rowPanel" style="display:none;position:fixed;bottom:54px;right:0;left:0;background:var(--surface);border-top:2px solid var(--blue);padding:14px;z-index:201;max-height:60vh;overflow-y:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div style="font-size:13px;font-weight:800;">📏 הוספת שורת כלובים</div>
+        <button onclick="closeRowPanel()" style="background:var(--card);border:1px solid var(--border);border-radius:7px;width:28px;height:28px;cursor:pointer;color:var(--muted);font-size:16px;">✕</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
+        <div>
+          <label style="font-size:10px;color:var(--accent);font-weight:700;">כמות כלובים</label>
+          <input id="rowPanelCount" type="number" min="1" max="50" value="5"
+            onkeydown="if(event.key==='Enter')confirmRowPanel()"
+            style="width:100%;background:var(--card);border:1px solid var(--accent);border-radius:7px;color:var(--text);padding:8px;font-family:inherit;font-size:16px;margin-top:4px;"/>
+        </div>
+        <div>
+          <label style="font-size:10px;color:var(--blue);font-weight:700;">כיוון</label>
+          <select id="rowPanelDir" style="width:100%;background:var(--card);border:1px solid var(--blue);border-radius:7px;color:var(--text);padding:8px;font-family:inherit;font-size:13px;margin-top:4px;">
+            <option value="h">➡ אופקי</option>
+            <option value="v">⬇ אנכי</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:10px;color:var(--f1);font-weight:700;">קומה</label>
+          <select id="rowPanelFloor" style="width:100%;background:var(--card);border:1px solid var(--f1);border-radius:7px;color:var(--text);padding:8px;font-family:inherit;font-size:13px;margin-top:4px;">
+            <option value="1">קומה 1</option>
+            <option value="2">קומה 2</option>
+            <option value="3">קומה 3</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="closeRowPanel()" style="flex:1;background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">ביטול</button>
+        <button onclick="confirmRowPanel()" style="flex:2;background:var(--blue);border:none;color:#fff;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">✓ הוסף שורה</button>
       </div>
     </div>
   </div>
@@ -1797,6 +1832,13 @@ let mapFloorFilter=0; // 0=הכל, 1/2/3=קומה ספציפית
 let isPanning=false, panStartX=0, panStartY=0, panOffStartX=0, panOffStartY=0;
 const SNAP=0.6; // snap to cage size
 
+let mapRedoHistory=[];
+let selectedCages=[]; // IDs of multi-selected cages
+let isRubberBand=false, rubberStart=null, rubberCurrent=null;
+let spaceDown=false, _shiftDown=false;
+let _multiDragOffsets=[]; // [{id,ox,oy}] relative offsets for multi-drag
+let _autoSaveTimer=null;
+let _rowClickWx=0, _rowClickWy=0;
 
 let _alignTimeout=null;
 
@@ -1905,7 +1947,7 @@ function setMapTool(t){
     b.style.color=on?'#111':'var(--muted)';
     b.style.fontWeight=on?'900':'600';
   });
-  const hints={wall:'🖊️ גרור לציור קיר',cage:'📦 לחץ לשם כלוב',move:'✋ גרור כלוב',erase:'🗑️ לחץ למחיקה',row:'📏 לחץ להוספת שורה אופקית של כלובים'};
+  const hints={wall:'🖊️ גרור לציור קיר | W',cage:'📦 לחץ למיקום כלוב | C | Ctrl+D לשכפול',move:'✋ גרור כלוב | גרור על ריק לבחירה מרובה | Delete למחיקה | Space+גרור לפנינג | M',erase:'🗑️ לחץ למחיקה',row:'📏 לחץ להוספת שורת כלובים'};
   const h=document.getElementById('mapHint');
   if(h) h.textContent=hints[t]||'';
   const canvas=document.getElementById('mapCanvas');
@@ -1934,10 +1976,16 @@ function initMapEditor(){
   cv.addEventListener('mousemove', onMV);
   cv.addEventListener('mouseup',   onMU);
   cv.addEventListener('click',     onCK);
+  cv.addEventListener('wheel',     onWheel, {passive:false});
 
   if(!window._mapResizeListener){
     window._mapResizeListener = ()=>{ resizeCanvas(); drawMap(); };
     window.addEventListener('resize', window._mapResizeListener);
+  }
+  if(!window._mapKeyListener){
+    window._mapKeyListener=true;
+    window.addEventListener('keydown', onMapKey);
+    window.addEventListener('keyup',   onMapKeyUp);
   }
 }
 
@@ -2026,6 +2074,12 @@ function onCK(e){
 
 function handleDown(cx,cy){
   const[wx,wy]=c2w(cx,cy);
+  // Space-bar panning
+  if(spaceDown){
+    isPanning=true; panStartX=cx; panStartY=cy;
+    panOffStartX=mapOffX; panOffStartY=mapOffY;
+    return;
+  }
   if(mapTool==='wall'){
     pushHistory();
     isDrawing=true; drawStart=[wx,wy]; drawCurrent=[wx,wy];
@@ -2034,73 +2088,119 @@ function handleDown(cx,cy){
     const id=nextCageId++;
     const g={id,name:String(id),floor:'1',x:snapV(wx-0.6),y:snapV(wy-0.3),rot:false};
     cages.push(g);
-    selectedCageId=id;
+    selectedCageId=id; selectedCages=[id];
     drawMap();
     openCageEdit(g);
   } else if(mapTool==='move'){
     const g=getCageAt(wx,wy);
-    if(g){dragCageId=g.id;dragOffX=wx-g.x;dragOffY=wy-g.y;}
-  } else if(mapTool==='row'){
-    // פתח דיאלוג לכמות כלובים בשורה
-    const num = parseInt(prompt('כמה כלובים בשורה?','5'));
-    if(!num||num<1) return;
-    pushHistory();
-    for(let i=0;i<num;i++){
-      const id=nextCageId++;
-      cages.push({id,name:String(id),floor:'1',x:snapV(wx+i*1.2),y:snapV(wy),rot:false});
+    if(g){
+      // If clicking a cage already in multi-select → drag all; else single-select
+      if(!selectedCages.includes(g.id)){
+        selectedCages=[g.id];
+        selectedCageId=g.id;
+        openCageEdit(g);
+      }
+      dragCageId=g.id; dragOffX=wx-g.x; dragOffY=wy-g.y;
+      // Build offsets for all selected cages relative to dragged cage
+      _multiDragOffsets=selectedCages.map(id=>{
+        const c=cages.find(x=>x.id===id);
+        return c?{id,ox:c.x-g.x,oy:c.y-g.y}:{id,ox:0,oy:0};
+      });
+    } else {
+      // Start rubber-band selection
+      selectedCages=[]; selectedCageId=null; closeCageEdit();
+      isRubberBand=true; rubberStart=[wx,wy]; rubberCurrent=[wx,wy];
+      drawMap();
     }
-    drawMap();
-    toast(`✅ נוספה שורה של ${num} כלובים`);
+  } else if(mapTool==='row'){
+    _rowClickWx=wx; _rowClickWy=wy;
+    openRowPanel();
   } else if(mapTool==='erase'){
     pushHistory();
     const g=getCageAt(wx,wy);
-    if(g){cages=cages.filter(c=>c.id!==g.id);selectedCageId=null;closeCageEdit();drawMap();return;}
+    if(g){cages=cages.filter(c=>c.id!==g.id);selectedCageId=null;selectedCages=[];closeCageEdit();drawMap();return;}
     const wi=getWallIdx(wx,wy);
     if(wi>=0){walls.splice(wi,1);drawMap();}
   }
 }
 
 function handleMove(cx,cy){
+  // Space-bar panning
+  if(isPanning){
+    mapOffX=panOffStartX+(cx-panStartX);
+    mapOffY=panOffStartY+(cy-panStartY);
+    drawMap(); return;
+  }
   const[wx,wy]=c2w(cx,cy);
   if(mapTool==='wall'&&isDrawing){
     drawCurrent=[wx,wy];
     drawMap();
+  } else if(mapTool==='move'&&isRubberBand){
+    rubberCurrent=[wx,wy];
+    drawMap();
   } else if(mapTool==='move'&&dragCageId){
     const g=cages.find(c=>c.id===dragCageId);
     if(g){
-      let nx=snapV(wx-dragOffX);
-      let ny=snapV(wy-dragOffY);
-      // ישור אוטומטי לכלוב הקרוב ביותר
-      const SNAP_DIST=0.8;
-      cages.forEach(other=>{
-        if(other.id===dragCageId) return;
-        const ow=other.rot?0.6:1.2, oh=other.rot?1.2:0.6;
-        const gw=g.rot?0.6:1.2;
-        // ישור ציר X — שמאל לימין
-        if(Math.abs(nx-(other.x+ow))<SNAP_DIST) nx=other.x+ow;
-        if(Math.abs(nx+gw-other.x)<SNAP_DIST) nx=other.x-gw;
-        if(Math.abs(nx-other.x)<SNAP_DIST) nx=other.x;
-        // ישור ציר Y — למעלה/למטה
-        if(Math.abs(ny-other.y)<SNAP_DIST) ny=other.y;
-        if(Math.abs(ny-other.y-oh)<SNAP_DIST) ny=other.y+oh;
+      let fnx=snapV(wx-dragOffX);
+      let fny=snapV(wy-dragOffY);
+      // ישור אוטומטי לכלוב הקרוב ביותר (רק אם גוררים כלוב יחיד)
+      if(selectedCages.length<=1){
+        const SNAP_DIST=0.8;
+        cages.forEach(other=>{
+          if(other.id===dragCageId) return;
+          const ow=other.rot?0.6:1.2, oh=other.rot?1.2:0.6;
+          const gw=g.rot?0.6:1.2;
+          if(Math.abs(fnx-(other.x+ow))<SNAP_DIST) fnx=other.x+ow;
+          if(Math.abs(fnx+gw-other.x)<SNAP_DIST) fnx=other.x-gw;
+          if(Math.abs(fnx-other.x)<SNAP_DIST) fnx=other.x;
+          if(Math.abs(fny-other.y)<SNAP_DIST) fny=other.y;
+          if(Math.abs(fny-other.y-oh)<SNAP_DIST) fny=other.y+oh;
+        });
+      }
+      // הזז את כל הכלובים הנבחרים תוך שמירת המרחקים היחסיים
+      _multiDragOffsets.forEach(o=>{
+        const c=cages.find(x=>x.id===o.id);
+        if(c){ c.x=snapV(fnx+o.ox); c.y=snapV(fny+o.oy); }
       });
-      g.x=nx; g.y=ny;
       drawMap();
-      // הצג קווי ישור
       _drawAlignLines(g);
     }
   }
 }
 
 function handleUp(){
+  if(isPanning){ isPanning=false; return; }
   if(mapTool==='wall'&&isDrawing&&drawStart&&drawCurrent){
     const[x1,y1]=drawStart,[x2,y2]=drawCurrent;
     if(Math.hypot(x2-x1,y2-y1)>0.3){
       walls.push({x1,y1,x2,y2});
     }
   }
+  // סיום rubber-band — בחר כל הכלובים בתוך המלבן
+  if(isRubberBand&&rubberStart&&rubberCurrent){
+    const rx1=Math.min(rubberStart[0],rubberCurrent[0]);
+    const ry1=Math.min(rubberStart[1],rubberCurrent[1]);
+    const rx2=Math.max(rubberStart[0],rubberCurrent[0]);
+    const ry2=Math.max(rubberStart[1],rubberCurrent[1]);
+    const dist=Math.hypot(rx2-rx1,ry2-ry1);
+    if(dist>0.3){
+      selectedCages=cages.filter(g=>{
+        const w=g.rot?0.6:1.2,h=g.rot?1.2:0.6;
+        return g.x<rx2&&g.x+w>rx1&&g.y<ry2&&g.y+h>ry1;
+      }).map(g=>g.id);
+      if(selectedCages.length===1){
+        selectedCageId=selectedCages[0];
+        openCageEdit(cages.find(g=>g.id===selectedCageId));
+      } else if(selectedCages.length>1){
+        selectedCageId=null; closeCageEdit();
+        const h=document.getElementById('mapHint');
+        if(h) h.textContent=`✅ נבחרו ${selectedCages.length} כלובים — גרור להזזה, Delete למחיקה`;
+      }
+    }
+  }
   isDrawing=false; drawStart=null; drawCurrent=null;
-  dragCageId=null;
+  dragCageId=null; isRubberBand=false; rubberStart=null; rubberCurrent=null;
+  _multiDragOffsets=[];
   drawMap();
 }
 
@@ -2235,7 +2335,9 @@ function drawMap(){
     const cnt=hasItems?items.filter(it=>String(it.col)===String(g.name)&&it.floor===g.floor).length:0;
 
     // צל
+    const isMultiSel2=selectedCages.includes(g.id)&&g.id!==selectedCageId;
     if(isSel){ctx.shadowColor='#f5a623';ctx.shadowBlur=14;}
+    else if(isMultiSel2){ctx.shadowColor='#7ac8ff';ctx.shadowBlur=10;}
     else if(hasItems){ctx.shadowColor='rgba(62,207,142,0.3)';ctx.shadowBlur=6;}
 
     // שקיפות לפי שכבה
@@ -2248,7 +2350,7 @@ function drawMap(){
     else if(hasItems){grad.addColorStop(0,'#0d2010');grad.addColorStop(1,'#081408');}
     else{grad.addColorStop(0,'#1e2438');grad.addColorStop(1,'#151928');}
     ctx.fillStyle=grad;
-    ctx.strokeStyle=isSel?'#f5a623':hasItems?'#3ecf8e':'#2a3045';
+    ctx.strokeStyle=isSel?'#f5a623':isMultiSel2?'#7ac8ff':hasItems?'#3ecf8e':'#2a3045';
     ctx.lineWidth=isSel?2.5:1.5;
 
     const r=6;
@@ -2265,7 +2367,8 @@ function drawMap(){
     ctx.shadowBlur=0;
 
     // שם עמודה
-    ctx.fillStyle=isSel?'#f5a623':hasItems?'#3ecf8e':'#aab0c8';
+    const isMultiSel=selectedCages.includes(g.id)&&g.id!==selectedCageId;
+    ctx.fillStyle=isSel?'#f5a623':isMultiSel?'#7ac8ff':hasItems?'#3ecf8e':'#aab0c8';
     const fs=Math.min(15,pw/2.2);
     ctx.font=`bold ${fs}px Heebo`;
     ctx.textAlign='center';ctx.textBaseline='middle';
@@ -2293,18 +2396,200 @@ function drawMap(){
   // כיוון מזרח-מערב
   ctx.fillStyle='#2a3045';ctx.font='10px Heebo';ctx.textAlign='left';
   ctx.fillText('↑ צפון',6,cv.height-8);
+
+  // ── Rubber-band selection overlay ──
+  if(isRubberBand&&rubberStart&&rubberCurrent){
+    const[rx1w,ry1w]=[Math.min(rubberStart[0],rubberCurrent[0]),Math.min(rubberStart[1],rubberCurrent[1])];
+    const[rx2w,ry2w]=[Math.max(rubberStart[0],rubberCurrent[0]),Math.max(rubberStart[1],rubberCurrent[1])];
+    const[rx1,ry1]=w2c(rx1w,ry1w),[rx2,ry2]=w2c(rx2w,ry2w);
+    ctx.fillStyle='rgba(74,158,255,0.07)';
+    ctx.fillRect(rx1,ry1,rx2-rx1,ry2-ry1);
+    ctx.strokeStyle='rgba(74,158,255,0.8)';
+    ctx.lineWidth=1.5;
+    ctx.setLineDash([5,3]);
+    ctx.strokeRect(rx1,ry1,rx2-rx1,ry2-ry1);
+    ctx.setLineDash([]);
+  }
+
+  // ── מיני-מפה (פינה ימנית-עליונה) ──
+  if(cages.length>0){
+    const MM_W=110,MM_H=70,MM_PAD=8;
+    const MM_X=cv.width-MM_W-MM_PAD, MM_Y=MM_PAD;
+    ctx.globalAlpha=1;
+    ctx.fillStyle='rgba(10,12,18,0.88)';
+    ctx.strokeStyle='rgba(245,166,35,0.35)';
+    ctx.lineWidth=1;
+    ctx.fillRect(MM_X,MM_Y,MM_W,MM_H);
+    ctx.strokeRect(MM_X,MM_Y,MM_W,MM_H);
+    // חשב גבולות כל הכלובים
+    let mnX=Infinity,mnY=Infinity,mxX=-Infinity,mxY=-Infinity;
+    cages.forEach(g=>{const w=g.rot?0.6:1.2,h=g.rot?1.2:0.6;mnX=Math.min(mnX,g.x);mnY=Math.min(mnY,g.y);mxX=Math.max(mxX,g.x+w);mxY=Math.max(mxY,g.y+h);});
+    const bw=mxX-mnX||1,bh=mxY-mnY||1;
+    const mmS=Math.min((MM_W-8)/bw,(MM_H-8)/bh);
+    const mmOX=MM_X+4-mnX*mmS, mmOY=MM_Y+4-mnY*mmS;
+    // ציור כלובים
+    cages.forEach(g=>{
+      const mw=Math.max((g.rot?0.6:1.2)*mmS,2),mh=Math.max((g.rot?1.2:0.6)*mmS,2);
+      const mx=g.x*mmS+mmOX,my=g.y*mmS+mmOY;
+      const iS=g.id===selectedCageId||selectedCages.includes(g.id);
+      const hI=items.some(it=>String(it.col)===String(g.name)&&it.floor===g.floor);
+      ctx.fillStyle=iS?'#f5a623':hI?'#3ecf8e':'#2a4070';
+      ctx.fillRect(mx,my,mw,mh);
+    });
+    // מלבן viewport
+    const vx=-mapOffX/mapScale*mmS+mmOX, vy=-mapOffY/mapScale*mmS+mmOY;
+    const vw=cv.width/mapScale*mmS, vh=cv.height/mapScale*mmS;
+    ctx.strokeStyle='rgba(245,166,35,0.7)';
+    ctx.lineWidth=1;
+    ctx.setLineDash([2,2]);
+    ctx.strokeRect(vx,vy,vw,vh);
+    ctx.setLineDash([]);
+    // כותרת
+    ctx.fillStyle='rgba(245,166,35,0.5)';
+    ctx.font='7px Heebo';ctx.textAlign='left';ctx.textBaseline='top';
+    ctx.fillText('מפה',MM_X+2,MM_Y+2);
+  }
 }
 
 function pushHistory(){
   mapHistory.push({cages:JSON.stringify(cages),walls:JSON.stringify(walls)});
   if(mapHistory.length>30) mapHistory.shift();
+  mapRedoHistory=[];
+  _scheduleAutoSave();
 }
 
 function undoMap(){
   if(!mapHistory.length){toast('אין מה לבטל');return;}
+  mapRedoHistory.push({cages:JSON.stringify(cages),walls:JSON.stringify(walls)});
   const prev=mapHistory.pop();
   cages=JSON.parse(prev.cages);walls=JSON.parse(prev.walls);
   drawMap();toast('↩️ בוטל');
+}
+
+function redoMap(){
+  if(!mapRedoHistory.length){toast('אין מה לחזור');return;}
+  mapHistory.push({cages:JSON.stringify(cages),walls:JSON.stringify(walls)});
+  const next=mapRedoHistory.pop();
+  cages=JSON.parse(next.cages);walls=JSON.parse(next.walls);
+  drawMap();toast('↪️ חזרה');
+}
+
+function _scheduleAutoSave(){
+  clearTimeout(_autoSaveTimer);
+  _autoSaveTimer=setTimeout(()=>{
+    localStorage.setItem('tirewms_map2',JSON.stringify({cages,walls,nextId:nextCageId}));
+    const h=document.getElementById('mapHint');
+    if(h){ const old=h.textContent; h.textContent='💾 נשמר אוטומטית'; setTimeout(()=>{if(h.textContent==='💾 נשמר אוטומטית')h.textContent=old;},1500); }
+  },2000);
+}
+
+function duplicateCage(){
+  if(!selectedCageId){toast('בחר כלוב תחילה');return;}
+  const g=cages.find(c=>c.id===selectedCageId);
+  if(!g) return;
+  pushHistory();
+  const id=nextCageId++;
+  const copy={...g,id,x:g.x+1.2,y:g.y};
+  cages.push(copy);
+  selectedCageId=id; selectedCages=[id];
+  drawMap();
+  toast('📋 כלוב שוכפל — Ctrl+D');
+}
+
+function openRowPanel(){
+  const p=document.getElementById('rowPanel');
+  if(p) p.style.display='block';
+  const inp=document.getElementById('rowPanelCount');
+  if(inp){ inp.focus(); inp.select(); }
+}
+function closeRowPanel(){ const p=document.getElementById('rowPanel'); if(p) p.style.display='none'; }
+function confirmRowPanel(){
+  const num=parseInt(document.getElementById('rowPanelCount').value)||0;
+  const dir=document.getElementById('rowPanelDir').value;
+  const fl=document.getElementById('rowPanelFloor').value;
+  if(num<1||num>50){ toast('❌ כמות לא חוקית (1–50)'); return; }
+  pushHistory();
+  for(let i=0;i<num;i++){
+    const id=nextCageId++;
+    const rot=dir==='v';
+    const x=dir==='h'?snapV(_rowClickWx+i*1.2):snapV(_rowClickWx);
+    const y=dir==='h'?snapV(_rowClickWy):snapV(_rowClickWy+i*0.6);
+    cages.push({id,name:String(id),floor:fl,x,y,rot});
+  }
+  closeRowPanel();
+  drawMap();
+  toast(`✅ נוספה שורה של ${num} כלובים`);
+}
+
+function onWheel(e){
+  e.preventDefault();
+  const cv=document.getElementById('mapCanvas');
+  if(!cv) return;
+  const r=cv.getBoundingClientRect();
+  const mx=e.clientX-r.left, my=e.clientY-r.top;
+  const factor=e.deltaY<0?1.15:0.87;
+  // זום ממורכז על מיקום הסמן
+  const wx=(mx-mapOffX)/mapScale;
+  const wy=(my-mapOffY)/mapScale;
+  mapScale=Math.max(10,Math.min(100,mapScale*factor));
+  mapOffX=mx-wx*mapScale;
+  mapOffY=my-wy*mapScale;
+  drawMap();
+}
+
+function onMapKey(e){
+  const view=document.getElementById('viewMapEditor');
+  if(!view||!view.classList.contains('active')) return;
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT') return;
+  _shiftDown=e.shiftKey;
+  switch(e.key){
+    case 'w': case 'W': if(!e.ctrlKey&&!e.metaKey) setMapTool('wall'); break;
+    case 'c': case 'C': if(!e.ctrlKey&&!e.metaKey) setMapTool('cage'); break;
+    case 'm': case 'M': if(!e.ctrlKey&&!e.metaKey) setMapTool('move'); break;
+    case 'r': case 'R':
+      if(e.ctrlKey||e.metaKey){ e.preventDefault(); redoMap(); }
+      else rotateCage();
+      break;
+    case 'z': case 'Z':
+      if(e.ctrlKey||e.metaKey){ e.preventDefault(); e.shiftKey?redoMap():undoMap(); }
+      break;
+    case 'y': case 'Y':
+      if(e.ctrlKey||e.metaKey){ e.preventDefault(); redoMap(); }
+      break;
+    case 'd': case 'D':
+      if(e.ctrlKey||e.metaKey){ e.preventDefault(); duplicateCage(); }
+      break;
+    case 'Delete': case 'Backspace':
+      if(selectedCages.length>1){
+        const cnt=selectedCages.length;
+        pushHistory();
+        cages=cages.filter(c=>!selectedCages.includes(c.id));
+        selectedCages=[]; selectedCageId=null; closeCageEdit(); drawMap();
+        toast(`🗑️ נמחקו ${cnt} כלובים`);
+      } else if(selectedCageId){
+        pushHistory();
+        cages=cages.filter(c=>c.id!==selectedCageId);
+        selectedCageId=null; selectedCages=[]; closeCageEdit(); drawMap();
+      }
+      break;
+    case ' ':
+      e.preventDefault();
+      spaceDown=true;
+      const cv2=document.getElementById('mapCanvas');
+      if(cv2) cv2.style.cursor='grab';
+      break;
+    case 'Escape':
+      selectedCages=[]; selectedCageId=null; closeCageEdit(); drawMap();
+      break;
+  }
+}
+function onMapKeyUp(e){
+  _shiftDown=e.shiftKey;
+  if(e.key===' '){
+    spaceDown=false; isPanning=false;
+    const cv=document.getElementById('mapCanvas');
+    if(cv) cv.style.cursor=mapTool==='move'?'grab':mapTool==='erase'?'cell':'crosshair';
+  }
 }
 
 function addCage(){
@@ -2373,6 +2658,11 @@ window.saveMapLayout = saveMapLayout;
 window.clearMap = clearMap;
 window.setMapTool = setMapTool;
 window.undoMap = undoMap;
+window.redoMap = redoMap;
+window.duplicateCage = duplicateCage;
+window.openRowPanel = openRowPanel;
+window.closeRowPanel = closeRowPanel;
+window.confirmRowPanel = confirmRowPanel;
 window.toggleLang = toggleLang;
 window.applyLang = applyLang;
 window.t = t;
