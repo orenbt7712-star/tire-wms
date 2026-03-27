@@ -2480,10 +2480,12 @@ function drawMap(){
   // רקע סרגל שמאלי
   ctx.fillRect(0, RULER, RULER, cv.height - RULER);
 
-  // ── מספרי שורות: נמנה מלמטה לגדול ──
-  // השורה התחתונה ביותר הנראית = מספר 1, עולה למעלה
+  // ── מספרי שורות: מלמטה לגדול, שמאל=אי-זוגי, ימין=זוגי, באותה גובה ──
+  // כל שורת גריד מציגה שני מספרים רצופים: שמאל=2n-1, ימין=2n
   const bottomWorldRow = Math.ceil((cv.height - mapOffY) / CELL);
-  const getDisplayRow = wr => Math.max(1, bottomWorldRow - wr);
+  const getRowIndex  = wr => Math.max(1, bottomWorldRow - wr); // 1 = שורה תחתונה
+  const getLeftNum   = wr => 2 * getRowIndex(wr) - 1;          // אי-זוגי
+  const getRightNum  = wr => 2 * getRowIndex(wr);               // זוגי
 
   const RULER_R = 28; // סרגל ימין
 
@@ -2511,46 +2513,40 @@ function drawMap(){
     ctx.fillText(String(col + 1), centerX, RULER / 2);
   }
 
-  // מספרי שורות — סרגל שמאלי (מספרים אי-זוגיים, מלמטה לגדול)
+  // מספרי שורות — שמאל (אי-זוגי) + ימין (זוגי) — באותה גובה בדיוק
   ctx.font = 'bold 11px Heebo';
+  ctx.textBaseline = 'middle';
   for(let row = rStartRow; row <= rEndRow; row++){
-    const dispRow = getDisplayRow(row);
-    if(dispRow % 2 === 0) continue; // שמאל = אי-זוגי בלבד
+    if(row < 0) continue;
     const centerY = mapOffY + row * CELL + CELL / 2;
     if(centerY < RULER + 4 || centerY > cv.height - 2) continue;
-    ctx.fillStyle = 'rgba(74,158,255,0.06)';
-    ctx.fillRect(0, mapOffY + row * CELL, RULER, CELL);
-    ctx.strokeStyle = 'rgba(74,158,255,0.3)';
-    ctx.lineWidth = 0.5;
-    ctx.beginPath();
-    ctx.moveTo(RULER - 6, mapOffY + row * CELL + 0.5);
-    ctx.lineTo(RULER, mapOffY + row * CELL + 0.5);
-    ctx.stroke();
-    ctx.fillStyle = '#7ac8ff';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(String(dispRow), RULER / 2, centerY);
-  }
+    const rowY = mapOffY + row * CELL;
 
-  // מספרי שורות — סרגל ימני (מספרים זוגיים, מלמטה לגדול)
-  ctx.font = 'bold 11px Heebo';
-  for(let row = rStartRow; row <= rEndRow; row++){
-    const dispRow = getDisplayRow(row);
-    if(dispRow % 2 !== 0) continue; // ימין = זוגי בלבד
-    const centerY = mapOffY + row * CELL + CELL / 2;
-    if(centerY < RULER + 4 || centerY > cv.height - 2) continue;
+    // ── סרגל שמאל: אי-זוגי ──
+    const leftNum = getLeftNum(row);
     ctx.fillStyle = 'rgba(74,158,255,0.06)';
-    ctx.fillRect(cv.width - RULER_R, mapOffY + row * CELL, RULER_R, CELL);
+    ctx.fillRect(0, rowY, RULER, CELL);
     ctx.strokeStyle = 'rgba(74,158,255,0.3)';
     ctx.lineWidth = 0.5;
     ctx.beginPath();
-    ctx.moveTo(cv.width - RULER_R, mapOffY + row * CELL + 0.5);
-    ctx.lineTo(cv.width - RULER_R + 6, mapOffY + row * CELL + 0.5);
+    ctx.moveTo(RULER - 6, rowY + 0.5); ctx.lineTo(RULER, rowY + 0.5);
     ctx.stroke();
     ctx.fillStyle = '#7ac8ff';
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(String(dispRow), cv.width - RULER_R / 2, centerY);
+    ctx.fillText(String(leftNum), RULER / 2, centerY);
+
+    // ── סרגל ימין: זוגי — ממול בדיוק ──
+    const rightNum = getRightNum(row);
+    ctx.fillStyle = 'rgba(74,158,255,0.06)';
+    ctx.fillRect(cv.width - RULER_R, rowY, RULER_R, CELL);
+    ctx.strokeStyle = 'rgba(74,158,255,0.3)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(cv.width - RULER_R, rowY + 0.5); ctx.lineTo(cv.width - RULER_R + 6, rowY + 0.5);
+    ctx.stroke();
+    ctx.fillStyle = '#7ac8ff';
+    ctx.textAlign = 'center';
+    ctx.fillText(String(rightNum), cv.width - RULER_R / 2, centerY);
   }
 
   // קווי גבול סרגלים
