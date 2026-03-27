@@ -2156,10 +2156,11 @@ function handleMove(cx,cy){
       mapOffX=_axisZoom.startCX-wx*mapScale;
     } else {
       const wy=(_axisZoom.startCY-_axisZoom.startOffY)/_axisZoom.startScale;
-      const factor=Math.exp((_axisZoom.startCY-cy)/180); // גרירה למעלה = זום פנימה
+      const factor=Math.exp((_axisZoom.startCY-cy)/180);
       mapScale=Math.max(12,Math.min(120,_axisZoom.startScale*factor));
       mapOffY=_axisZoom.startCY-wy*mapScale;
     }
+    autoExpandCages();
     drawMap(); return;
   }
   // Space-bar panning
@@ -2598,6 +2599,45 @@ function redoMap(){
   drawMap();toast('↪️ חזרה');
 }
 
+// ── הרחבה אוטומטית של שורות כלובים כשמזמין החוצה ──
+function autoExpandCages(){
+  if(cages.length===0) return;
+  const cv=document.getElementById('mapCanvas');
+  if(!cv) return;
+
+  // תחתית הקנבס הנראית (world Y)
+  const visMaxY=Math.ceil((cv.height-mapOffY)/mapScale);
+  const cageMaxY=Math.max(...cages.map(g=>g.y));
+  if(visMaxY<=cageMaxY+1) return; // אין שורות חדשות לאזור
+
+  // הגבל הרחבה ל-30 שורות בפעם אחת
+  const newMaxY=Math.min(visMaxY, cageMaxY+30);
+
+  // מבנה עמודות: X-ים ייחודיים מהשורה הכי מאוכלסת (=template)
+  const rowMap={};
+  cages.forEach(g=>{
+    if(!rowMap[g.y]) rowMap[g.y]=[];
+    rowMap[g.y].push(g.x);
+  });
+  const templateRow=Object.values(rowMap).reduce((a,b)=>b.length>a.length?b:a,[]);
+  if(templateRow.length===0) return;
+  const colXs=[...new Set(templateRow)].sort((a,b)=>a-b);
+
+  const occupied=new Set(cages.map(g=>`${g.x},${g.y}`));
+  let added=0;
+  for(let y=cageMaxY+1;y<=newMaxY;y++){
+    for(const x of colXs){
+      if(!occupied.has(`${x},${y}`)){
+        const id=nextCageId++;
+        cages.push({id,name:String(id),floor:'1',x,y,rot:false});
+        occupied.add(`${x},${y}`);
+        added++;
+      }
+    }
+  }
+  if(added>0) _scheduleAutoSave();
+}
+
 function _scheduleAutoSave(){
   clearTimeout(_autoSaveTimer);
   _autoSaveTimer=setTimeout(()=>{
@@ -2658,6 +2698,7 @@ function onWheel(e){
   mapScale=Math.max(10,Math.min(100,mapScale*factor));
   mapOffX=mx-wx*mapScale;
   mapOffY=my-wy*mapScale;
+  autoExpandCages();
   drawMap();
 }
 
