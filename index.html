@@ -1029,7 +1029,7 @@ function showItemLocation(id){
   const it=items.find(x=>x.id===id);
   if(!it) return;
   document.getElementById('locPanelTitle').innerHTML=
-    `<span style="font-family:monospace;color:var(--accent);font-size:18px;">${sz(it)}</span> &nbsp; ${it.brand}`;
+    `<span style="font-family:monospace;color:var(--accent);font-size:18px;">${sz(it)}</span> &nbsp; ${escHTML(it.brand)}`;
 
   document.getElementById('locPanelBody').innerHTML=`
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
@@ -1192,11 +1192,11 @@ function clearFilters(){
 /* DROPDOWNS */
 function refreshDropdowns(){
   const bs=document.getElementById('fBrand'),bc=bs.value;
-  bs.innerHTML='<option value="">🏷️ מותג</option>'+[...new Set(items.map(i=>i.brand))].sort().map(b=>`<option ${b===bc?'selected':''}>${b}</option>`).join('');
+  bs.innerHTML='<option value="">🏷️ מותג</option>'+[...new Set(items.map(i=>i.brand))].sort().map(b=>`<option value="${escHTML(b)}" ${b===bc?'selected':''}>${escHTML(b)}</option>`).join('');
 
 
   const ss=document.getElementById('fSize'),sv=ss.value;
-  ss.innerHTML='<option value="">📐 מידה</option>'+[...new Set(items.map(i=>sz(i)))].sort().map(s=>`<option ${s===sv?'selected':''}>${s}</option>`).join('');
+  ss.innerHTML='<option value="">📐 מידה</option>'+[...new Set(items.map(i=>sz(i)))].sort().map(s=>`<option value="${escHTML(s)}" ${s===sv?'selected':''}>${escHTML(s)}</option>`).join('');
 }
 
 /* LOCATE NEAREST */
@@ -1858,7 +1858,7 @@ function showCageItems(g){
   // בנה פאנל
   const floorColors={'1':'var(--f1)','2':'var(--f2)','3':'var(--f3)'};
   let body=`<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">
-    עמודה <b style="color:var(--accent)">${g.name}</b> · ${cageItems.length} צמיגים
+    עמודה <b style="color:var(--accent)">${escHTML(g.name)}</b> · ${cageItems.length} צמיגים
   </div>`;
 
   // קבץ לפי קומה
@@ -1875,8 +1875,8 @@ function showCageItems(g){
     byFloor[f].forEach(it=>{
       body+=`<div onclick="showItemLocation(${it.id})" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:10px;">
         <span style="font-family:monospace;font-size:14px;font-weight:900;color:var(--accent);">${it.w}/${it.p}R${it.d}</span>
-        <span style="font-weight:700;">${it.brand}</span>
-        ${it.model?`<span style="font-size:11px;color:var(--muted);">${it.model}</span>`:''}
+        <span style="font-weight:700;">${escHTML(it.brand)}</span>
+        ${it.model?`<span style="font-size:11px;color:var(--muted);">${escHTML(it.model)}</span>`:''}
       </div>`;
     });
     body+='</div>';
@@ -1887,7 +1887,7 @@ function showCageItems(g){
   const title=document.getElementById('cageItemsTitle');
   const bodyEl=document.getElementById('cageItemsBody');
   if(panel&&title&&bodyEl){
-    title.innerHTML=`📦 כלוב ${g.name}`;
+    title.innerHTML=`📦 כלוב ${escHTML(g.name)}`;
     bodyEl.innerHTML=body;
     panel.style.display='block';
   }
@@ -3163,11 +3163,11 @@ window.prevPage=prevPage;
 function updateAutoComplete(){
   const brands=[...new Set(items.map(it=>it.brand).filter(Boolean))].sort();
   const bl=document.getElementById('brandList');
-  if(bl) bl.innerHTML=brands.map(b=>`<option value="${b}">`).join('');
+  if(bl) bl.innerHTML=brands.map(b=>`<option value="${escHTML(b)}">`).join('');
   const sb=document.getElementById('aBr')?document.getElementById('aBr').value:'';
   const models=[...new Set(items.filter(it=>!sb||it.brand===sb).map(it=>it.model).filter(Boolean))].sort();
   const ml=document.getElementById('modelList');
-  if(ml) ml.innerHTML=models.map(m=>`<option value="${m}">`).join('');
+  if(ml) ml.innerHTML=models.map(m=>`<option value="${escHTML(m)}">`).join('');
 }
 window.updateAutoComplete=updateAutoComplete;
 window.importExcel=importExcel;
@@ -3297,7 +3297,7 @@ function showWhCageDetail(g){
   const ci=items.filter(it=>String(it.col)===String(g.name)&&(!ff||String(it.floor)===ff));
   if(ci.length===0){ toast('📦 '+(currentLang==='ar'?'خلية فارغة':'כלוב ריק')+' — '+g.name); return; }
   const fc={'1':'var(--f1)','2':'var(--f2)','3':'var(--f3)'};
-  let body=`<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">${currentLang==='ar'?'العمود':'עמודה'} <b style="color:var(--accent)">${g.name}</b> · ${ci.length} ${t('tiresCount')}</div>`;
+  let body=`<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">${currentLang==='ar'?'العمود':'עמודה'} <b style="color:var(--accent)">${escHTML(g.name)}</b> · ${ci.length} ${t('tiresCount')}</div>`;
   const bf={};
   ci.forEach(it=>{ const f=it.floor||'1'; (bf[f]=bf[f]||[]).push(it); });
   Object.keys(bf).sort().forEach(f=>{
@@ -3423,7 +3423,23 @@ const auth = getAuth(fbApp);
 const itemsCol = collection(db, 'tires');
 
 // ── אימות אנונימי — חוסם גישה ישירה ל-Firestore מחוץ לאפליקציה ──
-signInAnonymously(auth).catch(e => console.warn('Auth error:', e));
+// מחכה לאימות לפני הפעלת Firestore (מונע race condition)
+let _authReady = false;
+const _authReadyCallbacks = [];
+function onAuthReady(cb) {
+  if (_authReady) { cb(); } else { _authReadyCallbacks.push(cb); }
+}
+signInAnonymously(auth)
+  .then(() => {
+    _authReady = true;
+    _authReadyCallbacks.forEach(cb => cb());
+  })
+  .catch(e => {
+    console.warn('Auth error:', e);
+    // גם אם האימות נכשל — ממשיך (עבור Firestore rules פתוחות)
+    _authReady = true;
+    _authReadyCallbacks.forEach(cb => cb());
+  });
 
 // ── אבטחה: isAdminMode קריאה בלבד — לא ניתן לשינוי מ-DevTools ──
 const ADMIN_PASS_HASH = '61270cb789566f5b26c4e12e11bb7a0d9e3e1b1922ef31b7e014b015c5214e3d';
@@ -3627,6 +3643,7 @@ window._saveItem = async function(it) {
     }
     return;
   }
+  await new Promise(resolve => onAuthReady(resolve));
   try { await setDoc(doc(db, 'tires', String(it.id)), it); }
   catch(e) {
     const q = getOfflineQueue();
@@ -3644,6 +3661,7 @@ window._deleteItem = async function(id) {
     window._toast && window._toast('📵 מחיקה תסונכרן כשיחזור אינטרנט');
     return;
   }
+  await new Promise(resolve => onAuthReady(resolve));
   try { await deleteDoc(doc(db, 'tires', String(id))); }
   catch(e) { window._toast && window._toast('❌ שגיאת מחיקה'); }
 };
@@ -3661,25 +3679,27 @@ window._clearAllFirestore = async function() {
 try { document.querySelector('.app').style.display = 'none'; } catch(e) {}
 buildLoginScreen();
 
-// ── Firestore sync ──
+// ── Firestore sync — מתחיל רק אחרי שהאימות מוכן ──
 setTimeout(processOfflineQueue, 3000);
 setStatus('🔄 מתחבר...');
-onSnapshot(itemsCol, snapshot => {
-  const newItems = snapshot.docs.map(d => d.data());
-  const newNextId = newItems.length > 0 ? Math.max(...newItems.map(i => i.id)) + 1 : 1;
-  if (window._updateItems) {
-    window._updateItems(newItems, newNextId);
-  } else {
-    window.items = newItems;
-    window.nextId = newNextId;
-  }
-  const ss = document.getElementById('syncStatus');
-  if (ss && ss.textContent.includes('מתחבר')) {
-    setStatus(_isAdmin ? '🟢 מנהל' : '🟢 מחובר');
-  }
-}, err => {
-  setStatus('🔴 אין חיבור');
-  console.error('Firebase error:', err);
+onAuthReady(() => {
+  onSnapshot(itemsCol, snapshot => {
+    const newItems = snapshot.docs.map(d => d.data());
+    const newNextId = newItems.length > 0 ? Math.max(...newItems.map(i => i.id)) + 1 : 1;
+    if (window._updateItems) {
+      window._updateItems(newItems, newNextId);
+    } else {
+      window.items = newItems;
+      window.nextId = newNextId;
+    }
+    const ss = document.getElementById('syncStatus');
+    if (ss && ss.textContent.includes('מתחבר')) {
+      setStatus(_isAdmin ? '🟢 מנהל' : '🟢 מחובר');
+    }
+  }, err => {
+    setStatus('🔴 אין חיבור');
+    console.error('Firebase error:', err);
+  });
 });
 
 window.buildLoginScreen = buildLoginScreen;
