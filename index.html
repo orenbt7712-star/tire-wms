@@ -2146,28 +2146,15 @@ function handleMove(cx,cy){
   } else if(mapTool==='move'&&dragCageId){
     const g=cages.find(c=>c.id===dragCageId);
     if(g){
-      let fnx=snapV(wx-dragOffX);
-      let fny=snapV(wy-dragOffY);
-      // ישור אוטומטי לכלוב הקרוב ביותר (רק אם גוררים כלוב יחיד)
-      if(selectedCages.length<=1){
-        const SNAP_DIST=0.45;
-        cages.forEach(other=>{
-          if(other.id===dragCageId) return;
-          if(Math.abs(fnx-(other.x+1))<SNAP_DIST) fnx=other.x+1;
-          if(Math.abs(fnx+1-other.x)<SNAP_DIST) fnx=other.x-1;
-          if(Math.abs(fnx-other.x)<SNAP_DIST) fnx=other.x;
-          if(Math.abs(fny-other.y)<SNAP_DIST) fny=other.y;
-          if(Math.abs(fny+1-other.y)<SNAP_DIST) fny=other.y-1;
-          if(Math.abs(fny-(other.y+1))<SNAP_DIST) fny=other.y+1;
-        });
-      }
+      // מגנט אמיתי: הכלוב נדבק למשבצת שמתחת לסמן (לא תלוי בנקודת האחיזה)
+      const fnx=Math.max(0, Math.floor(wx));
+      const fny=Math.max(0, Math.floor(wy));
       // הזז את כל הכלובים הנבחרים תוך שמירת המרחקים היחסיים
       _multiDragOffsets.forEach(o=>{
         const c=cages.find(x=>x.id===o.id);
-        if(c){ c.x=snapV(fnx+o.ox); c.y=snapV(fny+o.oy); }
+        if(c){ c.x=Math.max(0,fnx+o.ox); c.y=Math.max(0,fny+o.oy); }
       });
       drawMap();
-      _drawAlignLines(g);
     }
   }
 }
@@ -2291,6 +2278,35 @@ function drawMap(){
     // אורך
     ctx.fillStyle='#4a9eff';ctx.font='bold 11px Heebo';ctx.textAlign='center';
     ctx.fillText(len+'מ',(x1+x2)/2,(y1+y2)/2-8);
+  }
+
+  // ── הדגשת תאי יעד בגרירה (מגנט) ──
+  if(dragCageId !== null){
+    const targets = selectedCages.length > 0 ? selectedCages : [dragCageId];
+    targets.forEach(id=>{
+      const g=cages.find(c=>c.id===id);
+      if(!g) return;
+      const[hx,hy]=w2c(g.x,g.y);
+      // זוהר ירוק-צהוב מתחת לכלוב
+      ctx.fillStyle='rgba(245,166,35,0.14)';
+      ctx.fillRect(hx,hy,CELL,CELL);
+      // מסגרת מנוקדת בולטת
+      ctx.strokeStyle='rgba(245,166,35,0.85)';
+      ctx.lineWidth=2;
+      ctx.setLineDash([6,3]);
+      ctx.strokeRect(hx+1,hy+1,CELL-2,CELL-2);
+      ctx.setLineDash([]);
+      // נקודות פינה (סימון רישות)
+      const d=6;
+      ctx.strokeStyle='#f5a623';
+      ctx.lineWidth=2;
+      [[hx,hy],[hx+CELL,hy],[hx,hy+CELL],[hx+CELL,hy+CELL]].forEach(([px,py])=>{
+        ctx.beginPath();
+        ctx.moveTo(px-d,py); ctx.lineTo(px+d,py);
+        ctx.moveTo(px,py-d); ctx.lineTo(px,py+d);
+        ctx.stroke();
+      });
+    });
   }
 
   // כלובים — מסנן לפי שכבה
