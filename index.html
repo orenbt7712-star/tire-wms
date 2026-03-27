@@ -1826,11 +1826,11 @@ let selectedCageId=null, nextCageId=1;
 let mapTool='wall';
 let isDrawing=false, drawStart=null, drawCurrent=null;
 let dragCageId=null, dragOffX=0, dragOffY=0;
-let mapScale=20, mapOffX=14, mapOffY=14;
+let mapScale=40, mapOffX=50, mapOffY=50;
 let pinchDist=null;
 let mapFloorFilter=0; // 0=הכל, 1/2/3=קומה ספציפית
 let isPanning=false, panStartX=0, panStartY=0, panOffStartX=0, panOffStartY=0;
-const SNAP=0.6; // snap to cage size
+const SNAP=1.0; // snap לגודל כלוב אחד (ריבועי)
 
 let mapRedoHistory=[];
 let selectedCages=[]; // IDs of multi-selected cages
@@ -1927,7 +1927,7 @@ function _drawAlignLines(g){
 function zoomIn(){ mapScale=Math.min(80,mapScale*1.25); drawMap(); }
 function zoomOut(){ mapScale=Math.max(10,mapScale*0.8); drawMap(); }
 function centerMap(){
-  if(cages.length===0){ mapOffX=14; mapOffY=14; mapScale=20; drawMap(); return; }
+  if(cages.length===0){ mapOffX=50; mapOffY=50; mapScale=40; drawMap(); return; }
   const xs=cages.map(g=>g.x), ys=cages.map(g=>g.y);
   const minX=Math.min(...xs), minY=Math.min(...ys);
   const cv=document.getElementById('mapCanvas');
@@ -1959,7 +1959,10 @@ function initMapEditor(){
   const wrap=document.getElementById('mapEditorWrap');
   if(!canvas||!wrap) return;
   const saved=localStorage.getItem('tirewms_map2');
-  if(saved){ try{ const d=JSON.parse(saved); cages=d.cages||[]; walls=d.walls||[]; nextCageId=d.nextId||1; }catch(e){} }
+  if(saved){ try{ const d=JSON.parse(saved); walls=d.walls||[]; nextCageId=d.nextId||1;
+    // נרמל מיקומי כלובים לגריד הריבועי (עיגול למספר שלם)
+    cages=(d.cages||[]).map(g=>({...g,x:Math.round(g.x),y:Math.round(g.y)}));
+  }catch(e){} }
   resizeCanvas(); drawMap(); setMapTool('wall');
 
   // Remove old listeners
@@ -2009,8 +2012,8 @@ function getPos(e,cv){
 
 function getCageAt(wx,wy){
   for(let i=cages.length-1;i>=0;i--){
-    const g=cages[i],w=g.rot?0.6:1.2,h=g.rot?1.2:0.6;
-    if(wx>=g.x&&wx<=g.x+w&&wy>=g.y&&wy<=g.y+h) return g;
+    const g=cages[i];
+    if(wx>=g.x&&wx<g.x+1&&wy>=g.y&&wy<g.y+1) return g;
   }
   return null;
 }
@@ -2073,6 +2076,8 @@ function onCK(e){
 }
 
 function handleDown(cx,cy){
+  // התעלם מקליקים על הסרגל
+  if(cx<28||cy<28) return;
   const[wx,wy]=c2w(cx,cy);
   // Space-bar panning
   if(spaceDown){
@@ -2086,7 +2091,7 @@ function handleDown(cx,cy){
   } else if(mapTool==='cage'){
     pushHistory();
     const id=nextCageId++;
-    const g={id,name:String(id),floor:'1',x:snapV(wx-0.6),y:snapV(wy-0.3),rot:false};
+    const g={id,name:String(id),floor:'1',x:Math.max(0,Math.floor(wx)),y:Math.max(0,Math.floor(wy)),rot:false};
     cages.push(g);
     selectedCageId=id; selectedCages=[id];
     drawMap();
@@ -2145,16 +2150,15 @@ function handleMove(cx,cy){
       let fny=snapV(wy-dragOffY);
       // ישור אוטומטי לכלוב הקרוב ביותר (רק אם גוררים כלוב יחיד)
       if(selectedCages.length<=1){
-        const SNAP_DIST=0.8;
+        const SNAP_DIST=0.45;
         cages.forEach(other=>{
           if(other.id===dragCageId) return;
-          const ow=other.rot?0.6:1.2, oh=other.rot?1.2:0.6;
-          const gw=g.rot?0.6:1.2;
-          if(Math.abs(fnx-(other.x+ow))<SNAP_DIST) fnx=other.x+ow;
-          if(Math.abs(fnx+gw-other.x)<SNAP_DIST) fnx=other.x-gw;
+          if(Math.abs(fnx-(other.x+1))<SNAP_DIST) fnx=other.x+1;
+          if(Math.abs(fnx+1-other.x)<SNAP_DIST) fnx=other.x-1;
           if(Math.abs(fnx-other.x)<SNAP_DIST) fnx=other.x;
           if(Math.abs(fny-other.y)<SNAP_DIST) fny=other.y;
-          if(Math.abs(fny-other.y-oh)<SNAP_DIST) fny=other.y+oh;
+          if(Math.abs(fny+1-other.y)<SNAP_DIST) fny=other.y-1;
+          if(Math.abs(fny-(other.y+1))<SNAP_DIST) fny=other.y+1;
         });
       }
       // הזז את כל הכלובים הנבחרים תוך שמירת המרחקים היחסיים
@@ -2185,8 +2189,7 @@ function handleUp(){
     const dist=Math.hypot(rx2-rx1,ry2-ry1);
     if(dist>0.3){
       selectedCages=cages.filter(g=>{
-        const w=g.rot?0.6:1.2,h=g.rot?1.2:0.6;
-        return g.x<rx2&&g.x+w>rx1&&g.y<ry2&&g.y+h>ry1;
+        return g.x<rx2&&g.x+1>rx1&&g.y<ry2&&g.y+1>ry1;
       }).map(g=>g.id);
       if(selectedCages.length===1){
         selectedCageId=selectedCages[0];
@@ -2215,86 +2218,52 @@ function drawMap(){
   ctx.fillStyle='#0a0c12';
   ctx.fillRect(0,0,cv.width,cv.height);
 
-  // ── גריד כלובים ──
-  // כל תא = גודל כלוב אחד (1.2×0.6 מטר)
-  const CAGE_W = 1.2 * mapScale;
-  const CAGE_H = 0.6 * mapScale;
-  const SLOT_H = CAGE_H / 3; // חלוקה ל-3 קומות בתוך כל תא
+  // ── גריד ריבועי — כל תא = כלוב אחד (1 יחידה) ──
+  const CELL = mapScale;
 
-  // חשב כמה תאים על המסך
-  const startColF = -mapOffX / CAGE_W;
-  const startRowF = -mapOffY / CAGE_H;
-  const startCol = Math.floor(startColF) - 1;
-  const startRow = Math.floor(startRowF) - 1;
-  const endCol = startCol + Math.ceil(cv.width / CAGE_W) + 2;
-  const endRow = startRow + Math.ceil(cv.height / CAGE_H) + 2;
+  const startCol = Math.floor(-mapOffX / CELL) - 1;
+  const startRow = Math.floor(-mapOffY / CELL) - 1;
+  const endCol   = startCol + Math.ceil(cv.width  / CELL) + 2;
+  const endRow   = startRow + Math.ceil(cv.height / CELL) + 2;
 
-  // צייר תאים
-  for(let row=startRow; row<=endRow; row++){
-    for(let col=startCol; col<=endCol; col++){
-      const px = mapOffX + col * CAGE_W;
-      const py = mapOffY + row * CAGE_H;
+  for(let row = startRow; row <= endRow; row++){
+    for(let col = startCol; col <= endCol; col++){
+      if(col < 0 || row < 0) continue;
+      const px = mapOffX + col * CELL;
+      const py = mapOffY + row * CELL;
 
       // רקע תא
       ctx.fillStyle = '#0e1018';
-      ctx.fillRect(px+1, py+1, CAGE_W-2, CAGE_H-2);
+      ctx.fillRect(px + 1, py + 1, CELL - 2, CELL - 2);
 
-      // 3 שורות קומות בתוך התא
-      const floorColors = ['rgba(74,158,255,0.08)','rgba(62,207,142,0.08)','rgba(245,166,35,0.08)'];
-      const floorBorders = ['rgba(74,158,255,0.3)','rgba(62,207,142,0.3)','rgba(245,166,35,0.3)'];
-      for(let f=0;f<3;f++){
-        const fy = py + f*SLOT_H;
+      // 3 פסי קומות בתוך התא
+      const SLOT = CELL / 3;
+      const floorColors  = ['rgba(74,158,255,0.07)','rgba(62,207,142,0.07)','rgba(245,166,35,0.07)'];
+      const floorBorders = ['rgba(74,158,255,0.25)','rgba(62,207,142,0.25)','rgba(245,166,35,0.25)'];
+      for(let f = 0; f < 3; f++){
+        const fy = py + f * SLOT;
         ctx.fillStyle = floorColors[f];
-        ctx.fillRect(px+1, fy+0.5, CAGE_W-2, SLOT_H-1);
-        // קו מפריד קומה (דק)
-        if(f>0){
+        ctx.fillRect(px + 1, fy + 0.5, CELL - 2, SLOT - 1);
+        if(f > 0){
           ctx.strokeStyle = floorBorders[f];
           ctx.lineWidth = 0.5;
           ctx.beginPath();
-          ctx.moveTo(px+3, fy);
-          ctx.lineTo(px+CAGE_W-3, fy);
+          ctx.moveTo(px + 4, fy); ctx.lineTo(px + CELL - 4, fy);
           ctx.stroke();
         }
-        // תווית קומה אם יש מספיק מקום
-        if(SLOT_H > 12){
-          const floorLabels=['1','2','3'];
-          const floorTextColors=['rgba(74,158,255,0.5)','rgba(62,207,142,0.5)','rgba(245,166,35,0.5)'];
-          ctx.fillStyle = floorTextColors[f];
-          ctx.font = `${Math.min(8,SLOT_H*0.5)}px Heebo`;
-          ctx.textAlign = 'right';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(floorLabels[f], px+CAGE_W-2, fy+SLOT_H/2);
+        if(SLOT > 10){
+          ctx.fillStyle = ['rgba(74,158,255,0.4)','rgba(62,207,142,0.4)','rgba(245,166,35,0.4)'][f];
+          ctx.font = `${Math.min(8, SLOT * 0.45)}px Heebo`;
+          ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+          ctx.fillText(f + 1, px + CELL - 3, fy + SLOT / 2);
         }
       }
 
-      // מסגרת תא — צהוב
-      ctx.strokeStyle = 'rgba(245,166,35,0.35)';
+      // מסגרת תא
+      ctx.strokeStyle = 'rgba(245,166,35,0.22)';
       ctx.lineWidth = 1;
-      ctx.strokeRect(px+0.5, py+0.5, CAGE_W-1, CAGE_H-1);
-
-      // מספר עמודה/שורה
-      if(col>=0 && row>=0 && CAGE_W>30 && CAGE_H>18){
-        ctx.fillStyle = 'rgba(245,166,35,0.4)';
-        ctx.font = `${Math.min(9,CAGE_W*0.15)}px Heebo`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'top';
-        ctx.fillText(`${col+1}`, px+CAGE_W/2, py+2);
-      }
+      ctx.strokeRect(px + 0.5, py + 0.5, CELL - 1, CELL - 1);
     }
-  }
-
-  // ── ציר מספרים ──
-  ctx.fillStyle='rgba(245,166,35,0.6)';
-  ctx.font='9px Heebo';
-  ctx.textAlign='center';
-  for(let col=0; col*CAGE_W+mapOffX < cv.width; col++){
-    const px = mapOffX + col*CAGE_W + CAGE_W/2;
-    if(px > 10 && px < cv.width) ctx.fillText(col+1, px, 4);
-  }
-  ctx.textAlign='right';
-  for(let row=0; row*CAGE_H+mapOffY < cv.height; row++){
-    const py = mapOffY + row*CAGE_H + CAGE_H/2;
-    if(py > 10 && py < cv.height) ctx.fillText(row+1, 14, py+3);
   }
 
   // קירות שמורים
@@ -2327,9 +2296,8 @@ function drawMap(){
   // כלובים — מסנן לפי שכבה
   const visibleCages = mapFloorFilter===0 ? cages : cages.filter(g=>String(g.floor)===String(mapFloorFilter));
   visibleCages.forEach(g=>{
-    const w=g.rot?0.6:1.2,h=g.rot?1.2:0.6;
     const[cx,cy]=w2c(g.x,g.y);
-    const pw=w*mapScale,ph=h*mapScale;
+    const pw=mapScale,ph=mapScale;
     const isSel=g.id===selectedCageId;
     const hasItems=items.some(it=>String(it.col)===String(g.name)&&it.floor===g.floor);
     const cnt=hasItems?items.filter(it=>String(it.col)===String(g.name)&&it.floor===g.floor).length:0;
@@ -2388,14 +2356,11 @@ function drawMap(){
       ctx.fillText(cnt,cx+pw-6,cy+6);
     }
 
-    // מידות כלוב בפינה
-    ctx.fillStyle='#3e4560';ctx.font='8px Heebo';ctx.textAlign='left';ctx.textBaseline='bottom';
-    if(pw>30) ctx.fillText(`${(w).toFixed(0)}×${(h).toFixed(0)}`,cx+2,cy+ph-2);
+    // מיקום כלוב בגריד (פינה תחתון-שמאל)
+    ctx.fillStyle='rgba(100,110,140,0.6)';ctx.font='7px Heebo';ctx.textAlign='left';ctx.textBaseline='bottom';
+    if(pw>32) ctx.fillText(`${g.x+1},${g.y+1}`,cx+2,cy+ph-1);
   });
 
-  // כיוון מזרח-מערב
-  ctx.fillStyle='#2a3045';ctx.font='10px Heebo';ctx.textAlign='left';
-  ctx.fillText('↑ צפון',6,cv.height-8);
 
   // ── Rubber-band selection overlay ──
   if(isRubberBand&&rubberStart&&rubberCurrent){
@@ -2423,13 +2388,13 @@ function drawMap(){
     ctx.strokeRect(MM_X,MM_Y,MM_W,MM_H);
     // חשב גבולות כל הכלובים
     let mnX=Infinity,mnY=Infinity,mxX=-Infinity,mxY=-Infinity;
-    cages.forEach(g=>{const w=g.rot?0.6:1.2,h=g.rot?1.2:0.6;mnX=Math.min(mnX,g.x);mnY=Math.min(mnY,g.y);mxX=Math.max(mxX,g.x+w);mxY=Math.max(mxY,g.y+h);});
+    cages.forEach(g=>{mnX=Math.min(mnX,g.x);mnY=Math.min(mnY,g.y);mxX=Math.max(mxX,g.x+1);mxY=Math.max(mxY,g.y+1);});
     const bw=mxX-mnX||1,bh=mxY-mnY||1;
     const mmS=Math.min((MM_W-8)/bw,(MM_H-8)/bh);
     const mmOX=MM_X+4-mnX*mmS, mmOY=MM_Y+4-mnY*mmS;
     // ציור כלובים
     cages.forEach(g=>{
-      const mw=Math.max((g.rot?0.6:1.2)*mmS,2),mh=Math.max((g.rot?1.2:0.6)*mmS,2);
+      const mw=Math.max(mmS,2),mh=Math.max(mmS,2);
       const mx=g.x*mmS+mmOX,my=g.y*mmS+mmOY;
       const iS=g.id===selectedCageId||selectedCages.includes(g.id);
       const hI=items.some(it=>String(it.col)===String(g.name)&&it.floor===g.floor);
@@ -2449,6 +2414,88 @@ function drawMap(){
     ctx.font='7px Heebo';ctx.textAlign='left';ctx.textBaseline='top';
     ctx.fillText('מפה',MM_X+2,MM_Y+2);
   }
+
+  // ── סרגל ציר (overlay קבוע — תמיד נראה) ──
+  const RULER = 28;
+  const labelStep = Math.max(1, Math.ceil(22 / CELL)); // דלג תוויות כשצפוף
+
+  const rStartCol = Math.max(0, Math.floor(-mapOffX / CELL));
+  const rEndCol   = rStartCol + Math.ceil(cv.width  / CELL) + 1;
+  const rStartRow = Math.max(0, Math.floor(-mapOffY / CELL));
+  const rEndRow   = rStartRow + Math.ceil(cv.height / CELL) + 1;
+
+  // רקע סרגל עליון
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = 'rgba(8,10,16,0.97)';
+  ctx.fillRect(0, 0, cv.width, RULER);
+  // רקע סרגל שמאלי
+  ctx.fillRect(0, RULER, RULER, cv.height - RULER);
+
+  // מספרי עמודות (ציר X — סרגל עליון)
+  ctx.font = 'bold 11px Heebo';
+  ctx.textBaseline = 'middle';
+  for(let col = rStartCol; col <= rEndCol; col++){
+    if(col % labelStep !== 0) continue;
+    const centerX = mapOffX + col * CELL + CELL / 2;
+    if(centerX < RULER + 4 || centerX > cv.width - 2) continue;
+    // רקע סלקטיבי לכל עמודה
+    ctx.fillStyle = col % 2 === 0 ? 'rgba(245,166,35,0.07)' : 'rgba(245,166,35,0.03)';
+    ctx.fillRect(mapOffX + col * CELL, 0, CELL, RULER);
+    // קו tick בתחתית הסרגל
+    ctx.strokeStyle = 'rgba(245,166,35,0.3)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(mapOffX + col * CELL + 0.5, RULER - 6);
+    ctx.lineTo(mapOffX + col * CELL + 0.5, RULER);
+    ctx.stroke();
+    // מספר
+    ctx.fillStyle = '#f5a623';
+    ctx.textAlign = 'center';
+    ctx.fillText(String(col + 1), centerX, RULER / 2);
+  }
+
+  // מספרי שורות (ציר Y — סרגל שמאלי)
+  ctx.font = 'bold 11px Heebo';
+  for(let row = rStartRow; row <= rEndRow; row++){
+    if(row % labelStep !== 0) continue;
+    const centerY = mapOffY + row * CELL + CELL / 2;
+    if(centerY < RULER + 4 || centerY > cv.height - 2) continue;
+    // רקע סלקטיבי לכל שורה
+    ctx.fillStyle = row % 2 === 0 ? 'rgba(74,158,255,0.07)' : 'rgba(74,158,255,0.03)';
+    ctx.fillRect(0, mapOffY + row * CELL, RULER, CELL);
+    // קו tick בצד ימין של הסרגל
+    ctx.strokeStyle = 'rgba(74,158,255,0.3)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(RULER - 6, mapOffY + row * CELL + 0.5);
+    ctx.lineTo(RULER, mapOffY + row * CELL + 0.5);
+    ctx.stroke();
+    // מספר
+    ctx.fillStyle = '#7ac8ff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(row + 1), RULER / 2, centerY);
+  }
+
+  // קווי גבול סרגל
+  ctx.strokeStyle = 'rgba(245,166,35,0.4)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, RULER + 0.5);     ctx.lineTo(cv.width, RULER + 0.5);
+  ctx.moveTo(RULER + 0.5, 0);     ctx.lineTo(RULER + 0.5, cv.height);
+  ctx.stroke();
+
+  // פינה שמאל-עליון
+  ctx.fillStyle = '#080a10';
+  ctx.fillRect(0, 0, RULER, RULER);
+  ctx.fillStyle = 'rgba(245,166,35,0.35)';
+  ctx.font = '9px Heebo';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('↕↔', RULER / 2, RULER / 2);
+
+  // כיוון צפון (מוזז לשמאל הסרגל)
+  ctx.fillStyle='rgba(42,48,69,0.8)';ctx.font='9px Heebo';ctx.textAlign='left';
+  ctx.fillText('↑ צ',2,cv.height-8);
 }
 
 function pushHistory(){
@@ -2512,8 +2559,8 @@ function confirmRowPanel(){
   for(let i=0;i<num;i++){
     const id=nextCageId++;
     const rot=dir==='v';
-    const x=dir==='h'?snapV(_rowClickWx+i*1.2):snapV(_rowClickWx);
-    const y=dir==='h'?snapV(_rowClickWy):snapV(_rowClickWy+i*0.6);
+    const x=dir==='h'?Math.max(0,Math.floor(_rowClickWx))+i:Math.max(0,Math.floor(_rowClickWx));
+    const y=dir==='h'?Math.max(0,Math.floor(_rowClickWy)):Math.max(0,Math.floor(_rowClickWy))+i;
     cages.push({id,name:String(id),floor:fl,x,y,rot});
   }
   closeRowPanel();
@@ -3240,9 +3287,8 @@ function renderWarehouse(){
   // כלובים
   const vis=whFloorFilter===0?cages:cages.filter(g=>String(g.floor)===String(whFloorFilter));
   vis.forEach(g=>{
-    const w=g.rot?0.6:1.2,h=g.rot?1.2:0.6;
     const px=whOffX+g.x*whScale, py=whOffY+g.y*whScale;
-    const pw=w*whScale, ph=h*whScale;
+    const pw=whScale, ph=whScale;
     const ci=items.filter(it=>String(it.col)===String(g.name));
     const has=ci.length>0;
     const fm=whFloorFilter===0||String(g.floor)===String(whFloorFilter);
@@ -3287,8 +3333,8 @@ function renderWarehouse(){
 function whHandleClick(cx,cy){
   const wx=(cx-whOffX)/whScale, wy=(cy-whOffY)/whScale;
   for(let i=cages.length-1;i>=0;i--){
-    const g=cages[i], w=g.rot?0.6:1.2, h=g.rot?1.2:0.6;
-    if(wx>=g.x&&wx<=g.x+w&&wy>=g.y&&wy<=g.y+h){ showWhCageDetail(g); return; }
+    const g=cages[i];
+    if(wx>=g.x&&wx<g.x+1&&wy>=g.y&&wy<g.y+1){ showWhCageDetail(g); return; }
   }
 }
 
