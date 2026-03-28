@@ -528,7 +528,8 @@ if('serviceWorker' in navigator){
         <div>
           <label style="font-size:10px;color:var(--blue);font-weight:700;">כיוון</label>
           <select id="rowPanelDir" style="width:100%;background:var(--card);border:1px solid var(--blue);border-radius:7px;color:var(--text);padding:8px;font-family:inherit;font-size:13px;margin-top:4px;">
-            <option value="h">➡ אופקי</option>
+            <option value="hr">➡ אופקי ימין</option>
+            <option value="hl">⬅ אופקי שמאל</option>
             <option value="v">⬇ אנכי</option>
           </select>
         </div>
@@ -2673,12 +2674,15 @@ function confirmRowPanel(){
   const fl=document.getElementById('rowPanelFloor').value;
   if(num<1||num>50){ toast('❌ כמות לא חוקית (1–50)'); return; }
   pushHistory();
+  const baseX=Math.max(0,Math.floor(_rowClickWx));
+  const baseY=Math.max(0,Math.floor(_rowClickWy));
   for(let i=0;i<num;i++){
     const id=nextCageId++;
-    const rot=dir==='v';
-    const x=dir==='h'?Math.max(0,Math.floor(_rowClickWx))+i:Math.max(0,Math.floor(_rowClickWx));
-    const y=dir==='h'?Math.max(0,Math.floor(_rowClickWy)):Math.max(0,Math.floor(_rowClickWy))+i;
-    cages.push({id,name:String(id),floor:fl,x,y,rot});
+    let x=baseX, y=baseY;
+    if(dir==='hr') x=baseX+i;                     // אופקי ימין
+    else if(dir==='hl') x=Math.max(0,baseX-i);    // אופקי שמאל
+    else if(dir==='v')  y=baseY+i;                // אנכי
+    cages.push({id,name:String(id),floor:fl,x,y,rot:false});
   }
   closeRowPanel();
   drawMap();
