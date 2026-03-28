@@ -459,6 +459,13 @@ if('serviceWorker' in navigator){
       </div>
     </div>
     <div style="padding:5px 10px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;flex-shrink:0;overflow-x:auto;">
+      <span style="font-size:10px;color:var(--muted);flex-shrink:0;">אזור:</span>
+      <button id="sec-all" onclick="setMapSection(null)" style="background:var(--accent);border:none;color:#111;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">הכל</button>
+      <button id="sec-מחסן" onclick="setMapSection('מחסן')" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">🏭 מחסן</button>
+      <button id="sec-פניה1" onclick="setMapSection('פניה1')" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">↩ פניה 1</button>
+      <button id="sec-פניה2" onclick="setMapSection('פניה2')" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">↩ פניה 2</button>
+    </div>
+    <div style="padding:5px 10px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;flex-shrink:0;overflow-x:auto;">
       <span style="font-size:10px;color:var(--muted);flex-shrink:0;">שכבה:</span>
       <button id="fl-all" onclick="setFloorFilter(0)" style="background:var(--accent);border:none;color:#111;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">הכל</button>
       <button id="fl-1" onclick="setFloorFilter(1)" style="background:var(--card);border:1px solid var(--f1);color:var(--f1);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">קומה 1</button>
@@ -1832,6 +1839,7 @@ let dragCageId=null, dragOffX=0, dragOffY=0;
 let mapScale=40, mapOffX=50, mapOffY=50;
 let pinchDist=null;
 let mapFloorFilter=0; // 0=הכל, 1/2/3=קומה ספציפית
+let mapSection=null; // null=הכל, 'מחסן'/'פניה1'/'פניה2'
 let isPanning=false, panStartX=0, panStartY=0, panOffStartX=0, panOffStartY=0;
 const SNAP=1.0; // snap לגודל כלוב אחד (ריבועי)
 
@@ -1921,6 +1929,48 @@ function setFloorFilter(f){
       btn.style.border='1px solid '+(id==='all'?'var(--border)':(colors[id]||'var(--border)'));
     }
   });
+  drawMap();
+}
+
+function setMapSection(s){
+  mapSection=s;
+  // עדכן כפתורים
+  ['all','מחסן','פניה1','פניה2'].forEach(id=>{
+    const btn=document.getElementById('sec-'+(id==='all'?'all':id));
+    if(!btn) return;
+    const isActive=(id==='all'&&s===null)||(id===s);
+    if(isActive){
+      btn.style.background='var(--accent)';
+      btn.style.border='none';
+      btn.style.color='#111';
+    } else {
+      btn.style.background='var(--card)';
+      btn.style.border='1px solid var(--border)';
+      btn.style.color='var(--muted)';
+    }
+  });
+  // מרכז את המפה לפי האזור הנבחר
+  const prefixMap = {
+    'מחסן': ['מי.','מש.'],
+    'פניה1': ['פ1ש.','פ1י.'],
+    'פניה2': ['פ2י.','פ2ש.']
+  };
+  if(s && prefixMap[s]){
+    const prefs=prefixMap[s];
+    const subset=cages.filter(g=>prefs.some(p=>String(g.name).startsWith(p)));
+    if(subset.length>0){
+      const cv=document.getElementById('mapCanvas');
+      const xs=subset.map(g=>g.x), ys=subset.map(g=>g.y);
+      const minX=Math.min(...xs), minY=Math.min(...ys);
+      const maxX=Math.max(...xs)+1, maxY=Math.max(...ys)+1;
+      const fitScale=cv?Math.min(cv.width/(maxX-minX+2), cv.height/(maxY-minY+2), 60):mapScale;
+      mapScale=Math.max(10,Math.min(60,fitScale));
+      mapOffX=cv?cv.width/2-(minX+(maxX-minX)/2)*mapScale:50;
+      mapOffY=cv?cv.height/2-(minY+(maxY-minY)/2)*mapScale:50;
+    }
+  } else {
+    centerMap(); return;
+  }
   drawMap();
 }
 
@@ -2381,8 +2431,19 @@ function drawMap(){
     });
   }
 
-  // כלובים — מסנן לפי שכבה
-  const visibleCages = mapFloorFilter===0 ? cages : cages.filter(g=>String(g.floor)===String(mapFloorFilter));
+  // כלובים — מסנן לפי אזור ושכבה
+  const _sectionPrefixes = {
+    'מחסן': ['מי.','מש.'],
+    'פניה1': ['פ1ש.','פ1י.'],
+    'פניה2': ['פ2י.','פ2ש.']
+  };
+  const visibleCages = cages.filter(g=>{
+    if(mapSection && _sectionPrefixes[mapSection]){
+      if(!_sectionPrefixes[mapSection].some(p=>String(g.name).startsWith(p))) return false;
+    }
+    if(mapFloorFilter!==0 && String(g.floor)!==String(mapFloorFilter)) return false;
+    return true;
+  });
   visibleCages.forEach(g=>{
     const[cx,cy]=w2c(g.x,g.y);
     const pw=mapScale,ph=mapScale;
@@ -3434,6 +3495,7 @@ window.renderDashboard=renderDashboard;
 window.zoomIn=zoomIn;
 window.setMapTool=setMapTool;
 window.setFloorFilter=setFloorFilter;
+window.setMapSection=setMapSection;
 window.closeCageItemsPanel=closeCageItemsPanel;
 
 /* ══ WAREHOUSE CANVAS VIEW ══ */
