@@ -441,6 +441,7 @@ if('serviceWorker' in navigator){
       <div style="font-size:12px;font-weight:800;flex-shrink:0;">✏️ מפת מחסן</div>
       <div style="display:flex;gap:5px;flex-shrink:0;" id="mapTools">
         <button id="tool-wall" onclick="setMapTool('wall')" title="ציור קיר" style="background:var(--blue-dim);border:1px solid var(--blue);color:var(--blue);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🖊️ קיר</button>
+        <button id="tool-pan" onclick="setMapTool('pan')" title="גלילת מפה (P)" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🖐 גלול</button>
         <button id="tool-cage" onclick="setMapTool('cage')" title="הוסף כלוב" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">📦 כלוב</button>
         <button id="tool-move" onclick="setMapTool('move')" title="הזזה" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">✋ הזז</button>
         <button id="tool-row" onclick="setMapTool('row')" title="שורה" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">📏 שורה</button>
@@ -1841,6 +1842,7 @@ let _multiDragOffsets=[]; // [{id,ox,oy}] relative offsets for multi-drag
 let _autoSaveTimer=null;
 let _rowClickWx=0, _rowClickWy=0;
 let _axisZoom=null; // {type:'x'|'y', startCX, startCY, startScale, startOffX, startOffY}
+let _touchStartCX=0,_touchStartCY=0,_touchStartTime=0,_touchIsPanning=false;
 
 let _alignTimeout=null;
 
@@ -1940,7 +1942,7 @@ function centerMap(){
 
 function setMapTool(t){
   mapTool=t;
-  ['wall','cage','move','erase','row'].forEach(n=>{
+  ['wall','pan','cage','move','erase','row'].forEach(n=>{
     const b=document.getElementById('tool-'+n);
     if(!b) return;
     const on=n===t;
@@ -1949,11 +1951,12 @@ function setMapTool(t){
     b.style.color=on?'#111':'var(--muted)';
     b.style.fontWeight=on?'900':'600';
   });
-  const hints={wall:'🖊️ גרור לציור קיר | W',cage:'📦 לחץ למיקום כלוב | C | Ctrl+D לשכפול',move:'✋ גרור כלוב | גרור על ריק לבחירה מרובה | Delete למחיקה | Space+גרור לפנינג | M',erase:'🗑️ לחץ למחיקה',row:'📏 לחץ להוספת שורת כלובים'};
+  const hints={wall:'🖊️ גרור לציור קיר | W',pan:'🖐 גרור להזזת המפה — עכבר שמאל / מגע | P',cage:'📦 לחץ למיקום כלוב | C | Ctrl+D לשכפול',move:'✋ גרור כלוב | גרור על ריק לבחירה מרובה | Delete למחיקה | M',erase:'🗑️ לחץ למחיקה',row:'📏 לחץ להוספת שורת כלובים'};
   const h=document.getElementById('mapHint');
   if(h) h.textContent=hints[t]||'';
+  const cursor=t==='pan'?'grab':t==='move'?'grab':t==='erase'?'cell':'crosshair';
   const canvas=document.getElementById('mapCanvas');
-  if(canvas) canvas.style.cursor=t==='move'?'grab':t==='erase'?'cell':'crosshair';
+  if(canvas) canvas.style.cursor=cursor;
 }
 
 function initMapEditor(){
@@ -2036,12 +2039,19 @@ function onTS(e){
   e.preventDefault();
   const cv=document.getElementById('mapCanvas');
   if(e.touches.length===2){
-    // pinch zoom
     pinchDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+    _touchIsPanning=false;
     return;
   }
   const[cx,cy]=getPos(e,cv);
-  handleDown(cx,cy);
+  _touchStartCX=cx; _touchStartCY=cy; _touchStartTime=Date.now();
+  _touchIsPanning=false;
+  // כלי גלילה — מיד מתחיל גלילה
+  if(mapTool==='pan'){
+    isPanning=true; panStartX=cx; panStartY=cy;
+    panOffStartX=mapOffX; panOffStartY=mapOffY;
+    _touchIsPanning=true;
+  }
 }
 function onTM(e){
   e.preventDefault();
@@ -2049,17 +2059,35 @@ function onTM(e){
   if(e.touches.length===2&&pinchDist!==null){
     const newDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
     const factor=newDist/pinchDist;
-    mapScale=Math.max(20,Math.min(100,mapScale*factor));
+    mapScale=Math.max(12,Math.min(120,mapScale*factor));
     pinchDist=newDist;
-    drawMap(); return;
+    autoExpandCages(); drawMap(); return;
   }
   const[cx,cy]=getPos(e,cv);
+  // אם זז יותר מ-8 פיקסלים — הפוך לגלילה (כלים שאינם כלוב/קיר)
+  if(!_touchIsPanning && mapTool!=='wall' && mapTool!=='cage'){
+    const moved=Math.hypot(cx-_touchStartCX,cy-_touchStartCY);
+    if(moved>8){
+      _touchIsPanning=true;
+      isPanning=true; panStartX=_touchStartCX; panStartY=_touchStartCY;
+      panOffStartX=mapOffX; panOffStartY=mapOffY;
+    }
+  }
+  if(_touchIsPanning){ handleMove(cx,cy); return; }
   handleMove(cx,cy);
 }
 function onTE(e){
   e.preventDefault();
   pinchDist=null;
-  handleUp();
+  if(_touchIsPanning){
+    _touchIsPanning=false; isPanning=false;
+    drawMap(); return;
+  }
+  // קשקוש קצר = לחיצה
+  if(Date.now()-_touchStartTime<300 && mapTool!=='pan'){
+    handleDown(_touchStartCX,_touchStartCY);
+    handleUp();
+  }
 }
 function onMD(e){ const cv=document.getElementById('mapCanvas'); handleDown(...getPos(e,cv)); }
 function onMV(e){ const cv=document.getElementById('mapCanvas'); handleMove(...getPos(e,cv)); }
@@ -2097,10 +2125,12 @@ function handleDown(cx,cy){
   if(cx<RULER||cy<RULER) return;
   if(_cv && cx>_cv.width-RULER_R) return;
   const[wx,wy]=c2w(cx,cy);
-  // Space-bar panning
-  if(spaceDown){
+  // כלי גלילה או Space — הזזת המפה
+  if(mapTool==='pan'||spaceDown){
     isPanning=true; panStartX=cx; panStartY=cy;
     panOffStartX=mapOffX; panOffStartY=mapOffY;
+    const cv2=document.getElementById('mapCanvas');
+    if(cv2) cv2.style.cursor='grabbing';
     return;
   }
   if(mapTool==='wall'){
@@ -2223,6 +2253,12 @@ function handleUp(){
     }
   }
   if(_axisZoom){ _axisZoom=null; return; }
+  if(isPanning){
+    isPanning=false;
+    const cv2=document.getElementById('mapCanvas');
+    if(cv2) cv2.style.cursor=mapTool==='pan'?'grab':mapTool==='move'?'grab':mapTool==='erase'?'cell':'crosshair';
+    return;
+  }
   isDrawing=false; drawStart=null; drawCurrent=null;
   dragCageId=null; isRubberBand=false; rubberStart=null; rubberCurrent=null;
   _multiDragOffsets=[];
@@ -2713,6 +2749,7 @@ function onMapKey(e){
   _shiftDown=e.shiftKey;
   switch(e.key){
     case 'w': case 'W': if(!e.ctrlKey&&!e.metaKey) setMapTool('wall'); break;
+    case 'p': case 'P': if(!e.ctrlKey&&!e.metaKey) setMapTool('pan'); break;
     case 'c': case 'C': if(!e.ctrlKey&&!e.metaKey) setMapTool('cage'); break;
     case 'm': case 'M': if(!e.ctrlKey&&!e.metaKey) setMapTool('move'); break;
     case 'r': case 'R':
