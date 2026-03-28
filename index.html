@@ -2924,43 +2924,35 @@ function generateWarehouseLayout(){
   pushMapHistory();
   cages=[]; walls=[]; nextCageId=1;
 
-  // Helper: add a rectangular block of cages
-  // x0,y0 = top-left world coord; cols = width; rows = height
-  // nameFunc(row1based, col1based) => cage name string
+  // Helper: add rectangular block — each (x,y) position gets 3 floor cages
   function addBlock(x0, y0, cols, rows, nameFunc){
     for(let r=0; r<rows; r++){
       for(let c=0; c<cols; c++){
         const name = nameFunc(r+1, c+1);
-        // 3 floors per position — each is a separate cage object with same (x,y)
         for(let fl=1; fl<=3; fl++){
-          cages.push({id:nextCageId++, name:name, floor:String(fl), x:x0+c, y:y0+r, rot:false});
+          cages.push({id:nextCageId++, name, floor:String(fl), x:x0+c, y:y0+r, rot:false});
         }
       }
     }
   }
 
-  // ── Section 1: מחסן (vertical, runs top→down) ──
-  // Right side (ימין): 10 cols × 40 rows, starts at x=0, y=0
-  addBlock(0, 0, 10, 40, (r,c) => 'מי.' + r + '.' + c);
-  // gap of 1 col between sides (x=10 empty)
-  // Left side (שמאל): 7 cols × 40 rows, starts at x=11, y=0
-  addBlock(11, 0, 7, 40, (r,c) => 'מש.' + r + '.' + c);
+  // ══ אזור 1: מחסן (אנכי) — x=0..17 ══
+  // ימין: 10 עמודות × 40 שורות
+  addBlock(0,  0, 10, 40, (r,c) => 'מי.'+r+'.'+c);
+  // שמאל: 7 עמודות × 40 שורות  (רווח 1 בין הצדדים)
+  addBlock(11, 0,  7, 40, (r,c) => 'מש.'+r+'.'+c);
 
-  // ── Section 2: פניה ראשונה שמאלה (horizontal, runs left→right) ──
-  // placed below section 1 with a gap of 2 rows (y=42)
-  // Left side (שמאל): 7 cols × 15 rows, starts at x=0, y=42
-  addBlock(0, 42, 15, 7, (r,c) => 'פ1ש.' + r + '.' + c);
-  // gap of 1 row (y=49)
-  // Right side (ימין): 6 cols × 15 rows, starts at x=0, y=50
-  addBlock(0, 50, 15, 6, (r,c) => 'פ1י.' + r + '.' + c);
+  // ══ אזור 2: פניה ראשונה שמאלה (אופקי) — x=20..34 ══
+  // שמאל: 15 שורות × 7 עמודות עומק
+  addBlock(20, 0, 15, 7, (r,c) => 'פ1ש.'+r+'.'+c);
+  // ימין: 15 שורות × 6 עמודות עומק  (רווח 1 בין הצדדים)
+  addBlock(20, 8, 15, 6, (r,c) => 'פ1י.'+r+'.'+c);
 
-  // ── Section 3: פניה שניה שמאל (horizontal, runs left→right) ──
-  // placed below section 2 with a gap of 2 rows (y=58)
-  // Right side (ימין): 7 cols × 15 rows, starts at x=0, y=58
-  addBlock(0, 58, 15, 7, (r,c) => 'פ2י.' + r + '.' + c);
-  // gap of 1 row (y=65)
-  // Left side (שמאל): 5 cols × 15 rows, starts at x=0, y=66
-  addBlock(0, 66, 15, 5, (r,c) => 'פ2ש.' + r + '.' + c);
+  // ══ אזור 3: פניה שניה שמאל (אופקי) — x=37..51 ══
+  // ימין: 15 שורות × 7 עמודות עומק
+  addBlock(37, 0, 15, 7, (r,c) => 'פ2י.'+r+'.'+c);
+  // שמאל: 15 שורות × 5 עמודות עומק  (רווח 1 בין הצדדים)
+  addBlock(37, 8, 15, 5, (r,c) => 'פ2ש.'+r+'.'+c);
 
   selectedCageId=null; selectedCages=[];
   _scheduleAutoSave();
