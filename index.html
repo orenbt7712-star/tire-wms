@@ -4113,29 +4113,32 @@ async function addWorker() {
     if(errEl){errEl.textContent='עובד עם שם זה כבר קיים';errEl.style.display='block';} return;
   }
   if(errEl) errEl.style.display='none';
+  await new Promise(resolve => onAuthReady(resolve));
   const pinHash = await hashPass(pin);
   try {
-    await addDoc(workersCol, { name, pinHash, isAdmin: !!(adminEl && adminEl.checked), createdAt: serverTimestamp() });
+    await addDoc(workersCol, { name, pinHash, isAdmin: !!(adminEl && adminEl.checked), createdAt: new Date().toISOString() });
     if(nameEl) nameEl.value='';
     if(pinEl) pinEl.value='';
     if(adminEl) adminEl.checked=false;
     toast('✅ עובד נוסף');
-  } catch(e) { if(errEl){errEl.textContent='שגיאה בשמירה';errEl.style.display='block';} }
+  } catch(e) { console.error('addWorker error:', e); if(errEl){errEl.textContent='שגיאה: '+e.message;errEl.style.display='block';} }
 }
 
 async function toggleWorkerAdmin(wid, newVal) {
+  await new Promise(resolve => onAuthReady(resolve));
   try {
     await updateDoc(doc(db, 'workers', wid), { isAdmin: newVal });
     toast(newVal ? '👑 הרשאת מנהל הופעלה' : '🔒 הרשאת מנהל בוטלה');
-  } catch(e) { toast('❌ שגיאה'); }
+  } catch(e) { console.error('toggleWorkerAdmin error:', e); toast('❌ שגיאה: '+e.message); }
 }
 
 async function deleteWorker(wid, wname) {
   if (!confirm(`למחוק את העובד "${wname}"?`)) return;
+  await new Promise(resolve => onAuthReady(resolve));
   try {
     await deleteDoc(doc(db, 'workers', wid));
     toast('🗑️ עובד נמחק');
-  } catch(e) { toast('❌ שגיאה'); }
+  } catch(e) { console.error('deleteWorker error:', e); toast('❌ שגיאה: '+e.message); }
 }
 
 function openEditWorker(wid) {
@@ -4151,13 +4154,14 @@ async function saveEditWorker(wid) {
   const pin  = pinEl  ? pinEl.value.trim()  : '';
   if (!name) { toast('❌ שם לא יכול להיות ריק'); return; }
   if (pin && !/^\d{4,6}$/.test(pin)) { toast('❌ PIN חייב להיות 4-6 ספרות'); return; }
+  await new Promise(resolve => onAuthReady(resolve));
   const updates = { name };
   if (pin) updates.pinHash = await hashPass(pin);
   try {
     await updateDoc(doc(db, 'workers', wid), updates);
     toast('✅ פרטי עובד עודכנו');
     closeEditWorker(wid);
-  } catch(e) { toast('❌ שגיאה בשמירה'); }
+  } catch(e) { console.error('saveEditWorker error:', e); toast('❌ שגיאה: '+e.message); }
 }
 
 window.openWorkerMgmt = openWorkerMgmt;
