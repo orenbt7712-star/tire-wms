@@ -3719,7 +3719,7 @@ if(typeof undoMap!=="undefined") window.undoMap=undoMap;
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDocs, updateDoc, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -3735,6 +3735,22 @@ const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 const auth = getAuth(fbApp);
 const itemsCol = collection(db, 'tires');
+const workersCol = collection(db, 'workers');
+
+// ── רשימת עובדים (מסונכרנת מ-Firebase) ──
+let _workers = [];
+let _currentWorkerId = null; // מזהה העובד המחובר כעת (null = בעלים)
+
+function loadWorkers() {
+  onAuthReady(() => {
+    onSnapshot(workersCol, snap => {
+      _workers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // אם פאנל ניהול עובדים פתוח — רענן אותו
+      const panel = document.getElementById('workerMgmtPanel');
+      if (panel && panel.style.display !== 'none') _renderWorkerMgmtList();
+    });
+  });
+}
 
 // ── אימות אנונימי — חוסם גישה ישירה ל-Firestore מחוץ לאפליקציה ──
 // מחכה לאימות לפני הפעלת Firestore (מונע race condition)
@@ -3780,9 +3796,9 @@ async function genToken(admin) {
   return Array.from(new Uint8Array(buf)).map(x => x.toString(16).padStart(2,'0')).join('');
 }
 
-async function saveSession(admin) {
+async function saveSession(admin, workerId=null, workerName=null) {
   const token = await genToken(admin);
-  localStorage.setItem('tirewms_session', JSON.stringify({admin, ts: Date.now(), token}));
+  localStorage.setItem('tirewms_session', JSON.stringify({admin, workerId, workerName, ts: Date.now(), token}));
 }
 
 async function loadSession() {
@@ -3792,6 +3808,14 @@ async function loadSession() {
     if (Date.now() - s.ts > 30*24*60*60*1000) { localStorage.removeItem('tirewms_session'); return null; }
     const expected = await genToken(s.admin);
     if (s.token !== expected) { localStorage.removeItem('tirewms_session'); return null; }
+    // אם מדובר בעובד — בדוק שעדיין קיים ב-Firebase ושהרשאותיו לא השתנו
+    if (s.workerId) {
+      await new Promise(resolve => onAuthReady(resolve));
+      const worker = _workers.find(w => w.id === s.workerId);
+      if (!worker) { localStorage.removeItem('tirewms_session'); return null; }
+      s.admin = !!worker.isAdmin; // רענן הרשאה מ-Firebase
+      s.workerName = worker.name;
+    }
     return s;
   } catch(e) { return null; }
 }
@@ -3804,58 +3828,107 @@ function setStatus(s) {
 }
 window.setStatus = setStatus;
 
-// ── מסך כניסה (ללא biometric מזויף) ──
+// ── מסך כניסה ──
 async function buildLoginScreen() {
   const session = await loadSession();
   if (session) {
     _isAdmin = session.admin;
-    enterApp(session.admin);
+    _currentWorkerId = session.workerId || null;
+    enterApp(session.admin, session.workerName || null);
     return;
   }
 
+  // טוען עובדים לפני הצגת המסך
+  await new Promise(resolve => onAuthReady(resolve));
+
   const ls = document.createElement('div');
   ls.id = 'loginScreen';
-  ls.style.cssText = 'position:fixed;inset:0;background:#0c0e14;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;z-index:9999;font-family:Heebo,sans-serif;direction:rtl;padding:24px;';
-  ls.innerHTML = `
-    <div style="font-size:52px;">🛞</div>
-    <div style="font-size:22px;font-weight:900;color:#eef0f6;">TireWMS</div>
-    <div style="font-size:13px;color:#7a8299;text-align:center;">מחסן ניהול צמיגים</div>
-    <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px;">
-      <button id="btnWorker" style="background:#191d28;border:1px solid #2a3045;color:#eef0f6;padding:14px;border-radius:11px;font-size:15px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">
-        👁️ כניסה כעובד (צפייה בלבד)
-      </button>
-      <button id="btnAdmin" style="background:#f5a623;border:none;color:#111;padding:14px;border-radius:11px;font-size:15px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">
-        👑 כניסה כמנהל
-      </button>
-    </div>
-    <div id="adminPassWrap" style="display:none;width:100%;max-width:300px;flex-direction:column;gap:8px;">
-      <input id="adminPassInput" type="password" placeholder="הכנס סיסמת מנהל"
-        style="background:#191d28;border:1px solid #2a3045;border-radius:9px;color:#eef0f6;font-family:Heebo,sans-serif;font-size:15px;padding:12px;width:100%;outline:none;text-align:center;" autocomplete="current-password"/>
-      <button id="btnPassOk" style="background:#f5a623;border:none;color:#111;padding:12px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;width:100%;">כניסה</button>
-      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#7a8299;cursor:pointer;">
-        <input type="checkbox" id="rememberMe" style="width:16px;height:16px;cursor:pointer;"/> זכור אותי (30 יום)
-      </label>
-      <div id="passErr" style="color:#e85d3f;font-size:12px;text-align:center;display:none;">סיסמא שגויה</div>
-    </div>
-  `;
+  ls.style.cssText = 'position:fixed;inset:0;background:#0c0e14;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:9999;font-family:Heebo,sans-serif;direction:rtl;padding:24px;overflow-y:auto;';
+
+  const buildScreen = () => {
+    const workerOptions = _workers.length
+      ? _workers.map(w => `<option value="${escHTML(w.id)}">${escHTML(w.name)}</option>`).join('')
+      : '<option value="" disabled>אין עובדים — פנה לבעלים</option>';
+
+    ls.innerHTML = `
+      <div style="font-size:52px;">🛞</div>
+      <div style="font-size:22px;font-weight:900;color:#eef0f6;">TireWMS</div>
+      <div style="font-size:13px;color:#7a8299;text-align:center;">מחסן ניהול צמיגים</div>
+
+      <div style="width:100%;max-width:300px;background:#191d28;border:1px solid #2a3045;border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:13px;color:#7a8299;font-weight:700;">👤 כניסת עובד</div>
+        <select id="workerSelect" style="background:#0c0e14;border:1px solid #2a3045;border-radius:8px;color:#eef0f6;font-family:Heebo,sans-serif;font-size:14px;padding:10px;width:100%;outline:none;">
+          <option value="">בחר עובד...</option>
+          ${workerOptions}
+        </select>
+        <input id="workerPinInput" type="password" inputmode="numeric" maxlength="6" placeholder="קוד PIN"
+          style="background:#0c0e14;border:1px solid #2a3045;border-radius:8px;color:#eef0f6;font-family:Heebo,sans-serif;font-size:18px;padding:10px;width:100%;outline:none;text-align:center;letter-spacing:6px;" autocomplete="current-password"/>
+        <button id="btnWorkerLogin" style="background:#3b82f6;border:none;color:#fff;padding:12px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">כניסה</button>
+        <div id="workerErr" style="color:#e85d3f;font-size:12px;text-align:center;display:none;">PIN שגוי</div>
+      </div>
+
+      <button id="btnOwnerToggle" style="background:none;border:none;color:#7a8299;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;text-decoration:underline;">👑 כניסה כבעלים</button>
+
+      <div id="adminPassWrap" style="display:none;width:100%;max-width:300px;flex-direction:column;gap:8px;">
+        <input id="adminPassInput" type="password" placeholder="סיסמת בעלים"
+          style="background:#191d28;border:1px solid #2a3045;border-radius:9px;color:#eef0f6;font-family:Heebo,sans-serif;font-size:15px;padding:12px;width:100%;outline:none;text-align:center;" autocomplete="current-password"/>
+        <button id="btnPassOk" style="background:#f5a623;border:none;color:#111;padding:12px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;width:100%;">כניסה כבעלים</button>
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#7a8299;cursor:pointer;">
+          <input type="checkbox" id="rememberMe" style="width:16px;height:16px;cursor:pointer;"/> זכור אותי (30 יום)
+        </label>
+        <div id="passErr" style="color:#e85d3f;font-size:12px;text-align:center;display:none;">סיסמא שגויה</div>
+      </div>
+    `;
+
+    document.getElementById('btnWorkerLogin').addEventListener('click', () => _doWorkerLogin());
+    document.getElementById('workerPinInput').addEventListener('keydown', e => { if(e.key==='Enter') _doWorkerLogin(); });
+
+    document.getElementById('btnOwnerToggle').addEventListener('click', () => {
+      document.getElementById('adminPassWrap').style.display = 'flex';
+      setTimeout(() => document.getElementById('adminPassInput').focus(), 50);
+    });
+
+    document.getElementById('btnPassOk').addEventListener('click', checkPass);
+    document.getElementById('adminPassInput').addEventListener('keydown', e => { if(e.key==='Enter') checkPass(); });
+  };
+
+  buildScreen();
   document.body.appendChild(ls);
 
-  document.getElementById('btnWorker').addEventListener('click', async () => {
-    const remember = document.getElementById('rememberMe');
-    if (remember && remember.checked) await saveSession(false);
-    _isAdmin = false;
-    enterApp(false);
+  // עדכן את הרשימה כשעובדים נטענים
+  onAuthReady(() => {
+    onSnapshot(workersCol, snap => {
+      _workers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const sel = document.getElementById('workerSelect');
+      if (!sel) return;
+      const prev = sel.value;
+      sel.innerHTML = '<option value="">בחר עובד...</option>' +
+        _workers.map(w => `<option value="${escHTML(w.id)}">${escHTML(w.name)}</option>`).join('');
+      if (prev) sel.value = prev;
+    });
   });
+}
 
-  document.getElementById('btnAdmin').addEventListener('click', () => {
-    document.getElementById('adminPassWrap').style.display = 'flex';
-    setTimeout(() => document.getElementById('adminPassInput').focus(), 50);
-  });
-
-  document.getElementById('btnPassOk').addEventListener('click', checkPass);
-  document.getElementById('adminPassInput').addEventListener('keydown', e => {
-    if (e.key === 'Enter') checkPass();
-  });
+async function _doWorkerLogin() {
+  const sel = document.getElementById('workerSelect');
+  const pinEl = document.getElementById('workerPinInput');
+  const errEl = document.getElementById('workerErr');
+  const wid = sel ? sel.value : '';
+  const pin = pinEl ? pinEl.value : '';
+  if (!wid) { if(errEl){ errEl.textContent='בחר עובד'; errEl.style.display='block'; } return; }
+  if (!pin) { if(errEl){ errEl.textContent='הכנס קוד PIN'; errEl.style.display='block'; } return; }
+  const worker = _workers.find(w => w.id === wid);
+  if (!worker) return;
+  const h = await hashPass(pin);
+  if (h !== worker.pinHash) {
+    if(errEl){ errEl.textContent='PIN שגוי'; errEl.style.display='block'; }
+    if(pinEl) pinEl.value = '';
+    return;
+  }
+  _isAdmin = !!worker.isAdmin;
+  _currentWorkerId = worker.id;
+  await saveSession(_isAdmin, worker.id, worker.name);
+  enterApp(_isAdmin, worker.name);
 }
 
 function checkPass() {
@@ -3864,9 +3937,10 @@ function checkPass() {
   hashPass(val).then(async h => {
     if (h === ADMIN_PASS_HASH) {
       const remember = document.getElementById('rememberMe');
-      if (remember && remember.checked) await saveSession(true);
+      if (remember && remember.checked) await saveSession(true, null, 'בעלים');
       _isAdmin = true;
-      enterApp(true);
+      _currentWorkerId = null;
+      enterApp(true, 'בעלים');
     } else {
       document.getElementById('passErr').style.display = 'block';
       document.getElementById('passErr').textContent = 'סיסמא שגויה';
@@ -3875,7 +3949,7 @@ function checkPass() {
   });
 }
 
-function enterApp(admin) {
+function enterApp(admin, workerName) {
   const ls = document.getElementById('loginScreen');
   if (ls) ls.style.display = 'none';
   document.querySelector('.app').style.display = '';
@@ -3888,6 +3962,9 @@ function enterApp(admin) {
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
   }
 
+  // טען עובדים לפאנל הניהול
+  loadWorkers();
+
   let ub = document.getElementById('userBar');
   if (!ub) {
     ub = document.createElement('div');
@@ -3895,13 +3972,16 @@ function enterApp(admin) {
     ub.style.cssText = 'display:flex;align-items:center;gap:6px;flex-shrink:0;';
     document.querySelector('.topbar').appendChild(ub);
   }
+  const displayName = workerName || (admin ? 'מנהל' : 'עובד');
+  const roleIcon = admin ? '👑' : '👁️';
   ub.innerHTML = `
-    <span style="font-size:11px;color:${admin ? '#f5a623' : '#7a8299'};font-weight:700;white-space:nowrap;">${admin ? '👑 מנהל' : '👁️ עובד'}</span>
+    <span style="font-size:11px;color:${admin ? '#f5a623' : '#7a8299'};font-weight:700;white-space:nowrap;">${roleIcon} ${escHTML(displayName)}</span>
+    ${admin ? `<button id="btnWorkerMgmt" onclick="openWorkerMgmt()" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:11px;padding:3px 7px;cursor:pointer;font-family:inherit;white-space:nowrap;">👥 עובדים</button>` : ''}
     <button id="logoutBtn" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:11px;padding:3px 7px;cursor:pointer;font-family:inherit;white-space:nowrap;">יציאה</button>
   `;
   document.getElementById('logoutBtn').addEventListener('click', _logout);
 
-  setStatus(admin ? '🟢 מנהל' : '🟢 מחובר');
+  setStatus(admin ? `🟢 ${escHTML(displayName)}` : `🟢 ${escHTML(displayName)}`);
 }
 
 function _logout() {
@@ -3913,6 +3993,119 @@ function _logout() {
   buildLoginScreen();
 }
 window._logout = _logout;
+
+// ══ ניהול עובדים ══
+function openWorkerMgmt() {
+  let panel = document.getElementById('workerMgmtPanel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'workerMgmtPanel';
+    panel.style.cssText = 'position:fixed;inset:0;background:rgba(12,14,20,0.92);z-index:8000;display:flex;align-items:flex-end;justify-content:center;font-family:Heebo,sans-serif;direction:rtl;';
+    panel.innerHTML = `
+      <div style="background:var(--surface,#141720);border-radius:18px 18px 0 0;width:100%;max-width:480px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--border,#252b3b);">
+          <div style="font-size:15px;font-weight:800;color:var(--text,#eef0f6);">👥 ניהול עובדים</div>
+          <button onclick="closeWorkerMgmt()" style="background:var(--card,#191d28);border:1px solid var(--border,#252b3b);border-radius:7px;width:30px;height:30px;cursor:pointer;color:var(--muted,#7a8299);font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:14px 18px;" id="workerMgmtList"></div>
+        <div style="padding:14px 18px;border-top:1px solid var(--border,#252b3b);background:var(--bg,#0c0e14);">
+          <div style="font-size:12px;color:var(--muted,#7a8299);font-weight:700;margin-bottom:8px;">הוסף עובד חדש</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <input id="newWorkerName" type="text" placeholder="שם העובד" maxlength="40"
+              style="background:var(--card,#191d28);border:1px solid var(--border,#252b3b);border-radius:8px;color:var(--text,#eef0f6);font-family:Heebo,sans-serif;font-size:14px;padding:9px 12px;width:100%;outline:none;box-sizing:border-box;"/>
+            <div style="display:flex;gap:8px;">
+              <input id="newWorkerPin" type="password" inputmode="numeric" maxlength="6" placeholder="קוד PIN (ספרות)"
+                style="background:var(--card,#191d28);border:1px solid var(--border,#252b3b);border-radius:8px;color:var(--text,#eef0f6);font-family:Heebo,sans-serif;font-size:14px;padding:9px 12px;flex:1;outline:none;text-align:center;letter-spacing:4px;"/>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted,#7a8299);cursor:pointer;white-space:nowrap;">
+                <input type="checkbox" id="newWorkerAdmin" style="width:15px;height:15px;cursor:pointer;"/> מנהל
+              </label>
+            </div>
+            <button onclick="addWorker()" style="background:var(--accent,#f5a623);border:none;color:#111;border-radius:9px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">➕ הוסף עובד</button>
+            <div id="newWorkerErr" style="color:#e85d3f;font-size:12px;text-align:center;display:none;"></div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(panel);
+    panel.addEventListener('click', e => { if(e.target===panel) closeWorkerMgmt(); });
+  }
+  panel.style.display = 'flex';
+  _renderWorkerMgmtList();
+}
+
+function closeWorkerMgmt() {
+  const p = document.getElementById('workerMgmtPanel');
+  if (p) p.style.display = 'none';
+}
+
+function _renderWorkerMgmtList() {
+  const el = document.getElementById('workerMgmtList');
+  if (!el) return;
+  if (_workers.length === 0) {
+    el.innerHTML = '<div style="color:var(--muted,#7a8299);font-size:13px;text-align:center;padding:20px 0;">אין עובדים עדיין</div>';
+    return;
+  }
+  el.innerHTML = _workers.map(w => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border,#252b3b);">
+      <div style="flex:1;">
+        <div style="font-size:14px;font-weight:700;color:var(--text,#eef0f6);">${escHTML(w.name)}</div>
+        <div style="font-size:11px;color:${w.isAdmin ? '#f5a623' : '#7a8299'};">${w.isAdmin ? '👑 מנהל' : '👁️ עובד בלבד'}</div>
+      </div>
+      <button onclick="toggleWorkerAdmin('${escHTML(w.id)}', ${!w.isAdmin})"
+        style="background:${w.isAdmin ? 'var(--red-dim,#2a1515)' : 'rgba(245,166,35,0.15)'};border:1px solid ${w.isAdmin ? 'var(--red,#e85d3f)' : '#f5a623'};color:${w.isAdmin ? 'var(--red,#e85d3f)' : '#f5a623'};border-radius:7px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;white-space:nowrap;">
+        ${w.isAdmin ? '🔒 בטל מנהל' : '🔓 הגדר מנהל'}
+      </button>
+      <button onclick="deleteWorker('${escHTML(w.id)}', '${escHTML(w.name)}')"
+        style="background:var(--red-dim,#2a1515);border:1px solid var(--red,#e85d3f);color:var(--red,#e85d3f);border-radius:7px;padding:5px 8px;font-size:11px;cursor:pointer;">
+        🗑️
+      </button>
+    </div>
+  `).join('');
+}
+
+async function addWorker() {
+  const nameEl = document.getElementById('newWorkerName');
+  const pinEl = document.getElementById('newWorkerPin');
+  const adminEl = document.getElementById('newWorkerAdmin');
+  const errEl = document.getElementById('newWorkerErr');
+  const name = nameEl ? nameEl.value.trim() : '';
+  const pin = pinEl ? pinEl.value.trim() : '';
+  if (!name) { if(errEl){errEl.textContent='הכנס שם עובד';errEl.style.display='block';} return; }
+  if (!pin || !/^\d{4,6}$/.test(pin)) { if(errEl){errEl.textContent='קוד PIN חייב להיות 4-6 ספרות';errEl.style.display='block';} return; }
+  if (_workers.some(w => w.name.trim().toLowerCase() === name.toLowerCase())) {
+    if(errEl){errEl.textContent='עובד עם שם זה כבר קיים';errEl.style.display='block';} return;
+  }
+  if(errEl) errEl.style.display='none';
+  const pinHash = await hashPass(pin);
+  try {
+    await addDoc(workersCol, { name, pinHash, isAdmin: !!(adminEl && adminEl.checked), createdAt: serverTimestamp() });
+    if(nameEl) nameEl.value='';
+    if(pinEl) pinEl.value='';
+    if(adminEl) adminEl.checked=false;
+    toast('✅ עובד נוסף');
+  } catch(e) { if(errEl){errEl.textContent='שגיאה בשמירה';errEl.style.display='block';} }
+}
+
+async function toggleWorkerAdmin(wid, newVal) {
+  try {
+    await updateDoc(doc(db, 'workers', wid), { isAdmin: newVal });
+    toast(newVal ? '👑 הרשאת מנהל הופעלה' : '🔒 הרשאת מנהל בוטלה');
+  } catch(e) { toast('❌ שגיאה'); }
+}
+
+async function deleteWorker(wid, wname) {
+  if (!confirm(`למחוק את העובד "${wname}"?`)) return;
+  try {
+    await deleteDoc(doc(db, 'workers', wid));
+    toast('🗑️ עובד נמחק');
+  } catch(e) { toast('❌ שגיאה'); }
+}
+
+window.openWorkerMgmt = openWorkerMgmt;
+window.closeWorkerMgmt = closeWorkerMgmt;
+window.addWorker = addWorker;
+window.toggleWorkerAdmin = toggleWorkerAdmin;
+window.deleteWorker = deleteWorker;
 
 // ── תור אופליין ──
 function getOfflineQueue() { try { return JSON.parse(localStorage.getItem('tirewms_offline') || '[]'); } catch(e) { return []; } }
