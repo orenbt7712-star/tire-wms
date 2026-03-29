@@ -2437,9 +2437,12 @@ function drawMap(){
     'פניה1': ['פ1ש.','פ1י.'],
     'פניה2': ['פ2י.','פ2ש.']
   };
+  const _allKnownPrefixes = ['מי.','מש.','פ1ש.','פ1י.','פ2י.','פ2ש.'];
   const visibleCages = cages.filter(g=>{
     if(mapSection && _sectionPrefixes[mapSection]){
-      if(!_sectionPrefixes[mapSection].some(p=>String(g.name).startsWith(p))) return false;
+      const hasKnownPrefix = _allKnownPrefixes.some(p=>String(g.name).startsWith(p));
+      // כלוב ידני (ללא קידומת מוכרת) — מוצג תמיד
+      if(hasKnownPrefix && !_sectionPrefixes[mapSection].some(p=>String(g.name).startsWith(p))) return false;
     }
     if(mapFloorFilter!==0 && String(g.floor)!==String(mapFloorFilter)) return false;
     return true;
