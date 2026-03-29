@@ -4041,19 +4041,37 @@ function _renderWorkerMgmtList() {
     return;
   }
   el.innerHTML = _workers.map(w => `
-    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border,#252b3b);">
-      <div style="flex:1;">
-        <div style="font-size:14px;font-weight:700;color:var(--text,#eef0f6);">${escHTML(w.name)}</div>
-        <div style="font-size:11px;color:${w.isAdmin ? '#f5a623' : '#7a8299'};">${w.isAdmin ? '👑 מנהל' : '👁️ עובד בלבד'}</div>
+    <div style="border-bottom:1px solid var(--border,#252b3b);padding:10px 0;">
+      <div style="display:flex;align-items:center;gap:8px;" id="wrow-${escHTML(w.id)}">
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:700;color:var(--text,#eef0f6);">${escHTML(w.name)}</div>
+          <div style="font-size:11px;color:${w.isAdmin ? '#f5a623' : '#7a8299'};">${w.isAdmin ? '👑 מנהל' : '👁️ עובד בלבד'}</div>
+        </div>
+        <button onclick="openEditWorker('${escHTML(w.id)}')"
+          style="background:var(--card,#191d28);border:1px solid var(--border,#252b3b);color:var(--muted,#7a8299);border-radius:7px;padding:5px 8px;font-size:11px;cursor:pointer;">
+          ✏️
+        </button>
+        <button onclick="toggleWorkerAdmin('${escHTML(w.id)}', ${!w.isAdmin})"
+          style="background:${w.isAdmin ? 'var(--red-dim,#2a1515)' : 'rgba(245,166,35,0.15)'};border:1px solid ${w.isAdmin ? 'var(--red,#e85d3f)' : '#f5a623'};color:${w.isAdmin ? 'var(--red,#e85d3f)' : '#f5a623'};border-radius:7px;padding:5px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;white-space:nowrap;">
+          ${w.isAdmin ? '🔒 בטל' : '🔓 מנהל'}
+        </button>
+        <button onclick="deleteWorker('${escHTML(w.id)}', '${escHTML(w.name)}')"
+          style="background:var(--red-dim,#2a1515);border:1px solid var(--red,#e85d3f);color:var(--red,#e85d3f);border-radius:7px;padding:5px 8px;font-size:11px;cursor:pointer;">
+          🗑️
+        </button>
       </div>
-      <button onclick="toggleWorkerAdmin('${escHTML(w.id)}', ${!w.isAdmin})"
-        style="background:${w.isAdmin ? 'var(--red-dim,#2a1515)' : 'rgba(245,166,35,0.15)'};border:1px solid ${w.isAdmin ? 'var(--red,#e85d3f)' : '#f5a623'};color:${w.isAdmin ? 'var(--red,#e85d3f)' : '#f5a623'};border-radius:7px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;white-space:nowrap;">
-        ${w.isAdmin ? '🔒 בטל מנהל' : '🔓 הגדר מנהל'}
-      </button>
-      <button onclick="deleteWorker('${escHTML(w.id)}', '${escHTML(w.name)}')"
-        style="background:var(--red-dim,#2a1515);border:1px solid var(--red,#e85d3f);color:var(--red,#e85d3f);border-radius:7px;padding:5px 8px;font-size:11px;cursor:pointer;">
-        🗑️
-      </button>
+      <div id="wedit-${escHTML(w.id)}" style="display:none;flex-direction:column;gap:6px;margin-top:8px;">
+        <input id="wedit-name-${escHTML(w.id)}" type="text" value="${escHTML(w.name)}" maxlength="40"
+          style="background:var(--bg,#0c0e14);border:1px solid var(--accent,#f5a623);border-radius:7px;color:var(--text,#eef0f6);font-family:Heebo,sans-serif;font-size:13px;padding:7px 10px;outline:none;width:100%;box-sizing:border-box;"/>
+        <input id="wedit-pin-${escHTML(w.id)}" type="password" inputmode="numeric" maxlength="6" placeholder="קוד PIN חדש (השאר ריק לאין שינוי)"
+          style="background:var(--bg,#0c0e14);border:1px solid var(--border,#252b3b);border-radius:7px;color:var(--text,#eef0f6);font-family:Heebo,sans-serif;font-size:13px;padding:7px 10px;outline:none;width:100%;box-sizing:border-box;text-align:center;letter-spacing:4px;"/>
+        <div style="display:flex;gap:6px;">
+          <button onclick="saveEditWorker('${escHTML(w.id)}')"
+            style="flex:1;background:var(--accent,#f5a623);border:none;color:#111;border-radius:7px;padding:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">שמור</button>
+          <button onclick="closeEditWorker('${escHTML(w.id)}')"
+            style="background:var(--card,#191d28);border:1px solid var(--border,#252b3b);color:var(--muted,#7a8299);border-radius:7px;padding:7px 12px;font-size:12px;cursor:pointer;">ביטול</button>
+        </div>
+      </div>
     </div>
   `).join('');
 }
@@ -4096,10 +4114,35 @@ async function deleteWorker(wid, wname) {
   } catch(e) { toast('❌ שגיאה'); }
 }
 
+function openEditWorker(wid) {
+  document.getElementById('wedit-'+wid).style.display = 'flex';
+}
+function closeEditWorker(wid) {
+  document.getElementById('wedit-'+wid).style.display = 'none';
+}
+async function saveEditWorker(wid) {
+  const nameEl = document.getElementById('wedit-name-'+wid);
+  const pinEl  = document.getElementById('wedit-pin-'+wid);
+  const name = nameEl ? nameEl.value.trim() : '';
+  const pin  = pinEl  ? pinEl.value.trim()  : '';
+  if (!name) { toast('❌ שם לא יכול להיות ריק'); return; }
+  if (pin && !/^\d{4,6}$/.test(pin)) { toast('❌ PIN חייב להיות 4-6 ספרות'); return; }
+  const updates = { name };
+  if (pin) updates.pinHash = await hashPass(pin);
+  try {
+    await updateDoc(doc(db, 'workers', wid), updates);
+    toast('✅ פרטי עובד עודכנו');
+    closeEditWorker(wid);
+  } catch(e) { toast('❌ שגיאה בשמירה'); }
+}
+
 window.openWorkerMgmt = openWorkerMgmt;
 window.closeWorkerMgmt = closeWorkerMgmt;
 window.addWorker = addWorker;
 window.toggleWorkerAdmin = toggleWorkerAdmin;
+window.openEditWorker = openEditWorker;
+window.closeEditWorker = closeEditWorker;
+window.saveEditWorker = saveEditWorker;
 window.deleteWorker = deleteWorker;
 
 // ── תור אופליין ──
