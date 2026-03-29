@@ -93,14 +93,23 @@ html,body{height:100%;width:100%;font-family:'Heebo',sans-serif;background:var(-
 .topbar{
   background:var(--surface);
   border-bottom:1px solid var(--border);
-  padding:8px 12px;
-  display:flex;align-items:center;gap:8px;
+  padding:6px 10px;
+  display:flex;align-items:center;gap:6px;
   flex-shrink:0;
   position:relative;
+  flex-wrap:wrap;
 }
 .topbar::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),transparent);}
 .logo-icon{width:30px;height:30px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
 .app-title{font-size:14px;font-weight:900;flex-shrink:0;}
+#userBar{display:flex;align-items:center;gap:5px;flex-shrink:0;margin-right:auto;}
+/* מובייל — שורה שניה לפעולות */
+@media(max-width:500px){
+  .topbar{padding:5px 8px;gap:4px;}
+  .app-title{display:none;}
+  #syncStatus{display:none;}
+  #userBar{order:99;width:100%;justify-content:flex-end;padding-top:5px;border-top:1px solid var(--border);margin-right:0;}
+}
 .sbox{
   flex:1;display:flex;align-items:center;gap:6px;
   background:var(--card);border:1px solid var(--border);
@@ -3959,18 +3968,16 @@ function enterApp(admin, workerName) {
   if (!ub) {
     ub = document.createElement('div');
     ub.id = 'userBar';
-    ub.style.cssText = 'display:flex;align-items:center;gap:6px;flex-shrink:0;';
     document.querySelector('.topbar').appendChild(ub);
   }
   const displayName = workerName || (admin ? 'מנהל' : 'עובד');
   const roleIcon = admin ? '👑' : '👁️';
   ub.innerHTML = `
     <span style="font-size:11px;color:${admin ? '#f5a623' : '#7a8299'};font-weight:700;white-space:nowrap;">${roleIcon} ${escHTML(displayName)}</span>
-    ${admin ? `<button id="btnWorkerMgmt" onclick="openWorkerMgmt()" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:11px;padding:3px 7px;cursor:pointer;font-family:inherit;white-space:nowrap;">👥 עובדים</button>` : ''}
-    <button id="logoutBtn" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:11px;padding:3px 7px;cursor:pointer;font-family:inherit;white-space:nowrap;">יציאה</button>
+    ${admin ? `<button id="btnWorkerMgmt" onclick="openWorkerMgmt()" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:12px;padding:5px 9px;cursor:pointer;font-family:inherit;white-space:nowrap;">👥 עובדים</button>` : ''}
+    <button id="logoutBtn" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:12px;padding:5px 9px;cursor:pointer;font-family:inherit;white-space:nowrap;">🚪 יציאה</button>
   `;
   document.getElementById('logoutBtn').addEventListener('click', _logout);
-
   setStatus(admin ? `🟢 ${escHTML(displayName)}` : `🟢 ${escHTML(displayName)}`);
 }
 
