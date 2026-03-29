@@ -3838,64 +3838,57 @@ async function buildLoginScreen() {
     return;
   }
 
-  // טוען עובדים לפני הצגת המסך
-  await new Promise(resolve => onAuthReady(resolve));
-
   const ls = document.createElement('div');
   ls.id = 'loginScreen';
   ls.style.cssText = 'position:fixed;inset:0;background:#0c0e14;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:9999;font-family:Heebo,sans-serif;direction:rtl;padding:24px;overflow-y:auto;';
 
-  const buildScreen = () => {
-    const workerOptions = _workers.length
-      ? _workers.map(w => `<option value="${escHTML(w.id)}">${escHTML(w.name)}</option>`).join('')
-      : '<option value="" disabled>אין עובדים — פנה לבעלים</option>';
-
-    ls.innerHTML = `
-      <div style="font-size:52px;">🛞</div>
-      <div style="font-size:22px;font-weight:900;color:#eef0f6;">TireWMS</div>
-      <div style="font-size:13px;color:#7a8299;text-align:center;">מחסן ניהול צמיגים</div>
-
-      <div style="width:100%;max-width:300px;background:#191d28;border:1px solid #2a3045;border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px;">
-        <div style="font-size:13px;color:#7a8299;font-weight:700;">👤 כניסת עובד</div>
-        <select id="workerSelect" style="background:#0c0e14;border:1px solid #2a3045;border-radius:8px;color:#eef0f6;font-family:Heebo,sans-serif;font-size:14px;padding:10px;width:100%;outline:none;">
-          <option value="">בחר עובד...</option>
-          ${workerOptions}
-        </select>
-        <input id="workerPinInput" type="password" inputmode="numeric" maxlength="6" placeholder="קוד PIN"
-          style="background:#0c0e14;border:1px solid #2a3045;border-radius:8px;color:#eef0f6;font-family:Heebo,sans-serif;font-size:18px;padding:10px;width:100%;outline:none;text-align:center;letter-spacing:6px;" autocomplete="current-password"/>
-        <button id="btnWorkerLogin" style="background:#3b82f6;border:none;color:#fff;padding:12px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">כניסה</button>
-        <div id="workerErr" style="color:#e85d3f;font-size:12px;text-align:center;display:none;">PIN שגוי</div>
-      </div>
-
-      <button id="btnOwnerToggle" style="background:none;border:none;color:#7a8299;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;text-decoration:underline;">👑 כניסה כבעלים</button>
-
-      <div id="adminPassWrap" style="display:none;width:100%;max-width:300px;flex-direction:column;gap:8px;">
-        <input id="adminPassInput" type="password" placeholder="סיסמת בעלים"
-          style="background:#191d28;border:1px solid #2a3045;border-radius:9px;color:#eef0f6;font-family:Heebo,sans-serif;font-size:15px;padding:12px;width:100%;outline:none;text-align:center;" autocomplete="current-password"/>
-        <button id="btnPassOk" style="background:#f5a623;border:none;color:#111;padding:12px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;width:100%;">כניסה כבעלים</button>
-        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#7a8299;cursor:pointer;">
-          <input type="checkbox" id="rememberMe" style="width:16px;height:16px;cursor:pointer;"/> זכור אותי (30 יום)
-        </label>
-        <div id="passErr" style="color:#e85d3f;font-size:12px;text-align:center;display:none;">סיסמא שגויה</div>
-      </div>
-    `;
-
-    document.getElementById('btnWorkerLogin').addEventListener('click', () => _doWorkerLogin());
-    document.getElementById('workerPinInput').addEventListener('keydown', e => { if(e.key==='Enter') _doWorkerLogin(); });
-
-    document.getElementById('btnOwnerToggle').addEventListener('click', () => {
-      document.getElementById('adminPassWrap').style.display = 'flex';
-      setTimeout(() => document.getElementById('adminPassInput').focus(), 50);
-    });
-
-    document.getElementById('btnPassOk').addEventListener('click', checkPass);
-    document.getElementById('adminPassInput').addEventListener('keydown', e => { if(e.key==='Enter') checkPass(); });
+  const renderWorkerOptions = () => {
+    if (!_workers.length) return '<option value="" disabled>ממתין לחיבור...</option>';
+    return _workers.map(w => `<option value="${escHTML(w.id)}">${escHTML(w.name)}</option>`).join('');
   };
 
-  buildScreen();
+  ls.innerHTML = `
+    <div style="font-size:52px;">🛞</div>
+    <div style="font-size:22px;font-weight:900;color:#eef0f6;">TireWMS</div>
+    <div style="font-size:13px;color:#7a8299;text-align:center;">מחסן ניהול צמיגים</div>
+
+    <div style="width:100%;max-width:300px;background:#191d28;border:1px solid #2a3045;border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px;">
+      <div style="font-size:13px;color:#7a8299;font-weight:700;">👤 כניסת עובד</div>
+      <select id="workerSelect" style="background:#0c0e14;border:1px solid #2a3045;border-radius:8px;color:#eef0f6;font-family:Heebo,sans-serif;font-size:14px;padding:10px;width:100%;outline:none;">
+        <option value="">בחר עובד...</option>
+        ${renderWorkerOptions()}
+      </select>
+      <input id="workerPinInput" type="password" inputmode="numeric" maxlength="6" placeholder="קוד PIN"
+        style="background:#0c0e14;border:1px solid #2a3045;border-radius:8px;color:#eef0f6;font-family:Heebo,sans-serif;font-size:18px;padding:10px;width:100%;outline:none;text-align:center;letter-spacing:6px;" autocomplete="current-password"/>
+      <button id="btnWorkerLogin" style="background:#3b82f6;border:none;color:#fff;padding:12px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">כניסה</button>
+      <div id="workerErr" style="color:#e85d3f;font-size:12px;text-align:center;display:none;">PIN שגוי</div>
+    </div>
+
+    <button id="btnOwnerToggle" style="background:none;border:none;color:#7a8299;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;text-decoration:underline;">👑 כניסה כבעלים</button>
+
+    <div id="adminPassWrap" style="display:none;width:100%;max-width:300px;flex-direction:column;gap:8px;">
+      <input id="adminPassInput" type="password" placeholder="סיסמת בעלים"
+        style="background:#191d28;border:1px solid #2a3045;border-radius:9px;color:#eef0f6;font-family:Heebo,sans-serif;font-size:15px;padding:12px;width:100%;outline:none;text-align:center;" autocomplete="current-password"/>
+      <button id="btnPassOk" style="background:#f5a623;border:none;color:#111;padding:12px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;width:100%;">כניסה כבעלים</button>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#7a8299;cursor:pointer;">
+        <input type="checkbox" id="rememberMe" style="width:16px;height:16px;cursor:pointer;"/> זכור אותי (30 יום)
+      </label>
+      <div id="passErr" style="color:#e85d3f;font-size:12px;text-align:center;display:none;">סיסמא שגויה</div>
+    </div>
+  `;
+
   document.body.appendChild(ls);
 
-  // עדכן את הרשימה כשעובדים נטענים
+  document.getElementById('btnWorkerLogin').addEventListener('click', () => _doWorkerLogin());
+  document.getElementById('workerPinInput').addEventListener('keydown', e => { if(e.key==='Enter') _doWorkerLogin(); });
+  document.getElementById('btnOwnerToggle').addEventListener('click', () => {
+    document.getElementById('adminPassWrap').style.display = 'flex';
+    setTimeout(() => document.getElementById('adminPassInput').focus(), 50);
+  });
+  document.getElementById('btnPassOk').addEventListener('click', checkPass);
+  document.getElementById('adminPassInput').addEventListener('keydown', e => { if(e.key==='Enter') checkPass(); });
+
+  // עדכן רשימת עובדים ברקע כשהחיבור מוכן
   onAuthReady(() => {
     onSnapshot(workersCol, snap => {
       _workers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -3905,6 +3898,8 @@ async function buildLoginScreen() {
       sel.innerHTML = '<option value="">בחר עובד...</option>' +
         _workers.map(w => `<option value="${escHTML(w.id)}">${escHTML(w.name)}</option>`).join('');
       if (prev) sel.value = prev;
+      const panel = document.getElementById('workerMgmtPanel');
+      if (panel && panel.style.display !== 'none') _renderWorkerMgmtList();
     });
   });
 }
