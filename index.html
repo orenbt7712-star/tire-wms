@@ -3854,10 +3854,9 @@ async function buildLoginScreen() {
 
     <div style="width:100%;max-width:300px;background:#191d28;border:1px solid #2a3045;border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px;">
       <div style="font-size:13px;color:#7a8299;font-weight:700;">👤 כניסת עובד</div>
-      <select id="workerSelect" style="background:#0c0e14;border:1px solid #2a3045;border-radius:8px;color:#eef0f6;font-family:Heebo,sans-serif;font-size:14px;padding:10px;width:100%;outline:none;">
-        <option value="">בחר עובד...</option>
-        ${renderWorkerOptions()}
-      </select>
+      <input id="workerNameInput" type="text" placeholder="הקלד שם עובד..." autocomplete="off" list="workersList"
+        style="background:#0c0e14;border:1px solid #2a3045;border-radius:8px;color:#eef0f6;font-family:Heebo,sans-serif;font-size:15px;padding:11px 12px;width:100%;outline:none;box-sizing:border-box;"/>
+      <datalist id="workersList"></datalist>
       <input id="workerPinInput" type="password" inputmode="numeric" maxlength="6" placeholder="קוד PIN"
         style="background:#0c0e14;border:1px solid #2a3045;border-radius:8px;color:#eef0f6;font-family:Heebo,sans-serif;font-size:18px;padding:10px;width:100%;outline:none;text-align:center;letter-spacing:6px;" autocomplete="current-password"/>
       <button id="btnWorkerLogin" style="background:#3b82f6;border:none;color:#fff;padding:12px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">כניסה</button>
@@ -3892,12 +3891,8 @@ async function buildLoginScreen() {
   onAuthReady(() => {
     onSnapshot(workersCol, snap => {
       _workers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      const sel = document.getElementById('workerSelect');
-      if (!sel) return;
-      const prev = sel.value;
-      sel.innerHTML = '<option value="">בחר עובד...</option>' +
-        _workers.map(w => `<option value="${escHTML(w.id)}">${escHTML(w.name)}</option>`).join('');
-      if (prev) sel.value = prev;
+      const dl = document.getElementById('workersList');
+      if (dl) dl.innerHTML = _workers.map(w => `<option value="${escHTML(w.name)}"></option>`).join('');
       const panel = document.getElementById('workerMgmtPanel');
       if (panel && panel.style.display !== 'none') _renderWorkerMgmtList();
     });
@@ -3905,15 +3900,15 @@ async function buildLoginScreen() {
 }
 
 async function _doWorkerLogin() {
-  const sel = document.getElementById('workerSelect');
-  const pinEl = document.getElementById('workerPinInput');
-  const errEl = document.getElementById('workerErr');
-  const wid = sel ? sel.value : '';
+  const nameEl = document.getElementById('workerNameInput');
+  const pinEl  = document.getElementById('workerPinInput');
+  const errEl  = document.getElementById('workerErr');
+  const typedName = nameEl ? nameEl.value.trim() : '';
   const pin = pinEl ? pinEl.value : '';
-  if (!wid) { if(errEl){ errEl.textContent='בחר עובד'; errEl.style.display='block'; } return; }
+  if (!typedName) { if(errEl){ errEl.textContent='הכנס שם עובד'; errEl.style.display='block'; } return; }
   if (!pin) { if(errEl){ errEl.textContent='הכנס קוד PIN'; errEl.style.display='block'; } return; }
-  const worker = _workers.find(w => w.id === wid);
-  if (!worker) return;
+  const worker = _workers.find(w => w.name.trim().toLowerCase() === typedName.toLowerCase());
+  if (!worker) { if(errEl){ errEl.textContent='עובד לא נמצא'; errEl.style.display='block'; } return; }
   const h = await hashPass(pin);
   if (h !== worker.pinHash) {
     if(errEl){ errEl.textContent='PIN שגוי'; errEl.style.display='block'; }
