@@ -295,6 +295,28 @@ td{padding:8px 10px;vertical-align:middle;}
 /* toast */
 #toast{position:fixed;top:72px;left:50%;transform:translateX(-50%) translateY(-100px);background:var(--card2);border:1px solid var(--border);color:var(--text);padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:9999;pointer-events:none;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;}
 #toast.show{transform:translateX(-50%) translateY(0);}
+
+/* ══ MOBILE RESPONSIVE — נגישות מלאה לטלפון ══ */
+@media(max-width:500px){
+  /* טופס — מניעת זום באייפון */
+  .fi input,.fi select{font-size:16px;padding:11px 12px;}
+  /* כפתורי סגירה — הגדלה ל-38px */
+  .xbtn{width:38px;height:38px;font-size:18px;}
+  /* מודל הוספה — מקסימום 100% */
+  .modal{max-width:100%;padding:16px 12px 24px;border-radius:14px 14px 0 0;}
+  /* כפתורי פילטר */
+  .qsel,.btn-clear{padding:7px 10px;font-size:13px;}
+  /* toast — למעלה לגמרי */
+  #toast{top:10px;}
+  /* פאנל ניהול עובדים */
+  #workerMgmtPanel>div{max-width:100%!important;border-radius:14px 14px 0 0;}
+  /* פאנלי כלוב/עריכה — תחתון */
+  #cageItemsPanel,#cageEditPanel,#rowPanel{padding:12px;max-height:60vh;}
+  /* כפתורי פאנל תחתון — הגדלה */
+  #cageEditPanel button,#cageItemsPanel button,#rowPanel button{min-height:36px;}
+  /* כפתורי פעולה בטבלה */
+  .ib{min-width:32px;min-height:32px;}
+}
 </style>
 
 <script>
@@ -421,10 +443,10 @@ if('serviceWorker' in navigator){
         <button onclick="whCenter()" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;">⊙</button>
       </div>
       <div style="display:flex;gap:5px;flex-shrink:0;margin-right:auto;" id="whFloorBtns">
-        <button id="wfl-all" onclick="setWhFloor(0)" style="background:var(--accent);border:none;color:#111;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;">הכל</button>
-        <button id="wfl-1" onclick="setWhFloor(1)" style="background:var(--card);border:1px solid var(--f1);color:var(--f1);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;">קומה 1</button>
-        <button id="wfl-2" onclick="setWhFloor(2)" style="background:var(--card);border:1px solid var(--f2);color:var(--f2);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;">קומה 2</button>
-        <button id="wfl-3" onclick="setWhFloor(3)" style="background:var(--card);border:1px solid var(--f3);color:var(--f3);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;">קומה 3</button>
+        <button id="wfl-all" onclick="setWhFloor(0)" style="background:var(--accent);border:none;color:#111;border-radius:6px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;">הכל</button>
+        <button id="wfl-1" onclick="setWhFloor(1)" style="background:var(--card);border:1px solid var(--f1);color:var(--f1);border-radius:6px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;">קומה 1</button>
+        <button id="wfl-2" onclick="setWhFloor(2)" style="background:var(--card);border:1px solid var(--f2);color:var(--f2);border-radius:6px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;">קומה 2</button>
+        <button id="wfl-3" onclick="setWhFloor(3)" style="background:var(--card);border:1px solid var(--f3);color:var(--f3);border-radius:6px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;">קומה 3</button>
       </div>
     </div>
     <!-- Canvas Map -->
@@ -435,7 +457,7 @@ if('serviceWorker' in navigator){
     <div id="cellDetail" style="display:none;position:fixed;bottom:54px;right:0;left:0;background:var(--surface);border-top:2px solid var(--accent);padding:14px;z-index:200;max-height:55vh;overflow-y:auto;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <div style="font-size:13px;font-weight:800;" id="cellDetailTitle"></div>
-        <button onclick="closeCellDetail()" style="background:var(--card);border:1px solid var(--border);border-radius:7px;width:28px;height:28px;cursor:pointer;color:var(--muted);font-size:16px;">✕</button>
+        <button onclick="closeCellDetail()" style="background:var(--card);border:1px solid var(--border);border-radius:7px;width:36px;height:36px;cursor:pointer;color:var(--muted);font-size:18px;display:flex;align-items:center;justify-content:center;">✕</button>
       </div>
       <div id="cellDetailBody"></div>
     </div>
@@ -449,12 +471,12 @@ if('serviceWorker' in navigator){
     <div style="background:var(--surface);border-bottom:1px solid var(--border);padding:8px 10px;display:flex;align-items:center;gap:6px;flex-shrink:0;overflow-x:auto;">
       <div style="font-size:12px;font-weight:800;flex-shrink:0;">✏️ מפת מחסן</div>
       <div style="display:flex;gap:5px;flex-shrink:0;" id="mapTools">
-        <button id="tool-wall" onclick="setMapTool('wall')" title="ציור קיר" style="background:var(--blue-dim);border:1px solid var(--blue);color:var(--blue);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🖊️ קיר</button>
-        <button id="tool-pan" onclick="setMapTool('pan')" title="גלילת מפה (P)" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🖐 גלול</button>
-        <button id="tool-cage" onclick="setMapTool('cage')" title="הוסף כלוב" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">📦 כלוב</button>
-        <button id="tool-move" onclick="setMapTool('move')" title="הזזה" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">✋ הזז</button>
-        <button id="tool-row" onclick="setMapTool('row')" title="שורה" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">📏 שורה</button>
-        <button id="tool-erase" onclick="setMapTool('erase')" title="מחק" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🗑️ מחק</button>
+        <button id="tool-wall" onclick="setMapTool('wall')" title="ציור קיר" style="background:var(--blue-dim);border:1px solid var(--blue);color:var(--blue);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🖊️ קיר</button>
+        <button id="tool-pan" onclick="setMapTool('pan')" title="גלילת מפה (P)" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🖐 גלול</button>
+        <button id="tool-cage" onclick="setMapTool('cage')" title="הוסף כלוב" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">📦 כלוב</button>
+        <button id="tool-move" onclick="setMapTool('move')" title="הזזה" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">✋ הזז</button>
+        <button id="tool-row" onclick="setMapTool('row')" title="שורה" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">📏 שורה</button>
+        <button id="tool-erase" onclick="setMapTool('erase')" title="מחק" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🗑️ מחק</button>
       </div>
       <div style="display:flex;gap:5px;flex-shrink:0;margin-right:auto;">
         <button onclick="zoomIn()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 10px;font-size:14px;font-weight:700;cursor:pointer;">＋</button>
@@ -469,17 +491,17 @@ if('serviceWorker' in navigator){
     </div>
     <div style="padding:5px 10px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;flex-shrink:0;overflow-x:auto;">
       <span style="font-size:10px;color:var(--muted);flex-shrink:0;">אזור:</span>
-      <button id="sec-all" onclick="setMapSection(null)" style="background:var(--accent);border:none;color:#111;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">הכל</button>
-      <button id="sec-מחסן" onclick="setMapSection('מחסן')" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">🏭 מחסן</button>
-      <button id="sec-פניה1" onclick="setMapSection('פניה1')" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">↩ פניה 1</button>
-      <button id="sec-פניה2" onclick="setMapSection('פניה2')" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">↩ פניה 2</button>
+      <button id="sec-all" onclick="setMapSection(null)" style="background:var(--accent);border:none;color:#111;border-radius:6px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">הכל</button>
+      <button id="sec-מחסן" onclick="setMapSection('מחסן')" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">🏭 מחסן</button>
+      <button id="sec-פניה1" onclick="setMapSection('פניה1')" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">↩ פניה 1</button>
+      <button id="sec-פניה2" onclick="setMapSection('פניה2')" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">↩ פניה 2</button>
     </div>
     <div style="padding:5px 10px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;flex-shrink:0;overflow-x:auto;">
       <span style="font-size:10px;color:var(--muted);flex-shrink:0;">שכבה:</span>
-      <button id="fl-all" onclick="setFloorFilter(0)" style="background:var(--accent);border:none;color:#111;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">הכל</button>
-      <button id="fl-1" onclick="setFloorFilter(1)" style="background:var(--card);border:1px solid var(--f1);color:var(--f1);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">קומה 1</button>
-      <button id="fl-2" onclick="setFloorFilter(2)" style="background:var(--card);border:1px solid var(--f2);color:var(--f2);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">קומה 2</button>
-      <button id="fl-3" onclick="setFloorFilter(3)" style="background:var(--card);border:1px solid var(--f3);color:var(--f3);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">קומה 3</button>
+      <button id="fl-all" onclick="setFloorFilter(0)" style="background:var(--accent);border:none;color:#111;border-radius:6px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">הכל</button>
+      <button id="fl-1" onclick="setFloorFilter(1)" style="background:var(--card);border:1px solid var(--f1);color:var(--f1);border-radius:6px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">קומה 1</button>
+      <button id="fl-2" onclick="setFloorFilter(2)" style="background:var(--card);border:1px solid var(--f2);color:var(--f2);border-radius:6px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">קומה 2</button>
+      <button id="fl-3" onclick="setFloorFilter(3)" style="background:var(--card);border:1px solid var(--f3);color:var(--f3);border-radius:6px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">קומה 3</button>
     </div>
     <div style="padding:5px 10px;background:var(--bg);border-bottom:1px solid var(--border);font-size:10px;color:var(--muted);flex-shrink:0;" id="mapHint">
       🖊️ גרור לציור קיר
@@ -491,7 +513,7 @@ if('serviceWorker' in navigator){
     <div id="cageItemsPanel" style="display:none;position:fixed;bottom:54px;right:0;left:0;background:var(--surface);border-top:2px solid var(--accent);padding:14px;z-index:200;max-height:55vh;overflow-y:auto;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <div style="font-size:13px;font-weight:800;" id="cageItemsTitle">📦 כלוב</div>
-        <button onclick="closeCageItemsPanel()" style="background:var(--card);border:1px solid var(--border);border-radius:7px;width:28px;height:28px;cursor:pointer;color:var(--muted);font-size:16px;">✕</button>
+        <button onclick="closeCageItemsPanel()" style="background:var(--card);border:1px solid var(--border);border-radius:7px;width:36px;height:36px;cursor:pointer;color:var(--muted);font-size:18px;display:flex;align-items:center;justify-content:center;">✕</button>
       </div>
       <div id="cageItemsBody"></div>
     </div>
@@ -500,7 +522,7 @@ if('serviceWorker' in navigator){
     <div id="cageEditPanel" style="display:none;position:fixed;bottom:54px;right:0;left:0;background:var(--surface);border-top:2px solid var(--accent);padding:14px;z-index:200;max-height:60vh;overflow-y:auto;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <div style="font-size:13px;font-weight:800;">📦 עריכת כלוב</div>
-        <button onclick="closeCageEdit()" style="background:var(--card);border:1px solid var(--border);border-radius:7px;width:28px;height:28px;cursor:pointer;color:var(--muted);font-size:16px;">✕</button>
+        <button onclick="closeCageEdit()" style="background:var(--card);border:1px solid var(--border);border-radius:7px;width:36px;height:36px;cursor:pointer;color:var(--muted);font-size:18px;display:flex;align-items:center;justify-content:center;">✕</button>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
         <div><label style="font-size:10px;color:var(--accent);font-weight:700;">פניה 1</label>
@@ -534,7 +556,7 @@ if('serviceWorker' in navigator){
     <div id="rowPanel" style="display:none;position:fixed;bottom:54px;right:0;left:0;background:var(--surface);border-top:2px solid var(--blue);padding:14px;z-index:201;max-height:60vh;overflow-y:auto;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <div style="font-size:13px;font-weight:800;">📏 הוספת שורת כלובים</div>
-        <button onclick="closeRowPanel()" style="background:var(--card);border:1px solid var(--border);border-radius:7px;width:28px;height:28px;cursor:pointer;color:var(--muted);font-size:16px;">✕</button>
+        <button onclick="closeRowPanel()" style="background:var(--card);border:1px solid var(--border);border-radius:7px;width:36px;height:36px;cursor:pointer;color:var(--muted);font-size:18px;display:flex;align-items:center;justify-content:center;">✕</button>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
         <div>
@@ -718,7 +740,7 @@ if('serviceWorker' in navigator){
     <div style="width:40px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 16px;"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
       <div id="locPanelTitle" style="font-size:16px;font-weight:900;"></div>
-      <button onclick="closeLocationPanel()" style="background:var(--card);border:1px solid var(--border);border-radius:8px;width:32px;height:32px;cursor:pointer;color:var(--muted);font-size:18px;">✕</button>
+      <button onclick="closeLocationPanel()" style="background:var(--card);border:1px solid var(--border);border-radius:8px;width:36px;height:36px;cursor:pointer;color:var(--muted);font-size:18px;display:flex;align-items:center;justify-content:center;">✕</button>
     </div>
     <div id="locPanelBody"></div>
   </div>
