@@ -3766,17 +3766,27 @@ const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 const auth = getAuth(fbApp);
 const itemsCol = collection(db, 'tires');
-const workersCol = collection(db, 'workers');
+// עובדים נשמרים כמסמך מיוחד בתוך אוסף tires (שיש לו הרשאות)
+const WORKERS_DOC_ID = '__workers__';
+const workersDocRef = doc(db, 'tires', WORKERS_DOC_ID);
 
 // ── רשימת עובדים (מסונכרנת מ-Firebase) ──
 let _workers = [];
 let _currentWorkerId = null; // מזהה העובד המחובר כעת (null = בעלים)
 
+function _genWorkerId() { return 'w_' + Date.now() + '_' + Math.random().toString(36).slice(2,7); }
+
+async function _saveWorkersDoc() {
+  await new Promise(resolve => onAuthReady(resolve));
+  await setDoc(workersDocRef, { _type: 'workers', list: _workers });
+}
+
 function loadWorkers() {
   onAuthReady(() => {
-    onSnapshot(workersCol, snap => {
-      _workers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      // אם פאנל ניהול עובדים פתוח — רענן אותו
+    onSnapshot(workersDocRef, snap => {
+      if (snap.exists() && snap.data().list) {
+        _workers = snap.data().list;
+      }
       const panel = document.getElementById('workerMgmtPanel');
       if (panel && panel.style.display !== 'none') _renderWorkerMgmtList();
     });
@@ -3920,8 +3930,10 @@ async function buildLoginScreen() {
 
   // עדכן רשימת עובדים ברקע כשהחיבור מוכן
   onAuthReady(() => {
-    onSnapshot(workersCol, snap => {
-      _workers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    onSnapshot(workersDocRef, snap => {
+      if (snap.exists() && snap.data().list) {
+        _workers = snap.data().list;
+      }
       const dl = document.getElementById('workersList');
       if (dl) dl.innerHTML = _workers.map(w => `<option value="${escHTML(w.name)}"></option>`).join('');
       const panel = document.getElementById('workerMgmtPanel');
@@ -4113,10 +4125,10 @@ async function addWorker() {
     if(errEl){errEl.textContent='עובד עם שם זה כבר קיים';errEl.style.display='block';} return;
   }
   if(errEl) errEl.style.display='none';
-  await new Promise(resolve => onAuthReady(resolve));
   const pinHash = await hashPass(pin);
   try {
-    await addDoc(workersCol, { name, pinHash, isAdmin: !!(adminEl && adminEl.checked), createdAt: new Date().toISOString() });
+    _workers.push({ id: _genWorkerId(), name, pinHash, isAdmin: !!(adminEl && adminEl.checked), createdAt: new Date().toISOString() });
+    await _saveWorkersDoc();
     if(nameEl) nameEl.value='';
     if(pinEl) pinEl.value='';
     if(adminEl) adminEl.checked=false;
@@ -4125,18 +4137,18 @@ async function addWorker() {
 }
 
 async function toggleWorkerAdmin(wid, newVal) {
-  await new Promise(resolve => onAuthReady(resolve));
   try {
-    await updateDoc(doc(db, 'workers', wid), { isAdmin: newVal });
+    const w = _workers.find(x => x.id === wid);
+    if (w) { w.isAdmin = newVal; await _saveWorkersDoc(); }
     toast(newVal ? '👑 הרשאת מנהל הופעלה' : '🔒 הרשאת מנהל בוטלה');
   } catch(e) { console.error('toggleWorkerAdmin error:', e); toast('❌ שגיאה: '+e.message); }
 }
 
 async function deleteWorker(wid, wname) {
   if (!confirm(`למחוק את העובד "${wname}"?`)) return;
-  await new Promise(resolve => onAuthReady(resolve));
   try {
-    await deleteDoc(doc(db, 'workers', wid));
+    _workers = _workers.filter(x => x.id !== wid);
+    await _saveWorkersDoc();
     toast('🗑️ עובד נמחק');
   } catch(e) { console.error('deleteWorker error:', e); toast('❌ שגיאה: '+e.message); }
 }
@@ -4154,11 +4166,12 @@ async function saveEditWorker(wid) {
   const pin  = pinEl  ? pinEl.value.trim()  : '';
   if (!name) { toast('❌ שם לא יכול להיות ריק'); return; }
   if (pin && !/^\d{4,6}$/.test(pin)) { toast('❌ PIN חייב להיות 4-6 ספרות'); return; }
-  await new Promise(resolve => onAuthReady(resolve));
-  const updates = { name };
-  if (pin) updates.pinHash = await hashPass(pin);
   try {
-    await updateDoc(doc(db, 'workers', wid), updates);
+    const w = _workers.find(x => x.id === wid);
+    if (!w) { toast('❌ עובד לא נמצא'); return; }
+    w.name = name;
+    if (pin) w.pinHash = await hashPass(pin);
+    await _saveWorkersDoc();
     toast('✅ פרטי עובד עודכנו');
     closeEditWorker(wid);
   } catch(e) { console.error('saveEditWorker error:', e); toast('❌ שגיאה: '+e.message); }
@@ -4257,7 +4270,7 @@ setTimeout(processOfflineQueue, 3000);
 setStatus('🔄 מתחבר...');
 onAuthReady(() => {
   onSnapshot(itemsCol, snapshot => {
-    const newItems = snapshot.docs.map(d => d.data());
+    const newItems = snapshot.docs.filter(d => d.id !== '__workers__').map(d => d.data());
     const newNextId = newItems.length > 0 ? Math.max(...newItems.map(i => i.id)) + 1 : 1;
     if (window._updateItems) {
       window._updateItems(newItems, newNextId);
