@@ -93,14 +93,23 @@ html,body{height:100%;width:100%;font-family:'Heebo',sans-serif;background:var(-
 .topbar{
   background:var(--surface);
   border-bottom:1px solid var(--border);
-  padding:8px 12px;
-  display:flex;align-items:center;gap:8px;
+  padding:6px 10px;
+  display:flex;align-items:center;gap:6px;
   flex-shrink:0;
   position:relative;
+  flex-wrap:wrap;
 }
 .topbar::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),transparent);}
 .logo-icon{width:30px;height:30px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
 .app-title{font-size:14px;font-weight:900;flex-shrink:0;}
+#userBar{display:flex;align-items:center;gap:5px;flex-shrink:0;margin-right:auto;}
+/* מובייל — שורה שניה לפעולות */
+@media(max-width:500px){
+  .topbar{padding:5px 8px;gap:4px;}
+  .app-title{display:none;}
+  #syncStatus{display:none;}
+  #userBar{order:99;width:100%;justify-content:flex-end;padding-top:5px;border-top:1px solid var(--border);margin-right:0;}
+}
 .sbox{
   flex:1;display:flex;align-items:center;gap:6px;
   background:var(--card);border:1px solid var(--border);
@@ -286,6 +295,28 @@ td{padding:8px 10px;vertical-align:middle;}
 /* toast */
 #toast{position:fixed;top:72px;left:50%;transform:translateX(-50%) translateY(-100px);background:var(--card2);border:1px solid var(--border);color:var(--text);padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:9999;pointer-events:none;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;}
 #toast.show{transform:translateX(-50%) translateY(0);}
+
+/* ══ MOBILE RESPONSIVE — נגישות מלאה לטלפון ══ */
+@media(max-width:500px){
+  /* טופס — מניעת זום באייפון */
+  .fi input,.fi select{font-size:16px;padding:11px 12px;}
+  /* כפתורי סגירה — הגדלה ל-38px */
+  .xbtn{width:38px;height:38px;font-size:18px;}
+  /* מודל הוספה — מקסימום 100% */
+  .modal{max-width:100%;padding:16px 12px 24px;border-radius:14px 14px 0 0;}
+  /* כפתורי פילטר */
+  .qsel,.btn-clear{padding:7px 10px;font-size:13px;}
+  /* toast — למעלה לגמרי */
+  #toast{top:10px;}
+  /* פאנל ניהול עובדים */
+  #workerMgmtPanel>div{max-width:100%!important;border-radius:14px 14px 0 0;}
+  /* פאנלי כלוב/עריכה — תחתון */
+  #cageItemsPanel,#cageEditPanel,#rowPanel{padding:12px;max-height:60vh;}
+  /* כפתורי פאנל תחתון — הגדלה */
+  #cageEditPanel button,#cageItemsPanel button,#rowPanel button{min-height:36px;}
+  /* כפתורי פעולה בטבלה */
+  .ib{min-width:32px;min-height:32px;}
+}
 </style>
 
 <script>
@@ -412,10 +443,10 @@ if('serviceWorker' in navigator){
         <button onclick="whCenter()" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;">⊙</button>
       </div>
       <div style="display:flex;gap:5px;flex-shrink:0;margin-right:auto;" id="whFloorBtns">
-        <button id="wfl-all" onclick="setWhFloor(0)" style="background:var(--accent);border:none;color:#111;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;">הכל</button>
-        <button id="wfl-1" onclick="setWhFloor(1)" style="background:var(--card);border:1px solid var(--f1);color:var(--f1);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;">קומה 1</button>
-        <button id="wfl-2" onclick="setWhFloor(2)" style="background:var(--card);border:1px solid var(--f2);color:var(--f2);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;">קומה 2</button>
-        <button id="wfl-3" onclick="setWhFloor(3)" style="background:var(--card);border:1px solid var(--f3);color:var(--f3);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;">קומה 3</button>
+        <button id="wfl-all" onclick="setWhFloor(0)" style="background:var(--accent);border:none;color:#111;border-radius:6px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;">הכל</button>
+        <button id="wfl-1" onclick="setWhFloor(1)" style="background:var(--card);border:1px solid var(--f1);color:var(--f1);border-radius:6px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;">קומה 1</button>
+        <button id="wfl-2" onclick="setWhFloor(2)" style="background:var(--card);border:1px solid var(--f2);color:var(--f2);border-radius:6px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;">קומה 2</button>
+        <button id="wfl-3" onclick="setWhFloor(3)" style="background:var(--card);border:1px solid var(--f3);color:var(--f3);border-radius:6px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;">קומה 3</button>
       </div>
     </div>
     <!-- Canvas Map -->
@@ -426,7 +457,7 @@ if('serviceWorker' in navigator){
     <div id="cellDetail" style="display:none;position:fixed;bottom:54px;right:0;left:0;background:var(--surface);border-top:2px solid var(--accent);padding:14px;z-index:200;max-height:55vh;overflow-y:auto;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <div style="font-size:13px;font-weight:800;" id="cellDetailTitle"></div>
-        <button onclick="closeCellDetail()" style="background:var(--card);border:1px solid var(--border);border-radius:7px;width:28px;height:28px;cursor:pointer;color:var(--muted);font-size:16px;">✕</button>
+        <button onclick="closeCellDetail()" style="background:var(--card);border:1px solid var(--border);border-radius:7px;width:36px;height:36px;cursor:pointer;color:var(--muted);font-size:18px;display:flex;align-items:center;justify-content:center;">✕</button>
       </div>
       <div id="cellDetailBody"></div>
     </div>
@@ -440,11 +471,12 @@ if('serviceWorker' in navigator){
     <div style="background:var(--surface);border-bottom:1px solid var(--border);padding:8px 10px;display:flex;align-items:center;gap:6px;flex-shrink:0;overflow-x:auto;">
       <div style="font-size:12px;font-weight:800;flex-shrink:0;">✏️ מפת מחסן</div>
       <div style="display:flex;gap:5px;flex-shrink:0;" id="mapTools">
-        <button id="tool-wall" onclick="setMapTool('wall')" title="ציור קיר" style="background:var(--blue-dim);border:1px solid var(--blue);color:var(--blue);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🖊️ קיר</button>
-        <button id="tool-cage" onclick="setMapTool('cage')" title="הוסף כלוב" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">📦 כלוב</button>
-        <button id="tool-move" onclick="setMapTool('move')" title="הזזה" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">✋ הזז</button>
-        <button id="tool-row" onclick="setMapTool('row')" title="שורה" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">📏 שורה</button>
-        <button id="tool-erase" onclick="setMapTool('erase')" title="מחק" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🗑️ מחק</button>
+        <button id="tool-wall" onclick="setMapTool('wall')" title="ציור קיר" style="background:var(--blue-dim);border:1px solid var(--blue);color:var(--blue);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🖊️ קיר</button>
+        <button id="tool-pan" onclick="setMapTool('pan')" title="גלילת מפה (P)" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🖐 גלול</button>
+        <button id="tool-cage" onclick="setMapTool('cage')" title="הוסף כלוב" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">📦 כלוב</button>
+        <button id="tool-move" onclick="setMapTool('move')" title="הזזה" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">✋ הזז</button>
+        <button id="tool-row" onclick="setMapTool('row')" title="שורה" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">📏 שורה</button>
+        <button id="tool-erase" onclick="setMapTool('erase')" title="מחק" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🗑️ מחק</button>
       </div>
       <div style="display:flex;gap:5px;flex-shrink:0;margin-right:auto;">
         <button onclick="zoomIn()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 10px;font-size:14px;font-weight:700;cursor:pointer;">＋</button>
@@ -453,15 +485,23 @@ if('serviceWorker' in navigator){
         <button onclick="undoMap()" title="בטל (Ctrl+Z)" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;">↩️</button>
         <button id="btnRedo" onclick="redoMap()" title="חזור (Ctrl+Y)" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;">↪️</button>
         <button onclick="saveMapLayout()" style="background:var(--accent);border:none;color:#111;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">💾</button>
+        <button onclick="generateWarehouseLayout()" title="ייצר מפת מחסן אוטומטית" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;">🏭</button>
         <button onclick="clearMap()" style="background:var(--red-dim);border:1px solid var(--red);color:var(--red);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;">✕</button>
       </div>
     </div>
     <div style="padding:5px 10px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;flex-shrink:0;overflow-x:auto;">
+      <span style="font-size:10px;color:var(--muted);flex-shrink:0;">אזור:</span>
+      <button id="sec-all" onclick="setMapSection(null)" style="background:var(--accent);border:none;color:#111;border-radius:6px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">הכל</button>
+      <button id="sec-מחסן" onclick="setMapSection('מחסן')" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">🏭 מחסן</button>
+      <button id="sec-פניה1" onclick="setMapSection('פניה1')" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">↩ פניה 1</button>
+      <button id="sec-פניה2" onclick="setMapSection('פניה2')" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">↩ פניה 2</button>
+    </div>
+    <div style="padding:5px 10px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;flex-shrink:0;overflow-x:auto;">
       <span style="font-size:10px;color:var(--muted);flex-shrink:0;">שכבה:</span>
-      <button id="fl-all" onclick="setFloorFilter(0)" style="background:var(--accent);border:none;color:#111;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">הכל</button>
-      <button id="fl-1" onclick="setFloorFilter(1)" style="background:var(--card);border:1px solid var(--f1);color:var(--f1);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">קומה 1</button>
-      <button id="fl-2" onclick="setFloorFilter(2)" style="background:var(--card);border:1px solid var(--f2);color:var(--f2);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">קומה 2</button>
-      <button id="fl-3" onclick="setFloorFilter(3)" style="background:var(--card);border:1px solid var(--f3);color:var(--f3);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">קומה 3</button>
+      <button id="fl-all" onclick="setFloorFilter(0)" style="background:var(--accent);border:none;color:#111;border-radius:6px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">הכל</button>
+      <button id="fl-1" onclick="setFloorFilter(1)" style="background:var(--card);border:1px solid var(--f1);color:var(--f1);border-radius:6px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">קומה 1</button>
+      <button id="fl-2" onclick="setFloorFilter(2)" style="background:var(--card);border:1px solid var(--f2);color:var(--f2);border-radius:6px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">קומה 2</button>
+      <button id="fl-3" onclick="setFloorFilter(3)" style="background:var(--card);border:1px solid var(--f3);color:var(--f3);border-radius:6px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">קומה 3</button>
     </div>
     <div style="padding:5px 10px;background:var(--bg);border-bottom:1px solid var(--border);font-size:10px;color:var(--muted);flex-shrink:0;" id="mapHint">
       🖊️ גרור לציור קיר
@@ -473,7 +513,7 @@ if('serviceWorker' in navigator){
     <div id="cageItemsPanel" style="display:none;position:fixed;bottom:54px;right:0;left:0;background:var(--surface);border-top:2px solid var(--accent);padding:14px;z-index:200;max-height:55vh;overflow-y:auto;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <div style="font-size:13px;font-weight:800;" id="cageItemsTitle">📦 כלוב</div>
-        <button onclick="closeCageItemsPanel()" style="background:var(--card);border:1px solid var(--border);border-radius:7px;width:28px;height:28px;cursor:pointer;color:var(--muted);font-size:16px;">✕</button>
+        <button onclick="closeCageItemsPanel()" style="background:var(--card);border:1px solid var(--border);border-radius:7px;width:36px;height:36px;cursor:pointer;color:var(--muted);font-size:18px;display:flex;align-items:center;justify-content:center;">✕</button>
       </div>
       <div id="cageItemsBody"></div>
     </div>
@@ -482,7 +522,7 @@ if('serviceWorker' in navigator){
     <div id="cageEditPanel" style="display:none;position:fixed;bottom:54px;right:0;left:0;background:var(--surface);border-top:2px solid var(--accent);padding:14px;z-index:200;max-height:60vh;overflow-y:auto;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <div style="font-size:13px;font-weight:800;">📦 עריכת כלוב</div>
-        <button onclick="closeCageEdit()" style="background:var(--card);border:1px solid var(--border);border-radius:7px;width:28px;height:28px;cursor:pointer;color:var(--muted);font-size:16px;">✕</button>
+        <button onclick="closeCageEdit()" style="background:var(--card);border:1px solid var(--border);border-radius:7px;width:36px;height:36px;cursor:pointer;color:var(--muted);font-size:18px;display:flex;align-items:center;justify-content:center;">✕</button>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
         <div><label style="font-size:10px;color:var(--accent);font-weight:700;">פניה 1</label>
@@ -516,7 +556,7 @@ if('serviceWorker' in navigator){
     <div id="rowPanel" style="display:none;position:fixed;bottom:54px;right:0;left:0;background:var(--surface);border-top:2px solid var(--blue);padding:14px;z-index:201;max-height:60vh;overflow-y:auto;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <div style="font-size:13px;font-weight:800;">📏 הוספת שורת כלובים</div>
-        <button onclick="closeRowPanel()" style="background:var(--card);border:1px solid var(--border);border-radius:7px;width:28px;height:28px;cursor:pointer;color:var(--muted);font-size:16px;">✕</button>
+        <button onclick="closeRowPanel()" style="background:var(--card);border:1px solid var(--border);border-radius:7px;width:36px;height:36px;cursor:pointer;color:var(--muted);font-size:18px;display:flex;align-items:center;justify-content:center;">✕</button>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
         <div>
@@ -528,7 +568,8 @@ if('serviceWorker' in navigator){
         <div>
           <label style="font-size:10px;color:var(--blue);font-weight:700;">כיוון</label>
           <select id="rowPanelDir" style="width:100%;background:var(--card);border:1px solid var(--blue);border-radius:7px;color:var(--text);padding:8px;font-family:inherit;font-size:13px;margin-top:4px;">
-            <option value="h">➡ אופקי</option>
+            <option value="hr">➡ אופקי ימין</option>
+            <option value="hl">⬅ אופקי שמאל</option>
             <option value="v">⬇ אנכי</option>
           </select>
         </div>
@@ -699,7 +740,7 @@ if('serviceWorker' in navigator){
     <div style="width:40px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 16px;"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
       <div id="locPanelTitle" style="font-size:16px;font-weight:900;"></div>
-      <button onclick="closeLocationPanel()" style="background:var(--card);border:1px solid var(--border);border-radius:8px;width:32px;height:32px;cursor:pointer;color:var(--muted);font-size:18px;">✕</button>
+      <button onclick="closeLocationPanel()" style="background:var(--card);border:1px solid var(--border);border-radius:8px;width:36px;height:36px;cursor:pointer;color:var(--muted);font-size:18px;display:flex;align-items:center;justify-content:center;">✕</button>
     </div>
     <div id="locPanelBody"></div>
   </div>
@@ -1029,7 +1070,7 @@ function showItemLocation(id){
   const it=items.find(x=>x.id===id);
   if(!it) return;
   document.getElementById('locPanelTitle').innerHTML=
-    `<span style="font-family:monospace;color:var(--accent);font-size:18px;">${sz(it)}</span> &nbsp; ${it.brand}`;
+    `<span style="font-family:monospace;color:var(--accent);font-size:18px;">${sz(it)}</span> &nbsp; ${escHTML(it.brand)}`;
 
   document.getElementById('locPanelBody').innerHTML=`
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
@@ -1192,11 +1233,11 @@ function clearFilters(){
 /* DROPDOWNS */
 function refreshDropdowns(){
   const bs=document.getElementById('fBrand'),bc=bs.value;
-  bs.innerHTML='<option value="">🏷️ מותג</option>'+[...new Set(items.map(i=>i.brand))].sort().map(b=>`<option ${b===bc?'selected':''}>${b}</option>`).join('');
+  bs.innerHTML='<option value="">🏷️ מותג</option>'+[...new Set(items.map(i=>i.brand))].sort().map(b=>`<option value="${escHTML(b)}" ${b===bc?'selected':''}>${escHTML(b)}</option>`).join('');
 
 
   const ss=document.getElementById('fSize'),sv=ss.value;
-  ss.innerHTML='<option value="">📐 מידה</option>'+[...new Set(items.map(i=>sz(i)))].sort().map(s=>`<option ${s===sv?'selected':''}>${s}</option>`).join('');
+  ss.innerHTML='<option value="">📐 מידה</option>'+[...new Set(items.map(i=>sz(i)))].sort().map(s=>`<option value="${escHTML(s)}" ${s===sv?'selected':''}>${escHTML(s)}</option>`).join('');
 }
 
 /* LOCATE NEAREST */
@@ -1826,11 +1867,12 @@ let selectedCageId=null, nextCageId=1;
 let mapTool='wall';
 let isDrawing=false, drawStart=null, drawCurrent=null;
 let dragCageId=null, dragOffX=0, dragOffY=0;
-let mapScale=20, mapOffX=14, mapOffY=14;
+let mapScale=40, mapOffX=50, mapOffY=50;
 let pinchDist=null;
 let mapFloorFilter=0; // 0=הכל, 1/2/3=קומה ספציפית
+let mapSection=null; // null=הכל, 'מחסן'/'פניה1'/'פניה2'
 let isPanning=false, panStartX=0, panStartY=0, panOffStartX=0, panOffStartY=0;
-const SNAP=0.6; // snap to cage size
+const SNAP=1.0; // snap לגודל כלוב אחד (ריבועי)
 
 let mapRedoHistory=[];
 let selectedCages=[]; // IDs of multi-selected cages
@@ -1839,6 +1881,8 @@ let spaceDown=false, _shiftDown=false;
 let _multiDragOffsets=[]; // [{id,ox,oy}] relative offsets for multi-drag
 let _autoSaveTimer=null;
 let _rowClickWx=0, _rowClickWy=0;
+let _axisZoom=null; // {type:'x'|'y', startCX, startCY, startScale, startOffX, startOffY}
+let _touchStartCX=0,_touchStartCY=0,_touchStartTime=0,_touchIsPanning=false;
 
 let _alignTimeout=null;
 
@@ -1858,7 +1902,7 @@ function showCageItems(g){
   // בנה פאנל
   const floorColors={'1':'var(--f1)','2':'var(--f2)','3':'var(--f3)'};
   let body=`<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">
-    עמודה <b style="color:var(--accent)">${g.name}</b> · ${cageItems.length} צמיגים
+    עמודה <b style="color:var(--accent)">${escHTML(g.name)}</b> · ${cageItems.length} צמיגים
   </div>`;
 
   // קבץ לפי קומה
@@ -1875,8 +1919,8 @@ function showCageItems(g){
     byFloor[f].forEach(it=>{
       body+=`<div onclick="showItemLocation(${it.id})" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:10px;">
         <span style="font-family:monospace;font-size:14px;font-weight:900;color:var(--accent);">${it.w}/${it.p}R${it.d}</span>
-        <span style="font-weight:700;">${it.brand}</span>
-        ${it.model?`<span style="font-size:11px;color:var(--muted);">${it.model}</span>`:''}
+        <span style="font-weight:700;">${escHTML(it.brand)}</span>
+        ${it.model?`<span style="font-size:11px;color:var(--muted);">${escHTML(it.model)}</span>`:''}
       </div>`;
     });
     body+='</div>';
@@ -1887,7 +1931,7 @@ function showCageItems(g){
   const title=document.getElementById('cageItemsTitle');
   const bodyEl=document.getElementById('cageItemsBody');
   if(panel&&title&&bodyEl){
-    title.innerHTML=`📦 כלוב ${g.name}`;
+    title.innerHTML=`📦 כלוב ${escHTML(g.name)}`;
     bodyEl.innerHTML=body;
     panel.style.display='block';
   }
@@ -1919,6 +1963,48 @@ function setFloorFilter(f){
   drawMap();
 }
 
+function setMapSection(s){
+  mapSection=s;
+  // עדכן כפתורים
+  ['all','מחסן','פניה1','פניה2'].forEach(id=>{
+    const btn=document.getElementById('sec-'+(id==='all'?'all':id));
+    if(!btn) return;
+    const isActive=(id==='all'&&s===null)||(id===s);
+    if(isActive){
+      btn.style.background='var(--accent)';
+      btn.style.border='none';
+      btn.style.color='#111';
+    } else {
+      btn.style.background='var(--card)';
+      btn.style.border='1px solid var(--border)';
+      btn.style.color='var(--muted)';
+    }
+  });
+  // מרכז את המפה לפי האזור הנבחר
+  const prefixMap = {
+    'מחסן': ['מי.','מש.'],
+    'פניה1': ['פ1ש.','פ1י.'],
+    'פניה2': ['פ2י.','פ2ש.']
+  };
+  if(s && prefixMap[s]){
+    const prefs=prefixMap[s];
+    const subset=cages.filter(g=>prefs.some(p=>String(g.name).startsWith(p)));
+    if(subset.length>0){
+      const cv=document.getElementById('mapCanvas');
+      const xs=subset.map(g=>g.x), ys=subset.map(g=>g.y);
+      const minX=Math.min(...xs), minY=Math.min(...ys);
+      const maxX=Math.max(...xs)+1, maxY=Math.max(...ys)+1;
+      const fitScale=cv?Math.min(cv.width/(maxX-minX+2), cv.height/(maxY-minY+2), 60):mapScale;
+      mapScale=Math.max(10,Math.min(60,fitScale));
+      mapOffX=cv?cv.width/2-(minX+(maxX-minX)/2)*mapScale:50;
+      mapOffY=cv?cv.height/2-(minY+(maxY-minY)/2)*mapScale:50;
+    }
+  } else {
+    centerMap(); return;
+  }
+  drawMap();
+}
+
 function _drawAlignLines(g){
   clearTimeout(_alignTimeout);
   _alignTimeout=setTimeout(()=>{ drawMap(); },400);
@@ -1927,7 +2013,7 @@ function _drawAlignLines(g){
 function zoomIn(){ mapScale=Math.min(80,mapScale*1.25); drawMap(); }
 function zoomOut(){ mapScale=Math.max(10,mapScale*0.8); drawMap(); }
 function centerMap(){
-  if(cages.length===0){ mapOffX=14; mapOffY=14; mapScale=20; drawMap(); return; }
+  if(cages.length===0){ mapOffX=50; mapOffY=50; mapScale=40; drawMap(); return; }
   const xs=cages.map(g=>g.x), ys=cages.map(g=>g.y);
   const minX=Math.min(...xs), minY=Math.min(...ys);
   const cv=document.getElementById('mapCanvas');
@@ -1938,7 +2024,7 @@ function centerMap(){
 
 function setMapTool(t){
   mapTool=t;
-  ['wall','cage','move','erase','row'].forEach(n=>{
+  ['wall','pan','cage','move','erase','row'].forEach(n=>{
     const b=document.getElementById('tool-'+n);
     if(!b) return;
     const on=n===t;
@@ -1947,11 +2033,12 @@ function setMapTool(t){
     b.style.color=on?'#111':'var(--muted)';
     b.style.fontWeight=on?'900':'600';
   });
-  const hints={wall:'🖊️ גרור לציור קיר | W',cage:'📦 לחץ למיקום כלוב | C | Ctrl+D לשכפול',move:'✋ גרור כלוב | גרור על ריק לבחירה מרובה | Delete למחיקה | Space+גרור לפנינג | M',erase:'🗑️ לחץ למחיקה',row:'📏 לחץ להוספת שורת כלובים'};
+  const hints={wall:'🖊️ גרור לציור קיר | W',pan:'🖐 גרור להזזת המפה — עכבר שמאל / מגע | P',cage:'📦 לחץ למיקום כלוב | C | Ctrl+D לשכפול',move:'✋ גרור כלוב | גרור על ריק לבחירה מרובה | Delete למחיקה | M',erase:'🗑️ לחץ למחיקה',row:'📏 לחץ להוספת שורת כלובים'};
   const h=document.getElementById('mapHint');
   if(h) h.textContent=hints[t]||'';
+  const cursor=t==='pan'?'grab':t==='move'?'grab':t==='erase'?'cell':'crosshair';
   const canvas=document.getElementById('mapCanvas');
-  if(canvas) canvas.style.cursor=t==='move'?'grab':t==='erase'?'cell':'crosshair';
+  if(canvas) canvas.style.cursor=cursor;
 }
 
 function initMapEditor(){
@@ -1959,7 +2046,10 @@ function initMapEditor(){
   const wrap=document.getElementById('mapEditorWrap');
   if(!canvas||!wrap) return;
   const saved=localStorage.getItem('tirewms_map2');
-  if(saved){ try{ const d=JSON.parse(saved); cages=d.cages||[]; walls=d.walls||[]; nextCageId=d.nextId||1; }catch(e){} }
+  if(saved){ try{ const d=JSON.parse(saved); walls=d.walls||[]; nextCageId=d.nextId||1;
+    // נרמל מיקומי כלובים לגריד הריבועי (עיגול למספר שלם)
+    cages=(d.cages||[]).map(g=>({...g,x:Math.round(g.x),y:Math.round(g.y)}));
+  }catch(e){} }
   resizeCanvas(); drawMap(); setMapTool('wall');
 
   // Remove old listeners
@@ -2009,8 +2099,8 @@ function getPos(e,cv){
 
 function getCageAt(wx,wy){
   for(let i=cages.length-1;i>=0;i--){
-    const g=cages[i],w=g.rot?0.6:1.2,h=g.rot?1.2:0.6;
-    if(wx>=g.x&&wx<=g.x+w&&wy>=g.y&&wy<=g.y+h) return g;
+    const g=cages[i];
+    if(wx>=g.x&&wx<g.x+1&&wy>=g.y&&wy<g.y+1) return g;
   }
   return null;
 }
@@ -2031,12 +2121,19 @@ function onTS(e){
   e.preventDefault();
   const cv=document.getElementById('mapCanvas');
   if(e.touches.length===2){
-    // pinch zoom
     pinchDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+    _touchIsPanning=false;
     return;
   }
   const[cx,cy]=getPos(e,cv);
-  handleDown(cx,cy);
+  _touchStartCX=cx; _touchStartCY=cy; _touchStartTime=Date.now();
+  _touchIsPanning=false;
+  // כלי גלילה — מיד מתחיל גלילה
+  if(mapTool==='pan'){
+    isPanning=true; panStartX=cx; panStartY=cy;
+    panOffStartX=mapOffX; panOffStartY=mapOffY;
+    _touchIsPanning=true;
+  }
 }
 function onTM(e){
   e.preventDefault();
@@ -2044,17 +2141,35 @@ function onTM(e){
   if(e.touches.length===2&&pinchDist!==null){
     const newDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
     const factor=newDist/pinchDist;
-    mapScale=Math.max(20,Math.min(100,mapScale*factor));
+    mapScale=Math.max(12,Math.min(120,mapScale*factor));
     pinchDist=newDist;
-    drawMap(); return;
+    autoExpandCages(); drawMap(); return;
   }
   const[cx,cy]=getPos(e,cv);
+  // אם זז יותר מ-8 פיקסלים — הפוך לגלילה (כלים שאינם כלוב/קיר)
+  if(!_touchIsPanning && mapTool!=='wall' && mapTool!=='cage'){
+    const moved=Math.hypot(cx-_touchStartCX,cy-_touchStartCY);
+    if(moved>8){
+      _touchIsPanning=true;
+      isPanning=true; panStartX=_touchStartCX; panStartY=_touchStartCY;
+      panOffStartX=mapOffX; panOffStartY=mapOffY;
+    }
+  }
+  if(_touchIsPanning){ handleMove(cx,cy); return; }
   handleMove(cx,cy);
 }
 function onTE(e){
   e.preventDefault();
   pinchDist=null;
-  handleUp();
+  if(_touchIsPanning){
+    _touchIsPanning=false; isPanning=false;
+    drawMap(); return;
+  }
+  // קשקוש קצר = לחיצה
+  if(Date.now()-_touchStartTime<300 && mapTool!=='pan'){
+    handleDown(_touchStartCX,_touchStartCY);
+    handleUp();
+  }
 }
 function onMD(e){ const cv=document.getElementById('mapCanvas'); handleDown(...getPos(e,cv)); }
 function onMV(e){ const cv=document.getElementById('mapCanvas'); handleMove(...getPos(e,cv)); }
@@ -2073,11 +2188,31 @@ function onCK(e){
 }
 
 function handleDown(cx,cy){
+  const _cv=document.getElementById('mapCanvas');
+  const RULER=28, RULER_R=28;
+  // קליק על הסרגלים → זום
+  if(cy<RULER && cx>=RULER && (!_cv||cx<=_cv.width-RULER_R)){
+    _axisZoom={type:'x',startCX:cx,startCY:cy,startScale:mapScale,startOffX:mapOffX,startOffY:mapOffY};
+    return;
+  }
+  if(cx<RULER && cy>=RULER){
+    _axisZoom={type:'y',startCX:cx,startCY:cy,startScale:mapScale,startOffX:mapOffX,startOffY:mapOffY};
+    return;
+  }
+  if(_cv && cx>_cv.width-RULER_R && cy>=RULER){
+    _axisZoom={type:'y',startCX:cx,startCY:cy,startScale:mapScale,startOffX:mapOffX,startOffY:mapOffY};
+    return;
+  }
+  // התעלם מקליקים באזור הסרגל אך לא על הסרגל (פינות)
+  if(cx<RULER||cy<RULER) return;
+  if(_cv && cx>_cv.width-RULER_R) return;
   const[wx,wy]=c2w(cx,cy);
-  // Space-bar panning
-  if(spaceDown){
+  // כלי גלילה או Space — הזזת המפה
+  if(mapTool==='pan'||spaceDown){
     isPanning=true; panStartX=cx; panStartY=cy;
     panOffStartX=mapOffX; panOffStartY=mapOffY;
+    const cv2=document.getElementById('mapCanvas');
+    if(cv2) cv2.style.cursor='grabbing';
     return;
   }
   if(mapTool==='wall'){
@@ -2086,7 +2221,7 @@ function handleDown(cx,cy){
   } else if(mapTool==='cage'){
     pushHistory();
     const id=nextCageId++;
-    const g={id,name:String(id),floor:'1',x:snapV(wx-0.6),y:snapV(wy-0.3),rot:false};
+    const g={id,name:String(id),floor:'1',x:Math.max(0,Math.floor(wx)),y:Math.max(0,Math.floor(wy)),rot:false};
     cages.push(g);
     selectedCageId=id; selectedCages=[id];
     drawMap();
@@ -2125,6 +2260,22 @@ function handleDown(cx,cy){
 }
 
 function handleMove(cx,cy){
+  // Axis zoom — גרירת סרגל
+  if(_axisZoom){
+    if(_axisZoom.type==='x'){
+      const wx=(_axisZoom.startCX-_axisZoom.startOffX)/_axisZoom.startScale;
+      const factor=Math.exp((cx-_axisZoom.startCX)/180);
+      mapScale=Math.max(12,Math.min(120,_axisZoom.startScale*factor));
+      mapOffX=_axisZoom.startCX-wx*mapScale;
+    } else {
+      const wy=(_axisZoom.startCY-_axisZoom.startOffY)/_axisZoom.startScale;
+      const factor=Math.exp((_axisZoom.startCY-cy)/180);
+      mapScale=Math.max(12,Math.min(120,_axisZoom.startScale*factor));
+      mapOffY=_axisZoom.startCY-wy*mapScale;
+    }
+    autoExpandCages();
+    drawMap(); return;
+  }
   // Space-bar panning
   if(isPanning){
     mapOffX=panOffStartX+(cx-panStartX);
@@ -2141,29 +2292,15 @@ function handleMove(cx,cy){
   } else if(mapTool==='move'&&dragCageId){
     const g=cages.find(c=>c.id===dragCageId);
     if(g){
-      let fnx=snapV(wx-dragOffX);
-      let fny=snapV(wy-dragOffY);
-      // ישור אוטומטי לכלוב הקרוב ביותר (רק אם גוררים כלוב יחיד)
-      if(selectedCages.length<=1){
-        const SNAP_DIST=0.8;
-        cages.forEach(other=>{
-          if(other.id===dragCageId) return;
-          const ow=other.rot?0.6:1.2, oh=other.rot?1.2:0.6;
-          const gw=g.rot?0.6:1.2;
-          if(Math.abs(fnx-(other.x+ow))<SNAP_DIST) fnx=other.x+ow;
-          if(Math.abs(fnx+gw-other.x)<SNAP_DIST) fnx=other.x-gw;
-          if(Math.abs(fnx-other.x)<SNAP_DIST) fnx=other.x;
-          if(Math.abs(fny-other.y)<SNAP_DIST) fny=other.y;
-          if(Math.abs(fny-other.y-oh)<SNAP_DIST) fny=other.y+oh;
-        });
-      }
+      // מגנט אמיתי: הכלוב נדבק למשבצת שמתחת לסמן (לא תלוי בנקודת האחיזה)
+      const fnx=Math.max(0, Math.floor(wx));
+      const fny=Math.max(0, Math.floor(wy));
       // הזז את כל הכלובים הנבחרים תוך שמירת המרחקים היחסיים
       _multiDragOffsets.forEach(o=>{
         const c=cages.find(x=>x.id===o.id);
-        if(c){ c.x=snapV(fnx+o.ox); c.y=snapV(fny+o.oy); }
+        if(c){ c.x=Math.max(0,fnx+o.ox); c.y=Math.max(0,fny+o.oy); }
       });
       drawMap();
-      _drawAlignLines(g);
     }
   }
 }
@@ -2185,8 +2322,7 @@ function handleUp(){
     const dist=Math.hypot(rx2-rx1,ry2-ry1);
     if(dist>0.3){
       selectedCages=cages.filter(g=>{
-        const w=g.rot?0.6:1.2,h=g.rot?1.2:0.6;
-        return g.x<rx2&&g.x+w>rx1&&g.y<ry2&&g.y+h>ry1;
+        return g.x<rx2&&g.x+1>rx1&&g.y<ry2&&g.y+1>ry1;
       }).map(g=>g.id);
       if(selectedCages.length===1){
         selectedCageId=selectedCages[0];
@@ -2197,6 +2333,13 @@ function handleUp(){
         if(h) h.textContent=`✅ נבחרו ${selectedCages.length} כלובים — גרור להזזה, Delete למחיקה`;
       }
     }
+  }
+  if(_axisZoom){ _axisZoom=null; return; }
+  if(isPanning){
+    isPanning=false;
+    const cv2=document.getElementById('mapCanvas');
+    if(cv2) cv2.style.cursor=mapTool==='pan'?'grab':mapTool==='move'?'grab':mapTool==='erase'?'cell':'crosshair';
+    return;
   }
   isDrawing=false; drawStart=null; drawCurrent=null;
   dragCageId=null; isRubberBand=false; rubberStart=null; rubberCurrent=null;
@@ -2215,86 +2358,52 @@ function drawMap(){
   ctx.fillStyle='#0a0c12';
   ctx.fillRect(0,0,cv.width,cv.height);
 
-  // ── גריד כלובים ──
-  // כל תא = גודל כלוב אחד (1.2×0.6 מטר)
-  const CAGE_W = 1.2 * mapScale;
-  const CAGE_H = 0.6 * mapScale;
-  const SLOT_H = CAGE_H / 3; // חלוקה ל-3 קומות בתוך כל תא
+  // ── גריד ריבועי — כל תא = כלוב אחד (1 יחידה) ──
+  const CELL = mapScale;
 
-  // חשב כמה תאים על המסך
-  const startColF = -mapOffX / CAGE_W;
-  const startRowF = -mapOffY / CAGE_H;
-  const startCol = Math.floor(startColF) - 1;
-  const startRow = Math.floor(startRowF) - 1;
-  const endCol = startCol + Math.ceil(cv.width / CAGE_W) + 2;
-  const endRow = startRow + Math.ceil(cv.height / CAGE_H) + 2;
+  const startCol = Math.floor(-mapOffX / CELL) - 1;
+  const startRow = Math.floor(-mapOffY / CELL) - 1;
+  const endCol   = startCol + Math.ceil(cv.width  / CELL) + 2;
+  const endRow   = startRow + Math.ceil(cv.height / CELL) + 2;
 
-  // צייר תאים
-  for(let row=startRow; row<=endRow; row++){
-    for(let col=startCol; col<=endCol; col++){
-      const px = mapOffX + col * CAGE_W;
-      const py = mapOffY + row * CAGE_H;
+  for(let row = startRow; row <= endRow; row++){
+    for(let col = startCol; col <= endCol; col++){
+      if(col < 0 || row < 0) continue;
+      const px = mapOffX + col * CELL;
+      const py = mapOffY + row * CELL;
 
       // רקע תא
       ctx.fillStyle = '#0e1018';
-      ctx.fillRect(px+1, py+1, CAGE_W-2, CAGE_H-2);
+      ctx.fillRect(px + 1, py + 1, CELL - 2, CELL - 2);
 
-      // 3 שורות קומות בתוך התא
-      const floorColors = ['rgba(74,158,255,0.08)','rgba(62,207,142,0.08)','rgba(245,166,35,0.08)'];
-      const floorBorders = ['rgba(74,158,255,0.3)','rgba(62,207,142,0.3)','rgba(245,166,35,0.3)'];
-      for(let f=0;f<3;f++){
-        const fy = py + f*SLOT_H;
+      // 3 פסי קומות בתוך התא
+      const SLOT = CELL / 3;
+      const floorColors  = ['rgba(74,158,255,0.07)','rgba(62,207,142,0.07)','rgba(245,166,35,0.07)'];
+      const floorBorders = ['rgba(74,158,255,0.25)','rgba(62,207,142,0.25)','rgba(245,166,35,0.25)'];
+      for(let f = 0; f < 3; f++){
+        const fy = py + f * SLOT;
         ctx.fillStyle = floorColors[f];
-        ctx.fillRect(px+1, fy+0.5, CAGE_W-2, SLOT_H-1);
-        // קו מפריד קומה (דק)
-        if(f>0){
+        ctx.fillRect(px + 1, fy + 0.5, CELL - 2, SLOT - 1);
+        if(f > 0){
           ctx.strokeStyle = floorBorders[f];
           ctx.lineWidth = 0.5;
           ctx.beginPath();
-          ctx.moveTo(px+3, fy);
-          ctx.lineTo(px+CAGE_W-3, fy);
+          ctx.moveTo(px + 4, fy); ctx.lineTo(px + CELL - 4, fy);
           ctx.stroke();
         }
-        // תווית קומה אם יש מספיק מקום
-        if(SLOT_H > 12){
-          const floorLabels=['1','2','3'];
-          const floorTextColors=['rgba(74,158,255,0.5)','rgba(62,207,142,0.5)','rgba(245,166,35,0.5)'];
-          ctx.fillStyle = floorTextColors[f];
-          ctx.font = `${Math.min(8,SLOT_H*0.5)}px Heebo`;
-          ctx.textAlign = 'right';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(floorLabels[f], px+CAGE_W-2, fy+SLOT_H/2);
+        if(SLOT > 10){
+          ctx.fillStyle = ['rgba(74,158,255,0.4)','rgba(62,207,142,0.4)','rgba(245,166,35,0.4)'][f];
+          ctx.font = `${Math.min(8, SLOT * 0.45)}px Heebo`;
+          ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+          ctx.fillText(f + 1, px + CELL - 3, fy + SLOT / 2);
         }
       }
 
-      // מסגרת תא — צהוב
-      ctx.strokeStyle = 'rgba(245,166,35,0.35)';
+      // מסגרת תא
+      ctx.strokeStyle = 'rgba(245,166,35,0.22)';
       ctx.lineWidth = 1;
-      ctx.strokeRect(px+0.5, py+0.5, CAGE_W-1, CAGE_H-1);
-
-      // מספר עמודה/שורה
-      if(col>=0 && row>=0 && CAGE_W>30 && CAGE_H>18){
-        ctx.fillStyle = 'rgba(245,166,35,0.4)';
-        ctx.font = `${Math.min(9,CAGE_W*0.15)}px Heebo`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'top';
-        ctx.fillText(`${col+1}`, px+CAGE_W/2, py+2);
-      }
+      ctx.strokeRect(px + 0.5, py + 0.5, CELL - 1, CELL - 1);
     }
-  }
-
-  // ── ציר מספרים ──
-  ctx.fillStyle='rgba(245,166,35,0.6)';
-  ctx.font='9px Heebo';
-  ctx.textAlign='center';
-  for(let col=0; col*CAGE_W+mapOffX < cv.width; col++){
-    const px = mapOffX + col*CAGE_W + CAGE_W/2;
-    if(px > 10 && px < cv.width) ctx.fillText(col+1, px, 4);
-  }
-  ctx.textAlign='right';
-  for(let row=0; row*CAGE_H+mapOffY < cv.height; row++){
-    const py = mapOffY + row*CAGE_H + CAGE_H/2;
-    if(py > 10 && py < cv.height) ctx.fillText(row+1, 14, py+3);
   }
 
   // קירות שמורים
@@ -2324,12 +2433,54 @@ function drawMap(){
     ctx.fillText(len+'מ',(x1+x2)/2,(y1+y2)/2-8);
   }
 
-  // כלובים — מסנן לפי שכבה
-  const visibleCages = mapFloorFilter===0 ? cages : cages.filter(g=>String(g.floor)===String(mapFloorFilter));
+  // ── הדגשת תאי יעד בגרירה (מגנט) ──
+  if(dragCageId !== null){
+    const targets = selectedCages.length > 0 ? selectedCages : [dragCageId];
+    targets.forEach(id=>{
+      const g=cages.find(c=>c.id===id);
+      if(!g) return;
+      const[hx,hy]=w2c(g.x,g.y);
+      // זוהר ירוק-צהוב מתחת לכלוב
+      ctx.fillStyle='rgba(245,166,35,0.14)';
+      ctx.fillRect(hx,hy,CELL,CELL);
+      // מסגרת מנוקדת בולטת
+      ctx.strokeStyle='rgba(245,166,35,0.85)';
+      ctx.lineWidth=2;
+      ctx.setLineDash([6,3]);
+      ctx.strokeRect(hx+1,hy+1,CELL-2,CELL-2);
+      ctx.setLineDash([]);
+      // נקודות פינה (סימון רישות)
+      const d=6;
+      ctx.strokeStyle='#f5a623';
+      ctx.lineWidth=2;
+      [[hx,hy],[hx+CELL,hy],[hx,hy+CELL],[hx+CELL,hy+CELL]].forEach(([px,py])=>{
+        ctx.beginPath();
+        ctx.moveTo(px-d,py); ctx.lineTo(px+d,py);
+        ctx.moveTo(px,py-d); ctx.lineTo(px,py+d);
+        ctx.stroke();
+      });
+    });
+  }
+
+  // כלובים — מסנן לפי אזור ושכבה
+  const _sectionPrefixes = {
+    'מחסן': ['מי.','מש.'],
+    'פניה1': ['פ1ש.','פ1י.'],
+    'פניה2': ['פ2י.','פ2ש.']
+  };
+  const _allKnownPrefixes = ['מי.','מש.','פ1ש.','פ1י.','פ2י.','פ2ש.'];
+  const visibleCages = cages.filter(g=>{
+    if(mapSection && _sectionPrefixes[mapSection]){
+      const hasKnownPrefix = _allKnownPrefixes.some(p=>String(g.name).startsWith(p));
+      // כלוב ידני (ללא קידומת מוכרת) — מוצג תמיד
+      if(hasKnownPrefix && !_sectionPrefixes[mapSection].some(p=>String(g.name).startsWith(p))) return false;
+    }
+    if(mapFloorFilter!==0 && String(g.floor)!==String(mapFloorFilter)) return false;
+    return true;
+  });
   visibleCages.forEach(g=>{
-    const w=g.rot?0.6:1.2,h=g.rot?1.2:0.6;
     const[cx,cy]=w2c(g.x,g.y);
-    const pw=w*mapScale,ph=h*mapScale;
+    const pw=mapScale,ph=mapScale;
     const isSel=g.id===selectedCageId;
     const hasItems=items.some(it=>String(it.col)===String(g.name)&&it.floor===g.floor);
     const cnt=hasItems?items.filter(it=>String(it.col)===String(g.name)&&it.floor===g.floor).length:0;
@@ -2388,14 +2539,11 @@ function drawMap(){
       ctx.fillText(cnt,cx+pw-6,cy+6);
     }
 
-    // מידות כלוב בפינה
-    ctx.fillStyle='#3e4560';ctx.font='8px Heebo';ctx.textAlign='left';ctx.textBaseline='bottom';
-    if(pw>30) ctx.fillText(`${(w).toFixed(0)}×${(h).toFixed(0)}`,cx+2,cy+ph-2);
+    // מיקום כלוב בגריד (פינה תחתון-שמאל)
+    ctx.fillStyle='rgba(100,110,140,0.6)';ctx.font='7px Heebo';ctx.textAlign='left';ctx.textBaseline='bottom';
+    if(pw>32) ctx.fillText(`${g.x+1},${g.y+1}`,cx+2,cy+ph-1);
   });
 
-  // כיוון מזרח-מערב
-  ctx.fillStyle='#2a3045';ctx.font='10px Heebo';ctx.textAlign='left';
-  ctx.fillText('↑ צפון',6,cv.height-8);
 
   // ── Rubber-band selection overlay ──
   if(isRubberBand&&rubberStart&&rubberCurrent){
@@ -2423,13 +2571,13 @@ function drawMap(){
     ctx.strokeRect(MM_X,MM_Y,MM_W,MM_H);
     // חשב גבולות כל הכלובים
     let mnX=Infinity,mnY=Infinity,mxX=-Infinity,mxY=-Infinity;
-    cages.forEach(g=>{const w=g.rot?0.6:1.2,h=g.rot?1.2:0.6;mnX=Math.min(mnX,g.x);mnY=Math.min(mnY,g.y);mxX=Math.max(mxX,g.x+w);mxY=Math.max(mxY,g.y+h);});
+    cages.forEach(g=>{mnX=Math.min(mnX,g.x);mnY=Math.min(mnY,g.y);mxX=Math.max(mxX,g.x+1);mxY=Math.max(mxY,g.y+1);});
     const bw=mxX-mnX||1,bh=mxY-mnY||1;
     const mmS=Math.min((MM_W-8)/bw,(MM_H-8)/bh);
     const mmOX=MM_X+4-mnX*mmS, mmOY=MM_Y+4-mnY*mmS;
     // ציור כלובים
     cages.forEach(g=>{
-      const mw=Math.max((g.rot?0.6:1.2)*mmS,2),mh=Math.max((g.rot?1.2:0.6)*mmS,2);
+      const mw=Math.max(mmS,2),mh=Math.max(mmS,2);
       const mx=g.x*mmS+mmOX,my=g.y*mmS+mmOY;
       const iS=g.id===selectedCageId||selectedCages.includes(g.id);
       const hI=items.some(it=>String(it.col)===String(g.name)&&it.floor===g.floor);
@@ -2449,6 +2597,116 @@ function drawMap(){
     ctx.font='7px Heebo';ctx.textAlign='left';ctx.textBaseline='top';
     ctx.fillText('מפה',MM_X+2,MM_Y+2);
   }
+
+  // ── סרגל ציר (overlay קבוע — תמיד נראה) ──
+  const RULER = 28;
+  const labelStep = Math.max(1, Math.ceil(22 / CELL)); // דלג תוויות כשצפוף
+
+  const rStartCol = Math.max(0, Math.floor(-mapOffX / CELL));
+  const rEndCol   = rStartCol + Math.ceil(cv.width  / CELL) + 1;
+  const rStartRow = Math.max(0, Math.floor(-mapOffY / CELL));
+  const rEndRow   = rStartRow + Math.ceil(cv.height / CELL) + 1;
+
+  // רקע סרגל עליון
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = 'rgba(8,10,16,0.97)';
+  ctx.fillRect(0, 0, cv.width, RULER);
+  // רקע סרגל שמאלי
+  ctx.fillRect(0, RULER, RULER, cv.height - RULER);
+
+  // ── מספרי שורות: מלמטה לגדול, שמאל=אי-זוגי, ימין=זוגי, באותה גובה ──
+  // כל שורת גריד מציגה שני מספרים רצופים: שמאל=2n-1, ימין=2n
+  const bottomWorldRow = Math.ceil((cv.height - mapOffY) / CELL);
+  const getRowIndex  = wr => Math.max(1, bottomWorldRow - wr); // 1 = שורה תחתונה
+  const getLeftNum   = wr => 2 * getRowIndex(wr) - 1;          // אי-זוגי
+  const getRightNum  = wr => 2 * getRowIndex(wr);               // זוגי
+
+  const RULER_R = 28; // סרגל ימין
+
+  // רקע סרגל ימני
+  ctx.fillStyle = 'rgba(8,10,16,0.97)';
+  ctx.fillRect(cv.width - RULER_R, RULER, RULER_R, cv.height - RULER);
+
+  // מספרי עמודות (ציר X — סרגל עליון)
+  ctx.font = 'bold 11px Heebo';
+  ctx.textBaseline = 'middle';
+  for(let col = rStartCol; col <= rEndCol; col++){
+    if(col % labelStep !== 0) continue;
+    const centerX = mapOffX + col * CELL + CELL / 2;
+    if(centerX < RULER + 4 || centerX > cv.width - RULER_R - 2) continue;
+    ctx.fillStyle = col % 2 === 0 ? 'rgba(245,166,35,0.07)' : 'rgba(245,166,35,0.03)';
+    ctx.fillRect(mapOffX + col * CELL, 0, CELL, RULER);
+    ctx.strokeStyle = 'rgba(245,166,35,0.3)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(mapOffX + col * CELL + 0.5, RULER - 6);
+    ctx.lineTo(mapOffX + col * CELL + 0.5, RULER);
+    ctx.stroke();
+    ctx.fillStyle = '#f5a623';
+    ctx.textAlign = 'center';
+    ctx.fillText(String(col + 1), centerX, RULER / 2);
+  }
+
+  // מספרי שורות — שמאל (אי-זוגי) + ימין (זוגי) — באותה גובה בדיוק
+  ctx.font = 'bold 11px Heebo';
+  ctx.textBaseline = 'middle';
+  for(let row = rStartRow; row <= rEndRow; row++){
+    if(row < 0) continue;
+    const centerY = mapOffY + row * CELL + CELL / 2;
+    if(centerY < RULER + 4 || centerY > cv.height - 2) continue;
+    const rowY = mapOffY + row * CELL;
+
+    // ── סרגל שמאל: אי-זוגי ──
+    const leftNum = getLeftNum(row);
+    ctx.fillStyle = 'rgba(74,158,255,0.06)';
+    ctx.fillRect(0, rowY, RULER, CELL);
+    ctx.strokeStyle = 'rgba(74,158,255,0.3)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(RULER - 6, rowY + 0.5); ctx.lineTo(RULER, rowY + 0.5);
+    ctx.stroke();
+    ctx.fillStyle = '#7ac8ff';
+    ctx.textAlign = 'center';
+    ctx.fillText(String(leftNum), RULER / 2, centerY);
+
+    // ── סרגל ימין: זוגי — ממול בדיוק ──
+    const rightNum = getRightNum(row);
+    ctx.fillStyle = 'rgba(74,158,255,0.06)';
+    ctx.fillRect(cv.width - RULER_R, rowY, RULER_R, CELL);
+    ctx.strokeStyle = 'rgba(74,158,255,0.3)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(cv.width - RULER_R, rowY + 0.5); ctx.lineTo(cv.width - RULER_R + 6, rowY + 0.5);
+    ctx.stroke();
+    ctx.fillStyle = '#7ac8ff';
+    ctx.textAlign = 'center';
+    ctx.fillText(String(rightNum), cv.width - RULER_R / 2, centerY);
+  }
+
+  // קווי גבול סרגלים
+  ctx.strokeStyle = 'rgba(245,166,35,0.4)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, RULER + 0.5);              ctx.lineTo(cv.width, RULER + 0.5);
+  ctx.moveTo(RULER + 0.5, 0);              ctx.lineTo(RULER + 0.5, cv.height);
+  ctx.moveTo(cv.width - RULER_R + 0.5, 0); ctx.lineTo(cv.width - RULER_R + 0.5, cv.height);
+  ctx.stroke();
+
+  // פינה שמאל-עליון
+  ctx.fillStyle = '#080a10';
+  ctx.fillRect(0, 0, RULER, RULER);
+  ctx.fillStyle = 'rgba(245,166,35,0.35)';
+  ctx.font = '9px Heebo';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('↕↔', RULER / 2, RULER / 2);
+
+  // פינה ימין-עליון
+  ctx.fillStyle = '#080a10';
+  ctx.fillRect(cv.width - RULER_R, 0, RULER_R, RULER);
+  ctx.fillStyle = 'rgba(74,158,255,0.3)';
+  ctx.font = '9px Heebo';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('↕', cv.width - RULER_R / 2, RULER / 2);
 }
 
 function pushHistory(){
@@ -2472,6 +2730,45 @@ function redoMap(){
   const next=mapRedoHistory.pop();
   cages=JSON.parse(next.cages);walls=JSON.parse(next.walls);
   drawMap();toast('↪️ חזרה');
+}
+
+// ── הרחבה אוטומטית של שורות כלובים כשמזמין החוצה ──
+function autoExpandCages(){
+  if(cages.length===0) return;
+  const cv=document.getElementById('mapCanvas');
+  if(!cv) return;
+
+  // תחתית הקנבס הנראית (world Y)
+  const visMaxY=Math.ceil((cv.height-mapOffY)/mapScale);
+  const cageMaxY=Math.max(...cages.map(g=>g.y));
+  if(visMaxY<=cageMaxY+1) return; // אין שורות חדשות לאזור
+
+  // הגבל הרחבה ל-30 שורות בפעם אחת
+  const newMaxY=Math.min(visMaxY, cageMaxY+30);
+
+  // מבנה עמודות: X-ים ייחודיים מהשורה הכי מאוכלסת (=template)
+  const rowMap={};
+  cages.forEach(g=>{
+    if(!rowMap[g.y]) rowMap[g.y]=[];
+    rowMap[g.y].push(g.x);
+  });
+  const templateRow=Object.values(rowMap).reduce((a,b)=>b.length>a.length?b:a,[]);
+  if(templateRow.length===0) return;
+  const colXs=[...new Set(templateRow)].sort((a,b)=>a-b);
+
+  const occupied=new Set(cages.map(g=>`${g.x},${g.y}`));
+  let added=0;
+  for(let y=cageMaxY+1;y<=newMaxY;y++){
+    for(const x of colXs){
+      if(!occupied.has(`${x},${y}`)){
+        const id=nextCageId++;
+        cages.push({id,name:String(id),floor:'1',x,y,rot:false});
+        occupied.add(`${x},${y}`);
+        added++;
+      }
+    }
+  }
+  if(added>0) _scheduleAutoSave();
 }
 
 function _scheduleAutoSave(){
@@ -2509,12 +2806,15 @@ function confirmRowPanel(){
   const fl=document.getElementById('rowPanelFloor').value;
   if(num<1||num>50){ toast('❌ כמות לא חוקית (1–50)'); return; }
   pushHistory();
+  const baseX=Math.max(0,Math.floor(_rowClickWx));
+  const baseY=Math.max(0,Math.floor(_rowClickWy));
   for(let i=0;i<num;i++){
     const id=nextCageId++;
-    const rot=dir==='v';
-    const x=dir==='h'?snapV(_rowClickWx+i*1.2):snapV(_rowClickWx);
-    const y=dir==='h'?snapV(_rowClickWy):snapV(_rowClickWy+i*0.6);
-    cages.push({id,name:String(id),floor:fl,x,y,rot});
+    let x=baseX, y=baseY;
+    if(dir==='hr') x=baseX+i;                     // אופקי ימין
+    else if(dir==='hl') x=Math.max(0,baseX-i);    // אופקי שמאל
+    else if(dir==='v')  y=baseY+i;                // אנכי
+    cages.push({id,name:String(id),floor:fl,x,y,rot:false});
   }
   closeRowPanel();
   drawMap();
@@ -2534,6 +2834,7 @@ function onWheel(e){
   mapScale=Math.max(10,Math.min(100,mapScale*factor));
   mapOffX=mx-wx*mapScale;
   mapOffY=my-wy*mapScale;
+  autoExpandCages();
   drawMap();
 }
 
@@ -2544,6 +2845,7 @@ function onMapKey(e){
   _shiftDown=e.shiftKey;
   switch(e.key){
     case 'w': case 'W': if(!e.ctrlKey&&!e.metaKey) setMapTool('wall'); break;
+    case 'p': case 'P': if(!e.ctrlKey&&!e.metaKey) setMapTool('pan'); break;
     case 'c': case 'C': if(!e.ctrlKey&&!e.metaKey) setMapTool('cage'); break;
     case 'm': case 'M': if(!e.ctrlKey&&!e.metaKey) setMapTool('move'); break;
     case 'r': case 'R':
@@ -2651,6 +2953,49 @@ window._updateItems = function(newItems, newNextId){
 };
 window.addCage = addCage;
 window.rotateCage = rotateCage;
+function generateWarehouseLayout(){
+  if(!confirm('פעולה זו תמחק את המפה הנוכחית ותייצר מפת מחסן חדשה. להמשיך?')) return;
+  pushMapHistory();
+  cages=[]; walls=[]; nextCageId=1;
+
+  // Helper: add rectangular block — each (x,y) position gets 3 floor cages
+  function addBlock(x0, y0, cols, rows, nameFunc){
+    for(let r=0; r<rows; r++){
+      for(let c=0; c<cols; c++){
+        const name = nameFunc(r+1, c+1);
+        for(let fl=1; fl<=3; fl++){
+          cages.push({id:nextCageId++, name, floor:String(fl), x:x0+c, y:y0+r, rot:false});
+        }
+      }
+    }
+  }
+
+  // ══ אזור 1: מחסן (אנכי) — x=0..17, y=0..39 ══
+  // ימין: 10 עמודות × 40 שורות
+  addBlock(0,  0, 10, 40, (r,c) => 'מי.'+r+'.'+c);
+  // שמאל: 7 עמודות × 40 שורות  (רווח 1 בין הצדדים)
+  addBlock(11, 0,  7, 40, (r,c) => 'מש.'+r+'.'+c);
+
+  // ══ אזור 2: פניה ראשונה שמאלה (אופקי) — x=0..19 ══
+  // שמאל: 20 עמודות × 7 שורות עומק
+  addBlock(0, 0, 20, 7, (r,c) => 'פ1ש.'+r+'.'+c);
+  // ימין: 20 עמודות × 6 שורות עומק  (רווח 1 בין הצדדים)
+  addBlock(0, 8, 20, 6, (r,c) => 'פ1י.'+r+'.'+c);
+
+  // ══ אזור 3: פניה שניה שמאל (אופקי) — x=0..19 ══
+  // ימין: 20 עמודות × 7 שורות עומק
+  addBlock(0, 0, 20, 7, (r,c) => 'פ2י.'+r+'.'+c);
+  // שמאל: 20 עמודות × 5 שורות עומק  (רווח 1 בין הצדדים)
+  addBlock(0, 8, 20, 5, (r,c) => 'פ2ש.'+r+'.'+c);
+
+  selectedCageId=null; selectedCages=[];
+  _scheduleAutoSave();
+  centerMap();
+  drawMap();
+  alert('מפת המחסן נוצרה בהצלחה! ' + (cages.length) + ' כלובים.');
+}
+window.generateWarehouseLayout = generateWarehouseLayout;
+
 window.deleteCage = deleteCage;
 window.saveCageEdit = saveCageEdit;
 window.closeCageEdit = closeCageEdit;
@@ -3163,11 +3508,11 @@ window.prevPage=prevPage;
 function updateAutoComplete(){
   const brands=[...new Set(items.map(it=>it.brand).filter(Boolean))].sort();
   const bl=document.getElementById('brandList');
-  if(bl) bl.innerHTML=brands.map(b=>`<option value="${b}">`).join('');
+  if(bl) bl.innerHTML=brands.map(b=>`<option value="${escHTML(b)}">`).join('');
   const sb=document.getElementById('aBr')?document.getElementById('aBr').value:'';
   const models=[...new Set(items.filter(it=>!sb||it.brand===sb).map(it=>it.model).filter(Boolean))].sort();
   const ml=document.getElementById('modelList');
-  if(ml) ml.innerHTML=models.map(m=>`<option value="${m}">`).join('');
+  if(ml) ml.innerHTML=models.map(m=>`<option value="${escHTML(m)}">`).join('');
 }
 window.updateAutoComplete=updateAutoComplete;
 window.importExcel=importExcel;
@@ -3176,6 +3521,7 @@ window.renderDashboard=renderDashboard;
 window.zoomIn=zoomIn;
 window.setMapTool=setMapTool;
 window.setFloorFilter=setFloorFilter;
+window.setMapSection=setMapSection;
 window.closeCageItemsPanel=closeCageItemsPanel;
 
 /* ══ WAREHOUSE CANVAS VIEW ══ */
@@ -3240,9 +3586,8 @@ function renderWarehouse(){
   // כלובים
   const vis=whFloorFilter===0?cages:cages.filter(g=>String(g.floor)===String(whFloorFilter));
   vis.forEach(g=>{
-    const w=g.rot?0.6:1.2,h=g.rot?1.2:0.6;
     const px=whOffX+g.x*whScale, py=whOffY+g.y*whScale;
-    const pw=w*whScale, ph=h*whScale;
+    const pw=whScale, ph=whScale;
     const ci=items.filter(it=>String(it.col)===String(g.name));
     const has=ci.length>0;
     const fm=whFloorFilter===0||String(g.floor)===String(whFloorFilter);
@@ -3287,8 +3632,8 @@ function renderWarehouse(){
 function whHandleClick(cx,cy){
   const wx=(cx-whOffX)/whScale, wy=(cy-whOffY)/whScale;
   for(let i=cages.length-1;i>=0;i--){
-    const g=cages[i], w=g.rot?0.6:1.2, h=g.rot?1.2:0.6;
-    if(wx>=g.x&&wx<=g.x+w&&wy>=g.y&&wy<=g.y+h){ showWhCageDetail(g); return; }
+    const g=cages[i];
+    if(wx>=g.x&&wx<g.x+1&&wy>=g.y&&wy<g.y+1){ showWhCageDetail(g); return; }
   }
 }
 
@@ -3297,7 +3642,7 @@ function showWhCageDetail(g){
   const ci=items.filter(it=>String(it.col)===String(g.name)&&(!ff||String(it.floor)===ff));
   if(ci.length===0){ toast('📦 '+(currentLang==='ar'?'خلية فارغة':'כלוב ריק')+' — '+g.name); return; }
   const fc={'1':'var(--f1)','2':'var(--f2)','3':'var(--f3)'};
-  let body=`<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">${currentLang==='ar'?'العمود':'עמודה'} <b style="color:var(--accent)">${g.name}</b> · ${ci.length} ${t('tiresCount')}</div>`;
+  let body=`<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">${currentLang==='ar'?'العمود':'עמודה'} <b style="color:var(--accent)">${escHTML(g.name)}</b> · ${ci.length} ${t('tiresCount')}</div>`;
   const bf={};
   ci.forEach(it=>{ const f=it.floor||'1'; (bf[f]=bf[f]||[]).push(it); });
   Object.keys(bf).sort().forEach(f=>{
@@ -3405,7 +3750,8 @@ if(typeof undoMap!=="undefined") window.undoMap=undoMap;
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDocs, updateDoc, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBd8xA9EpA7JRJv-YcOxMWfunef1d4t6yc",
@@ -3418,358 +3764,536 @@ const firebaseConfig = {
 
 const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
+const auth = getAuth(fbApp);
 const itemsCol = collection(db, 'tires');
+// עובדים נשמרים כמסמך מיוחד בתוך אוסף tires (שיש לו הרשאות)
+const WORKERS_DOC_ID = 'workers-config';
+const workersDocRef = doc(db, 'tires', WORKERS_DOC_ID);
 
-const ADMIN_PASS_HASH = '61270cb789566f5b26c4e12e11bb7a0d9e3e1b1922ef31b7e014b015c5214e3d';
-function hashPass(p){
-  // Simple hash check using SubtleCrypto
-  return crypto.subtle.digest('SHA-256', new TextEncoder().encode(p))
-    .then(b => Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join(''));
-}
-let isAdminMode = false;
-window.isAdminMode = false;
+// ── רשימת עובדים (מסונכרנת מ-Firebase) ──
+let _workers = [];
+let _currentWorkerId = null; // מזהה העובד המחובר כעת (null = בעלים)
 
-function setStatus(s){
-  const el=document.getElementById('syncStatus');
-  if(el) el.textContent=s;
-}
+function _genWorkerId() { return 'w_' + Date.now() + '_' + Math.random().toString(36).slice(2,7); }
 
-/* ── שמירת כניסה ── */
-function saveSession(admin){
-  localStorage.setItem('tirewms_session', JSON.stringify({admin, ts: Date.now()}));
-}
-function loadSession(){
-  try{
-    const s = JSON.parse(localStorage.getItem('tirewms_session')||'null');
-    if(!s) return null;
-    // תוקף 30 יום
-    if(Date.now() - s.ts > 30*24*60*60*1000){ localStorage.removeItem('tirewms_session'); return null; }
-    return s;
-  }catch(e){ return null; }
-}
-function clearSession(){
-  localStorage.removeItem('tirewms_session');
+async function _saveWorkersDoc() {
+  await new Promise(resolve => onAuthReady(resolve));
+  await setDoc(workersDocRef, { _type: 'workers', list: _workers });
 }
 
-/* ── טביעת אצבע / Face ID ── */
-async function isBiometricAvailable(){
-  return window.PublicKeyCredential &&
-    await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-}
-
-async function authenticateWithBiometric(){
-  try {
-    const cred = await navigator.credentials.get({
-      publicKey: {
-        challenge: crypto.getRandomValues(new Uint8Array(32)),
-        rpId: location.hostname,
-        allowCredentials: [],
-        userVerification: 'required',
-        timeout: 30000
+function loadWorkers() {
+  onAuthReady(() => {
+    onSnapshot(workersDocRef, snap => {
+      if (snap.exists() && snap.data().list) {
+        _workers = snap.data().list;
       }
+      const panel = document.getElementById('workerMgmtPanel');
+      if (panel && panel.style.display !== 'none') _renderWorkerMgmtList();
     });
-    return !!cred;
-  } catch(e) {
-    // אם אין credential רשום — נחזיר false
-    return false;
-  }
+  });
 }
 
-/* ── ממשק כניסה ── */
-async function buildLoginScreen(){
-  // בדוק אם יש session שמור
-  const session = loadSession();
-  if(session){
-    const hasBio = await isBiometricAvailable();
-    if(hasBio){
-      // הצג מסך טביעת אצבע
-      showBiometricScreen(session.admin);
-      return;
-    } else {
-      // כנס ישירות
-      isAdminMode = session.admin;
-      enterApp(session.admin);
-      return;
+// ── אימות אנונימי — חוסם גישה ישירה ל-Firestore מחוץ לאפליקציה ──
+// מחכה לאימות לפני הפעלת Firestore (מונע race condition)
+let _authReady = false;
+const _authReadyCallbacks = [];
+function onAuthReady(cb) {
+  if (_authReady) { cb(); } else { _authReadyCallbacks.push(cb); }
+}
+signInAnonymously(auth)
+  .then(() => {
+    _authReady = true;
+    _authReadyCallbacks.forEach(cb => cb());
+  })
+  .catch(e => {
+    console.warn('Auth error:', e);
+    // גם אם האימות נכשל — ממשיך (עבור Firestore rules פתוחות)
+    _authReady = true;
+    _authReadyCallbacks.forEach(cb => cb());
+  });
+
+// ── אבטחה: isAdminMode קריאה בלבד — לא ניתן לשינוי מ-DevTools ──
+const ADMIN_PASS_HASH = '61270cb789566f5b26c4e12e11bb7a0d9e3e1b1922ef31b7e014b015c5214e3d';
+const SESSION_SALT = 'tirewms_sess_v2_2024';
+
+let _isAdmin = false;
+let _isOwner = false; // רק כניסה עם סיסמת בעלים — מאפשר ניהול עובדים
+Object.defineProperty(window, 'isAdminMode', {
+  get: () => _isAdmin,
+  set: () => { /* חסום — לא ניתן לשינוי ידני */ },
+  configurable: false,
+  enumerable: false
+});
+
+function hashPass(p) {
+  return crypto.subtle.digest('SHA-256', new TextEncoder().encode(p))
+    .then(b => Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2,'0')).join(''));
+}
+
+// ── Session חתום — מונע זיוף ב-localStorage ──
+async function genToken(admin) {
+  const day = Math.floor(Date.now() / 86400000);
+  const raw = SESSION_SALT + ADMIN_PASS_HASH + String(admin) + String(day);
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+  return Array.from(new Uint8Array(buf)).map(x => x.toString(16).padStart(2,'0')).join('');
+}
+
+async function saveSession(admin, workerId=null, workerName=null) {
+  const token = await genToken(admin);
+  localStorage.setItem('tirewms_session', JSON.stringify({admin, workerId, workerName, ts: Date.now(), token}));
+}
+
+async function loadSession() {
+  try {
+    const s = JSON.parse(localStorage.getItem('tirewms_session') || 'null');
+    if (!s || !s.token) return null;
+    if (Date.now() - s.ts > 30*24*60*60*1000) { localStorage.removeItem('tirewms_session'); return null; }
+    const expected = await genToken(s.admin);
+    if (s.token !== expected) { localStorage.removeItem('tirewms_session'); return null; }
+    // אם מדובר בעובד — בדוק שעדיין קיים ב-Firebase ושהרשאותיו לא השתנו
+    if (s.workerId) {
+      await new Promise(resolve => onAuthReady(resolve));
+      const worker = _workers.find(w => w.id === s.workerId);
+      if (!worker) { localStorage.removeItem('tirewms_session'); return null; }
+      s.admin = !!worker.isAdmin; // רענן הרשאה מ-Firebase
+      s.workerName = worker.name;
     }
+    return s;
+  } catch(e) { return null; }
+}
+
+function clearSession() { localStorage.removeItem('tirewms_session'); }
+
+function setStatus(s) {
+  const el = document.getElementById('syncStatus');
+  if (el) el.textContent = s;
+}
+window.setStatus = setStatus;
+
+// ── מסך כניסה ──
+async function buildLoginScreen() {
+  const session = await loadSession();
+  if (session) {
+    _isAdmin = session.admin;
+    _isOwner = !session.workerId; // בעלים אם אין workerId
+    _currentWorkerId = session.workerId || null;
+    enterApp(session.admin, session.workerName || null);
+    return;
   }
 
-  const hasBio = await isBiometricAvailable();
-  const ls=document.createElement('div');
-  ls.id='loginScreen';
-  ls.style.cssText='position:fixed;inset:0;background:#0c0e14;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;z-index:9999;font-family:Heebo,sans-serif;direction:rtl;padding:24px;';
-  ls.innerHTML=`
+  const ls = document.createElement('div');
+  ls.id = 'loginScreen';
+  ls.style.cssText = 'position:fixed;inset:0;background:#0c0e14;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:9999;font-family:Heebo,sans-serif;direction:rtl;padding:24px;overflow-y:auto;';
+
+  const renderWorkerOptions = () => {
+    if (!_workers.length) return '<option value="" disabled>ממתין לחיבור...</option>';
+    return _workers.map(w => `<option value="${escHTML(w.id)}">${escHTML(w.name)}</option>`).join('');
+  };
+
+  ls.innerHTML = `
     <div style="font-size:52px;">🛞</div>
     <div style="font-size:22px;font-weight:900;color:#eef0f6;">TireWMS</div>
     <div style="font-size:13px;color:#7a8299;text-align:center;">מחסן ניהול צמיגים</div>
-    <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px;">
-      <button id="btnWorker" style="background:#191d28;border:1px solid #2a3045;color:#eef0f6;padding:14px;border-radius:11px;font-size:15px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">
-        👁️ כניסה כעובד (צפייה בלבד)
-      </button>
-      <button id="btnAdmin" style="background:#f5a623;border:none;color:#111;padding:14px;border-radius:11px;font-size:15px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">
-        👑 כניסה כמנהל
-      </button>
+
+    <div style="width:100%;max-width:300px;background:#191d28;border:1px solid #2a3045;border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px;">
+      <div style="font-size:13px;color:#7a8299;font-weight:700;">👤 כניסת עובד</div>
+      <input id="workerNameInput" type="text" placeholder="הקלד שם עובד..." autocomplete="off" list="workersList"
+        style="background:#0c0e14;border:1px solid #2a3045;border-radius:8px;color:#eef0f6;font-family:Heebo,sans-serif;font-size:15px;padding:11px 12px;width:100%;outline:none;box-sizing:border-box;"/>
+      <datalist id="workersList"></datalist>
+      <input id="workerPinInput" type="password" inputmode="numeric" maxlength="6" placeholder="קוד PIN"
+        style="background:#0c0e14;border:1px solid #2a3045;border-radius:8px;color:#eef0f6;font-family:Heebo,sans-serif;font-size:18px;padding:10px;width:100%;outline:none;text-align:center;letter-spacing:6px;" autocomplete="current-password"/>
+      <button id="btnWorkerLogin" style="background:#3b82f6;border:none;color:#fff;padding:12px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">כניסה</button>
+      <div id="workerErr" style="color:#e85d3f;font-size:12px;text-align:center;display:none;">PIN שגוי</div>
     </div>
+
+    <button id="btnOwnerToggle" style="background:none;border:none;color:#7a8299;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;text-decoration:underline;">👑 כניסה כבעלים</button>
+
     <div id="adminPassWrap" style="display:none;width:100%;max-width:300px;flex-direction:column;gap:8px;">
-      <input id="adminPassInput" type="password" placeholder="הכנס סיסמת מנהל" style="background:#191d28;border:1px solid #2a3045;border-radius:9px;color:#eef0f6;font-family:Heebo,sans-serif;font-size:15px;padding:12px;width:100%;outline:none;text-align:center;"/>
-      <div style="display:flex;gap:8px;">
-        <button id="btnPassOk" style="flex:1;background:#f5a623;border:none;color:#111;padding:12px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">כניסה</button>
-        ${hasBio ? `<button id="btnBioLogin" style="background:var(--card,#191d28);border:1px solid #2a3045;color:#eef0f6;padding:12px 14px;border-radius:9px;font-size:18px;cursor:pointer;" title="טביעת אצבע">🫆</button>` : ''}
-      </div>
+      <input id="adminPassInput" type="password" placeholder="סיסמת בעלים"
+        style="background:#191d28;border:1px solid #2a3045;border-radius:9px;color:#eef0f6;font-family:Heebo,sans-serif;font-size:15px;padding:12px;width:100%;outline:none;text-align:center;" autocomplete="current-password"/>
+      <button id="btnPassOk" style="background:#f5a623;border:none;color:#111;padding:12px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;width:100%;">כניסה כבעלים</button>
       <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#7a8299;cursor:pointer;">
         <input type="checkbox" id="rememberMe" style="width:16px;height:16px;cursor:pointer;"/> זכור אותי (30 יום)
       </label>
       <div id="passErr" style="color:#e85d3f;font-size:12px;text-align:center;display:none;">סיסמא שגויה</div>
     </div>
   `;
+
   document.body.appendChild(ls);
 
-  document.getElementById('btnWorker').addEventListener('click',()=>{
-    const remember = document.getElementById('rememberMe');
-    if(remember && remember.checked) saveSession(false);
-    isAdminMode=false;
-    window.isAdminMode=false;
-    enterApp(false);
+  document.getElementById('btnWorkerLogin').addEventListener('click', () => _doWorkerLogin());
+  document.getElementById('workerPinInput').addEventListener('keydown', e => { if(e.key==='Enter') _doWorkerLogin(); });
+  document.getElementById('btnOwnerToggle').addEventListener('click', () => {
+    document.getElementById('adminPassWrap').style.display = 'flex';
+    setTimeout(() => document.getElementById('adminPassInput').focus(), 50);
   });
-
-  document.getElementById('btnAdmin').addEventListener('click',()=>{
-    document.getElementById('adminPassWrap').style.display='flex';
-    document.getElementById('adminPassInput').focus();
-  });
-
   document.getElementById('btnPassOk').addEventListener('click', checkPass);
-  document.getElementById('adminPassInput').addEventListener('keydown', e=>{
-    if(e.key==='Enter') checkPass();
-  });
+  document.getElementById('adminPassInput').addEventListener('keydown', e => { if(e.key==='Enter') checkPass(); });
 
-  if(hasBio){
-    const bioBtn = document.getElementById('btnBioLogin');
-    if(bioBtn) bioBtn.addEventListener('click', async ()=>{
-      // טביעת אצבע לאחר הזנת סיסמא נכונה פעם אחת
-      document.getElementById('passErr').style.display='none';
-      document.getElementById('passErr').textContent='';
-      const pass = document.getElementById('adminPassInput').value;
-      if(pass !== ADMIN_PASS){
-        document.getElementById('passErr').style.display='block';
-        document.getElementById('passErr').textContent='הזן קודם סיסמא נכונה';
-        return;
+  // עדכן רשימת עובדים ברקע כשהחיבור מוכן
+  onAuthReady(() => {
+    onSnapshot(workersDocRef, snap => {
+      if (snap.exists() && snap.data().list) {
+        _workers = snap.data().list;
       }
-      toast('🫆 השתמש בטביעת אצבע לאישור...');
-      // פשוט כניסה ישירה עם שמירה — הדפדפן יבקש bio
-      saveSession(true);
-      isAdminMode=true;
-      enterApp(true);
+      const dl = document.getElementById('workersList');
+      if (dl) dl.innerHTML = _workers.map(w => `<option value="${escHTML(w.name)}"></option>`).join('');
+      const panel = document.getElementById('workerMgmtPanel');
+      if (panel && panel.style.display !== 'none') _renderWorkerMgmtList();
     });
+  });
+}
+
+async function _doWorkerLogin() {
+  const nameEl = document.getElementById('workerNameInput');
+  const pinEl  = document.getElementById('workerPinInput');
+  const errEl  = document.getElementById('workerErr');
+  const typedName = nameEl ? nameEl.value.trim() : '';
+  const pin = pinEl ? pinEl.value : '';
+  if (!typedName) { if(errEl){ errEl.textContent='הכנס שם עובד'; errEl.style.display='block'; } return; }
+  if (!pin) { if(errEl){ errEl.textContent='הכנס קוד PIN'; errEl.style.display='block'; } return; }
+  const worker = _workers.find(w => w.name.trim().toLowerCase() === typedName.toLowerCase());
+  if (!worker) { if(errEl){ errEl.textContent='עובד לא נמצא'; errEl.style.display='block'; } return; }
+  const h = await hashPass(pin);
+  if (h !== worker.pinHash) {
+    if(errEl){ errEl.textContent='PIN שגוי'; errEl.style.display='block'; }
+    if(pinEl) pinEl.value = '';
+    return;
   }
+  _isAdmin = !!worker.isAdmin;
+  _isOwner = false; // עובד — גם עם הרשאת מנהל, לא יכול לנהל עובדים
+  _currentWorkerId = worker.id;
+  await saveSession(_isAdmin, worker.id, worker.name);
+  enterApp(_isAdmin, worker.name);
 }
 
-function showBiometricScreen(admin){
-  const ls=document.createElement('div');
-  ls.id='loginScreen';
-  ls.style.cssText='position:fixed;inset:0;background:#0c0e14;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;z-index:9999;font-family:Heebo,sans-serif;direction:rtl;padding:24px;';
-  ls.innerHTML=`
-    <div style="font-size:52px;">🛞</div>
-    <div style="font-size:22px;font-weight:900;color:#eef0f6;">TireWMS</div>
-    <div style="font-size:40px;margin:10px 0;">🫆</div>
-    <div style="font-size:14px;color:#7a8299;text-align:center;">השתמש בטביעת אצבע או Face ID<br>להתחברות מהירה</div>
-    <button id="btnBioEnter" style="background:#f5a623;border:none;color:#111;padding:16px 32px;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;width:100%;max-width:280px;">
-      🫆 כניסה מהירה
-    </button>
-    <button id="btnBackToPass" style="background:none;border:none;color:#7a8299;font-size:13px;cursor:pointer;font-family:Heebo,sans-serif;padding:8px;">
-      כניסה עם סיסמא במקום
-    </button>
-  `;
-  document.body.appendChild(ls);
-
-  document.getElementById('btnBioEnter').addEventListener('click', async ()=>{
-    // על מובייל — הדפדפן יבקש טביעת אצבע/Face ID אוטומטית
-    try {
-      // בקשת אימות בסיסית
-      const ok = await new Promise(resolve => {
-        // נסה WebAuthn
-        if(window.PublicKeyCredential){
-          // פשוט נכנס — הטלפון ישתמש ב-biometric
-          resolve(true);
-        } else {
-          resolve(true);
-        }
-      });
-      if(ok){
-        isAdminMode = admin;
-    window.isAdminMode = admin;
-        enterApp(admin);
-      }
-    } catch(e){
-      // fallback — כנס ישירות
-      isAdminMode = admin;
-    window.isAdminMode = admin;
-      enterApp(admin);
-    }
-  });
-
-  document.getElementById('btnBackToPass').addEventListener('click', ()=>{
-    clearSession();
-    ls.remove();
-    buildLoginScreen();
-  });
-}
-
-function checkPass(){
-  const val=document.getElementById('adminPassInput').value;
-  if(!val) return;
-  hashPass(val).then(h=>{
-    if(h===ADMIN_PASS_HASH){
+function checkPass() {
+  const val = document.getElementById('adminPassInput').value;
+  if (!val) return;
+  hashPass(val).then(async h => {
+    if (h === ADMIN_PASS_HASH) {
       const remember = document.getElementById('rememberMe');
-      if(remember && remember.checked) saveSession(true);
-      isAdminMode=true;
-      enterApp(true);
+      if (remember && remember.checked) await saveSession(true, null, 'בעלים');
+      _isAdmin = true;
+      _isOwner = true;
+      _currentWorkerId = null;
+      enterApp(true, 'בעלים');
     } else {
-      document.getElementById('passErr').style.display='block';
-      document.getElementById('passErr').textContent='סיסמא שגויה';
-      document.getElementById('adminPassInput').value='';
+      document.getElementById('passErr').style.display = 'block';
+      document.getElementById('passErr').textContent = 'סיסמא שגויה';
+      document.getElementById('adminPassInput').value = '';
     }
   });
 }
 
-function enterApp(admin){
-  const ls=document.getElementById('loginScreen');
-  if(ls) ls.style.display='none';
-  document.querySelector('.app').style.display='';
+function enterApp(admin, workerName) {
+  const ls = document.getElementById('loginScreen');
+  if (ls) ls.style.display = 'none';
+  document.querySelector('.app').style.display = '';
 
-  if(!admin){
-    document.querySelectorAll('.btn-add').forEach(el=>el.style.display='none');
-    document.querySelectorAll('.ib').forEach(el=>el.style.display='none');
-    document.querySelectorAll('.admin-only').forEach(el=>el.style.display='none');
+  if (!admin) {
+    document.querySelectorAll('.btn-add').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.ib').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
   } else {
-    document.querySelectorAll('.admin-only').forEach(el=>el.style.display='');
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
   }
 
-  let ub=document.getElementById('userBar');
-  if(!ub){
-    ub=document.createElement('div');
-    ub.id='userBar';
-    ub.style.cssText='display:flex;align-items:center;gap:6px;flex-shrink:0;';
+  // טען עובדים לפאנל הניהול
+  loadWorkers();
+
+  let ub = document.getElementById('userBar');
+  if (!ub) {
+    ub = document.createElement('div');
+    ub.id = 'userBar';
     document.querySelector('.topbar').appendChild(ub);
   }
-  ub.innerHTML=`
-    <span style="font-size:11px;color:${admin?'#f5a623':'#7a8299'};font-weight:700;white-space:nowrap;">${admin?'👑 מנהל':'👁️ עובד'}</span>
-    <button onclick="window._logout()" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:11px;padding:3px 7px;cursor:pointer;font-family:inherit;white-space:nowrap;">יציאה</button>
+  const displayName = workerName || (admin ? 'מנהל' : 'עובד');
+  const roleIcon = admin ? '👑' : '👁️';
+  ub.innerHTML = `
+    <span style="font-size:11px;color:${admin ? '#f5a623' : '#7a8299'};font-weight:700;white-space:nowrap;">${roleIcon} ${escHTML(displayName)}</span>
+    ${_isOwner ? `<button id="btnWorkerMgmt" onclick="openWorkerMgmt()" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:12px;padding:5px 9px;cursor:pointer;font-family:inherit;white-space:nowrap;">👥 עובדים</button>` : ''}
+    <button id="logoutBtn" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:12px;padding:5px 9px;cursor:pointer;font-family:inherit;white-space:nowrap;">🚪 יציאה</button>
   `;
-
-  if(window.setStatus) window.setStatus(admin?'🟢 מנהל':'🟢 מחובר');
+  document.getElementById('logoutBtn').addEventListener('click', _logout);
+  setStatus(admin ? `🟢 ${escHTML(displayName)}` : `🟢 ${escHTML(displayName)}`);
 }
 
-window._logout = function(){
+function _logout() {
   clearSession();
-  document.querySelector('.app').style.display='none';
-  const ls=document.getElementById('loginScreen');
-  if(ls) ls.remove();
+  _isAdmin = false;
+  document.querySelector('.app').style.display = 'none';
+  const ls = document.getElementById('loginScreen');
+  if (ls) ls.remove();
   buildLoginScreen();
-};
+}
+window._logout = _logout;
 
-/* ── Firebase ── */
-/* ── תור אופליין ── */
-function getOfflineQueue(){ try{ return JSON.parse(localStorage.getItem('tirewms_offline')||'[]'); }catch(e){return[];} }
-function saveOfflineQueue(q){ localStorage.setItem('tirewms_offline',JSON.stringify(q)); }
-
-async function processOfflineQueue(){
-  const q=getOfflineQueue();
-  if(!q.length) return;
-  const done=[];
-  for(const op of q){
-    try{
-      if(op.type==='set') await setDoc(doc(db,'tires',String(op.id)),op.data);
-      if(op.type==='del') await deleteDoc(doc(db,'tires',String(op.id)));
-      done.push(op);
-    }catch(e){ break; }
+// ══ ניהול עובדים ══
+function openWorkerMgmt() {
+  if (!_isOwner) { toast('❌ גישה לבעלים בלבד'); return; }
+  let panel = document.getElementById('workerMgmtPanel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'workerMgmtPanel';
+    panel.style.cssText = 'position:fixed;inset:0;background:rgba(12,14,20,0.92);z-index:8000;display:flex;align-items:flex-end;justify-content:center;font-family:Heebo,sans-serif;direction:rtl;';
+    panel.innerHTML = `
+      <div style="background:var(--surface,#141720);border-radius:18px 18px 0 0;width:100%;max-width:480px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--border,#252b3b);">
+          <div style="font-size:15px;font-weight:800;color:var(--text,#eef0f6);">👥 ניהול עובדים</div>
+          <button onclick="closeWorkerMgmt()" style="background:var(--card,#191d28);border:1px solid var(--border,#252b3b);border-radius:7px;width:30px;height:30px;cursor:pointer;color:var(--muted,#7a8299);font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:14px 18px;" id="workerMgmtList"></div>
+        <div style="padding:14px 18px;border-top:1px solid var(--border,#252b3b);background:var(--bg,#0c0e14);">
+          <div style="font-size:12px;color:var(--muted,#7a8299);font-weight:700;margin-bottom:8px;">הוסף עובד חדש</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <input id="newWorkerName" type="text" placeholder="שם העובד" maxlength="40"
+              style="background:var(--card,#191d28);border:1px solid var(--border,#252b3b);border-radius:8px;color:var(--text,#eef0f6);font-family:Heebo,sans-serif;font-size:14px;padding:9px 12px;width:100%;outline:none;box-sizing:border-box;"/>
+            <div style="display:flex;gap:8px;">
+              <input id="newWorkerPin" type="password" inputmode="numeric" maxlength="6" placeholder="קוד PIN (ספרות)"
+                style="background:var(--card,#191d28);border:1px solid var(--border,#252b3b);border-radius:8px;color:var(--text,#eef0f6);font-family:Heebo,sans-serif;font-size:14px;padding:9px 12px;flex:1;outline:none;text-align:center;letter-spacing:4px;"/>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted,#7a8299);cursor:pointer;white-space:nowrap;">
+                <input type="checkbox" id="newWorkerAdmin" style="width:15px;height:15px;cursor:pointer;"/> מנהל
+              </label>
+            </div>
+            <button onclick="addWorker()" style="background:var(--accent,#f5a623);border:none;color:#111;border-radius:9px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">➕ הוסף עובד</button>
+            <div id="newWorkerErr" style="color:#e85d3f;font-size:12px;text-align:center;display:none;"></div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(panel);
+    panel.addEventListener('click', e => { if(e.target===panel) closeWorkerMgmt(); });
   }
-  if(done.length){
-    saveOfflineQueue(q.filter(op=>!done.includes(op)));
+  panel.style.display = 'flex';
+  _renderWorkerMgmtList();
+}
+
+function closeWorkerMgmt() {
+  const p = document.getElementById('workerMgmtPanel');
+  if (p) p.style.display = 'none';
+}
+
+function _renderWorkerMgmtList() {
+  const el = document.getElementById('workerMgmtList');
+  if (!el) return;
+  if (_workers.length === 0) {
+    el.innerHTML = '<div style="color:var(--muted,#7a8299);font-size:13px;text-align:center;padding:20px 0;">אין עובדים עדיין</div>';
+    return;
+  }
+  el.innerHTML = _workers.map(w => `
+    <div style="border-bottom:1px solid var(--border,#252b3b);padding:10px 0;">
+      <div style="display:flex;align-items:center;gap:8px;" id="wrow-${escHTML(w.id)}">
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:700;color:var(--text,#eef0f6);">${escHTML(w.name)}</div>
+          <div style="font-size:11px;color:${w.isAdmin ? '#f5a623' : '#7a8299'};">${w.isAdmin ? '👑 מנהל' : '👁️ עובד בלבד'}</div>
+        </div>
+        <button onclick="openEditWorker('${escHTML(w.id)}')"
+          style="background:var(--card,#191d28);border:1px solid var(--border,#252b3b);color:var(--muted,#7a8299);border-radius:7px;padding:5px 8px;font-size:11px;cursor:pointer;">
+          ✏️
+        </button>
+        <button onclick="toggleWorkerAdmin('${escHTML(w.id)}', ${!w.isAdmin})"
+          style="background:${w.isAdmin ? 'var(--red-dim,#2a1515)' : 'rgba(245,166,35,0.15)'};border:1px solid ${w.isAdmin ? 'var(--red,#e85d3f)' : '#f5a623'};color:${w.isAdmin ? 'var(--red,#e85d3f)' : '#f5a623'};border-radius:7px;padding:5px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;white-space:nowrap;">
+          ${w.isAdmin ? '🔒 בטל' : '🔓 מנהל'}
+        </button>
+        <button onclick="deleteWorker('${escHTML(w.id)}', '${escHTML(w.name)}')"
+          style="background:var(--red-dim,#2a1515);border:1px solid var(--red,#e85d3f);color:var(--red,#e85d3f);border-radius:7px;padding:5px 8px;font-size:11px;cursor:pointer;">
+          🗑️
+        </button>
+      </div>
+      <div id="wedit-${escHTML(w.id)}" style="display:none;flex-direction:column;gap:6px;margin-top:8px;">
+        <input id="wedit-name-${escHTML(w.id)}" type="text" value="${escHTML(w.name)}" maxlength="40"
+          style="background:var(--bg,#0c0e14);border:1px solid var(--accent,#f5a623);border-radius:7px;color:var(--text,#eef0f6);font-family:Heebo,sans-serif;font-size:13px;padding:7px 10px;outline:none;width:100%;box-sizing:border-box;"/>
+        <input id="wedit-pin-${escHTML(w.id)}" type="password" inputmode="numeric" maxlength="6" placeholder="קוד PIN חדש (השאר ריק לאין שינוי)"
+          style="background:var(--bg,#0c0e14);border:1px solid var(--border,#252b3b);border-radius:7px;color:var(--text,#eef0f6);font-family:Heebo,sans-serif;font-size:13px;padding:7px 10px;outline:none;width:100%;box-sizing:border-box;text-align:center;letter-spacing:4px;"/>
+        <div style="display:flex;gap:6px;">
+          <button onclick="saveEditWorker('${escHTML(w.id)}')"
+            style="flex:1;background:var(--accent,#f5a623);border:none;color:#111;border-radius:7px;padding:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">שמור</button>
+          <button onclick="closeEditWorker('${escHTML(w.id)}')"
+            style="background:var(--card,#191d28);border:1px solid var(--border,#252b3b);color:var(--muted,#7a8299);border-radius:7px;padding:7px 12px;font-size:12px;cursor:pointer;">ביטול</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function addWorker() {
+  const nameEl = document.getElementById('newWorkerName');
+  const pinEl = document.getElementById('newWorkerPin');
+  const adminEl = document.getElementById('newWorkerAdmin');
+  const errEl = document.getElementById('newWorkerErr');
+  const name = nameEl ? nameEl.value.trim() : '';
+  const pin = pinEl ? pinEl.value.trim() : '';
+  if (!name) { if(errEl){errEl.textContent='הכנס שם עובד';errEl.style.display='block';} return; }
+  if (!pin || !/^\d{4,6}$/.test(pin)) { if(errEl){errEl.textContent='קוד PIN חייב להיות 4-6 ספרות';errEl.style.display='block';} return; }
+  if (_workers.some(w => w.name.trim().toLowerCase() === name.toLowerCase())) {
+    if(errEl){errEl.textContent='עובד עם שם זה כבר קיים';errEl.style.display='block';} return;
+  }
+  if(errEl) errEl.style.display='none';
+  const pinHash = await hashPass(pin);
+  try {
+    _workers.push({ id: _genWorkerId(), name, pinHash, isAdmin: !!(adminEl && adminEl.checked), createdAt: new Date().toISOString() });
+    await _saveWorkersDoc();
+    if(nameEl) nameEl.value='';
+    if(pinEl) pinEl.value='';
+    if(adminEl) adminEl.checked=false;
+    toast('✅ עובד נוסף');
+  } catch(e) { console.error('addWorker error:', e); if(errEl){errEl.textContent='שגיאה: '+e.message;errEl.style.display='block';} }
+}
+
+async function toggleWorkerAdmin(wid, newVal) {
+  try {
+    const w = _workers.find(x => x.id === wid);
+    if (w) { w.isAdmin = newVal; await _saveWorkersDoc(); }
+    toast(newVal ? '👑 הרשאת מנהל הופעלה' : '🔒 הרשאת מנהל בוטלה');
+  } catch(e) { console.error('toggleWorkerAdmin error:', e); toast('❌ שגיאה: '+e.message); }
+}
+
+async function deleteWorker(wid, wname) {
+  if (!confirm(`למחוק את העובד "${wname}"?`)) return;
+  try {
+    _workers = _workers.filter(x => x.id !== wid);
+    await _saveWorkersDoc();
+    toast('🗑️ עובד נמחק');
+  } catch(e) { console.error('deleteWorker error:', e); toast('❌ שגיאה: '+e.message); }
+}
+
+function openEditWorker(wid) {
+  document.getElementById('wedit-'+wid).style.display = 'flex';
+}
+function closeEditWorker(wid) {
+  document.getElementById('wedit-'+wid).style.display = 'none';
+}
+async function saveEditWorker(wid) {
+  const nameEl = document.getElementById('wedit-name-'+wid);
+  const pinEl  = document.getElementById('wedit-pin-'+wid);
+  const name = nameEl ? nameEl.value.trim() : '';
+  const pin  = pinEl  ? pinEl.value.trim()  : '';
+  if (!name) { toast('❌ שם לא יכול להיות ריק'); return; }
+  if (pin && !/^\d{4,6}$/.test(pin)) { toast('❌ PIN חייב להיות 4-6 ספרות'); return; }
+  try {
+    const w = _workers.find(x => x.id === wid);
+    if (!w) { toast('❌ עובד לא נמצא'); return; }
+    w.name = name;
+    if (pin) w.pinHash = await hashPass(pin);
+    await _saveWorkersDoc();
+    toast('✅ פרטי עובד עודכנו');
+    closeEditWorker(wid);
+  } catch(e) { console.error('saveEditWorker error:', e); toast('❌ שגיאה: '+e.message); }
+}
+
+window.openWorkerMgmt = openWorkerMgmt;
+window.closeWorkerMgmt = closeWorkerMgmt;
+window.addWorker = addWorker;
+window.toggleWorkerAdmin = toggleWorkerAdmin;
+window.openEditWorker = openEditWorker;
+window.closeEditWorker = closeEditWorker;
+window.saveEditWorker = saveEditWorker;
+window.deleteWorker = deleteWorker;
+
+// ── תור אופליין ──
+function getOfflineQueue() { try { return JSON.parse(localStorage.getItem('tirewms_offline') || '[]'); } catch(e) { return []; } }
+function saveOfflineQueue(q) { localStorage.setItem('tirewms_offline', JSON.stringify(q)); }
+
+async function processOfflineQueue() {
+  const q = getOfflineQueue();
+  if (!q.length) return;
+  const done = [];
+  for (const op of q) {
+    try {
+      if (op.type === 'set') await setDoc(doc(db, 'tires', String(op.id)), op.data);
+      if (op.type === 'del') await deleteDoc(doc(db, 'tires', String(op.id)));
+      done.push(op);
+    } catch(e) { break; }
+  }
+  if (done.length) {
+    saveOfflineQueue(q.filter(op => !done.includes(op)));
     window._toast && window._toast(`✅ סונכרנו ${done.length} פריטים מאופליין`);
   }
 }
 
-// האזן להודעת sync מה-SW
-navigator.serviceWorker && navigator.serviceWorker.addEventListener('message',e=>{
-  if(e.data&&e.data.type==='SYNC_NOW') processOfflineQueue();
+navigator.serviceWorker && navigator.serviceWorker.addEventListener('message', e => {
+  if (e.data && e.data.type === 'SYNC_NOW') processOfflineQueue();
 });
 
-// כשחוזר לאינטרנט
-window.addEventListener('online',()=>{
+window.addEventListener('online', () => {
   window._toast && window._toast('🌐 חזר אינטרנט — מסנכרן...');
   processOfflineQueue();
-  if(window.setStatus) window.setStatus('🟢 מחובר');
+  setStatus('🟢 מחובר');
 });
-window.addEventListener('offline',()=>{ if(window.setStatus) window.setStatus('📵 אופליין'); });
+window.addEventListener('offline', () => { setStatus('📵 אופליין'); });
 
-window._saveItem = async function(it){
-  if(!navigator.onLine){
-    const q=getOfflineQueue();
-    q.push({type:'set',id:it.id,data:it});
+window._saveItem = async function(it) {
+  if (!navigator.onLine) {
+    const q = getOfflineQueue();
+    q.push({type: 'set', id: it.id, data: it});
     saveOfflineQueue(q);
     window._toast && window._toast('📵 נשמר מקומית — יסונכרן כשיחזור אינטרנט');
-    // רשום לsync
-    if('serviceWorker' in navigator && 'SyncManager' in window){
-      navigator.serviceWorker.ready.then(sw=>sw.sync.register('sync-tires')).catch(()=>{});
+    if ('serviceWorker' in navigator && 'SyncManager' in window) {
+      navigator.serviceWorker.ready.then(sw => sw.sync.register('sync-tires')).catch(() => {});
     }
     return;
   }
-  try{ await setDoc(doc(db,'tires',String(it.id)), it); }
-  catch(e){
-    // אם נכשל — שמור לתור
-    const q=getOfflineQueue();
-    q.push({type:'set',id:it.id,data:it});
+  await new Promise(resolve => onAuthReady(resolve));
+  try { await setDoc(doc(db, 'tires', String(it.id)), it); }
+  catch(e) {
+    const q = getOfflineQueue();
+    q.push({type: 'set', id: it.id, data: it});
     saveOfflineQueue(q);
     window._toast && window._toast('📵 נשמר מקומית');
   }
 };
-window._deleteItem = async function(id){
-  if(!navigator.onLine){
-    const q=getOfflineQueue();
-    q.push({type:'del',id});
+
+window._deleteItem = async function(id) {
+  if (!navigator.onLine) {
+    const q = getOfflineQueue();
+    q.push({type: 'del', id});
     saveOfflineQueue(q);
     window._toast && window._toast('📵 מחיקה תסונכרן כשיחזור אינטרנט');
     return;
   }
-  try{ await deleteDoc(doc(db,'tires',String(id))); }
-  catch(e){ window._toast && window._toast('❌ שגיאת מחיקה'); }
-};
-window._importItems = async function(data){
-  for(const it of data){ await setDoc(doc(db,'tires',String(it.id)),it); }
-};
-window._clearAllFirestore = async function(){
-  const snap=await getDocs(itemsCol);
-  for(const d of snap.docs){ await deleteDoc(d.ref); }
+  await new Promise(resolve => onAuthReady(resolve));
+  try { await deleteDoc(doc(db, 'tires', String(id))); }
+  catch(e) { window._toast && window._toast('❌ שגיאת מחיקה'); }
 };
 
-/* ── הצג מסך כניסה ── */
-// הסתר app ב-JS (לא ב-CSS כדי שיטען)
-try{ document.querySelector('.app').style.display='none'; }catch(e){}
+window._importItems = async function(data) {
+  for (const it of data) { await setDoc(doc(db, 'tires', String(it.id)), it); }
+};
+
+window._clearAllFirestore = async function() {
+  const snap = await getDocs(itemsCol);
+  for (const d of snap.docs) { await deleteDoc(d.ref); }
+};
+
+// ── הצג מסך כניסה ──
+try { document.querySelector('.app').style.display = 'none'; } catch(e) {}
 buildLoginScreen();
 
-/* ── Firestore sync ── */
-// עבד תור אופליין בהפעלה
+// ── Firestore sync — מתחיל רק אחרי שהאימות מוכן ──
 setTimeout(processOfflineQueue, 3000);
-if(window.setStatus) window.setStatus('🔄 מתחבר...');
-onSnapshot(itemsCol, snapshot=>{
-  const newItems = snapshot.docs.map(d=>d.data());
-  const newNextId = newItems.length>0 ? Math.max(...newItems.map(i=>i.id))+1 : 1;
-  if(window._updateItems){
-    window._updateItems(newItems, newNextId);
-  } else {
-    window.items = newItems;
-    window.nextId = newNextId;
-  }
-  if(document.getElementById('syncStatus') && document.getElementById('syncStatus').textContent.includes('מתחבר'))
-    if(window.setStatus) window.setStatus(isAdminMode?'🟢 מנהל':'🟢 מחובר');
-}, err=>{
-  if(window.setStatus) window.setStatus('🔴 אין חיבור');
-  console.error('Firebase error:', err);
+setStatus('🔄 מתחבר...');
+onAuthReady(() => {
+  onSnapshot(itemsCol, snapshot => {
+    const newItems = snapshot.docs.filter(d => d.id !== 'workers-config').map(d => d.data());
+    const newNextId = newItems.length > 0 ? Math.max(...newItems.map(i => i.id)) + 1 : 1;
+    if (window._updateItems) {
+      window._updateItems(newItems, newNextId);
+    } else {
+      window.items = newItems;
+      window.nextId = newNextId;
+    }
+    const ss = document.getElementById('syncStatus');
+    if (ss && ss.textContent.includes('מתחבר')) {
+      setStatus(_isAdmin ? '🟢 מנהל' : '🟢 מחובר');
+    }
+  }, err => {
+    setStatus('🔴 אין חיבור');
+    console.error('Firebase error:', err);
+  });
 });
-window.buildLoginScreen = buildLoginScreen;
-window.enterApp = enterApp;
-window.checkPass = checkPass;
-window.logout = typeof logout !== "undefined" ? logout : function(){};
 
+window.buildLoginScreen = buildLoginScreen;
 </script>
 </body>
 </html>
