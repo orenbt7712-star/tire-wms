@@ -3817,6 +3817,7 @@ const ADMIN_PASS_HASH = '61270cb789566f5b26c4e12e11bb7a0d9e3e1b1922ef31b7e014b01
 const SESSION_SALT = 'tirewms_sess_v2_2024';
 
 let _isAdmin = false;
+let _isOwner = false; // רק כניסה עם סיסמת בעלים — מאפשר ניהול עובדים
 Object.defineProperty(window, 'isAdminMode', {
   get: () => _isAdmin,
   set: () => { /* חסום — לא ניתן לשינוי ידני */ },
@@ -3874,6 +3875,7 @@ async function buildLoginScreen() {
   const session = await loadSession();
   if (session) {
     _isAdmin = session.admin;
+    _isOwner = !session.workerId; // בעלים אם אין workerId
     _currentWorkerId = session.workerId || null;
     enterApp(session.admin, session.workerName || null);
     return;
@@ -3959,6 +3961,7 @@ async function _doWorkerLogin() {
     return;
   }
   _isAdmin = !!worker.isAdmin;
+  _isOwner = false; // עובד — גם עם הרשאת מנהל, לא יכול לנהל עובדים
   _currentWorkerId = worker.id;
   await saveSession(_isAdmin, worker.id, worker.name);
   enterApp(_isAdmin, worker.name);
@@ -3972,6 +3975,7 @@ function checkPass() {
       const remember = document.getElementById('rememberMe');
       if (remember && remember.checked) await saveSession(true, null, 'בעלים');
       _isAdmin = true;
+      _isOwner = true;
       _currentWorkerId = null;
       enterApp(true, 'בעלים');
     } else {
@@ -4008,7 +4012,7 @@ function enterApp(admin, workerName) {
   const roleIcon = admin ? '👑' : '👁️';
   ub.innerHTML = `
     <span style="font-size:11px;color:${admin ? '#f5a623' : '#7a8299'};font-weight:700;white-space:nowrap;">${roleIcon} ${escHTML(displayName)}</span>
-    ${admin ? `<button id="btnWorkerMgmt" onclick="openWorkerMgmt()" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:12px;padding:5px 9px;cursor:pointer;font-family:inherit;white-space:nowrap;">👥 עובדים</button>` : ''}
+    ${_isOwner ? `<button id="btnWorkerMgmt" onclick="openWorkerMgmt()" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:12px;padding:5px 9px;cursor:pointer;font-family:inherit;white-space:nowrap;">👥 עובדים</button>` : ''}
     <button id="logoutBtn" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:12px;padding:5px 9px;cursor:pointer;font-family:inherit;white-space:nowrap;">🚪 יציאה</button>
   `;
   document.getElementById('logoutBtn').addEventListener('click', _logout);
@@ -4027,6 +4031,7 @@ window._logout = _logout;
 
 // ══ ניהול עובדים ══
 function openWorkerMgmt() {
+  if (!_isOwner) { toast('❌ גישה לבעלים בלבד'); return; }
   let panel = document.getElementById('workerMgmtPanel');
   if (!panel) {
     panel = document.createElement('div');
