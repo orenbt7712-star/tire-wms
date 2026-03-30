@@ -317,6 +317,10 @@ td{padding:8px 10px;vertical-align:middle;}
   /* כפתורי פעולה בטבלה */
   .ib{min-width:32px;min-height:32px;}
 }
+/* ════ מערכת הרשאות — שלוש רמות ════ */
+.loc-edit-btn{display:none!important;}
+body.is-admin-worker .loc-edit-btn{display:inline-flex!important;}
+body:not(.is-owner) .owner-only{display:none!important;}
 </style>
 
 <script>
@@ -363,8 +367,8 @@ if('serviceWorker' in navigator){
   <span id="syncStatus" style="font-size:11px;color:var(--muted);flex-shrink:0;">🔄</span>
   <button onclick="openAccessPanel()" title="הגדרות תצוגה" style="background:var(--card);border:1px solid var(--border);border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex-shrink:0;">⚙️</button>
   <button id="langBtn" onclick="toggleLang()" title="שפה / لغة" style="background:var(--card);border:1px solid var(--border);border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex-shrink:0;">🌐</button>
-  <button class="btn-locate" onclick="openExcelImportPanel()" title="ייבוא מ-Excel">📊</button>
-  <button class="btn-locate" onclick="showBackupMenu()" title="גיבוי / ייבוא">💾</button>
+  <button class="btn-locate owner-only" onclick="openExcelImportPanel()" title="ייבוא מ-Excel">📊</button>
+  <button class="btn-locate owner-only" onclick="showBackupMenu()" title="גיבוי / ייבוא">💾</button>
   <button class="btn-locate" onclick="locateNearest()" title="מצא פריט קריטי">📍</button>
   <button class="btn-add" onclick="openAddModal()" title="הוסף צמיג">＋</button>
 </div>
@@ -801,6 +805,32 @@ if('serviceWorker' in navigator){
   </div>
 </div>
 
+<!-- מודל עדכון מיקום — עובד מנהל -->
+<div class="conf-ov" id="locEditOv">
+  <div class="conf-box" style="max-width:320px;text-align:right;direction:rtl;">
+    <h4 style="margin-bottom:14px;">📍 עדכון מיקום</h4>
+    <div id="locEditItemName" style="font-size:13px;color:var(--muted);margin-bottom:14px;"></div>
+    <div class="fi" style="margin-bottom:12px;">
+      <label>עמודה / כלוב</label>
+      <input id="locEditCol" type="text" placeholder="לדוג׳ מי.3.2" autocomplete="off"/>
+    </div>
+    <div class="fi" style="margin-bottom:16px;">
+      <label>קומה</label>
+      <select id="locEditFloor">
+        <option value="1">קומה 1</option>
+        <option value="2">קומה 2</option>
+        <option value="3">קומה 3</option>
+        <option value="4">קומה 4</option>
+        <option value="5">קומה 5</option>
+      </select>
+    </div>
+    <div class="conf-acts">
+      <button class="btn btn-ghost" onclick="closeLocEdit()">ביטול</button>
+      <button class="btn btn-green" id="locEditSaveBtn" onclick="saveLocEdit()">💾 שמור מיקום</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -1061,8 +1091,9 @@ function viewRow(it){
       ${it.rahava?`<span style="color:var(--border2)">·</span><span><span class="lp" style="color:var(--red);">📦</span> רחבה</span>`:''}
     </div></td>
     <td><div class="acts">
-      <button class="ib" onclick="event.stopPropagation();startEdit(${it.id})">✏️</button>
-      <button class="ib del" onclick="event.stopPropagation();askDelete(${it.id})">🗑️</button>
+      <button class="ib owner-only" onclick="event.stopPropagation();startEdit(${it.id})" title="עריכה מלאה">✏️</button>
+      <button class="ib del owner-only" onclick="event.stopPropagation();askDelete(${it.id})" title="מחיקה">🗑️</button>
+      <button class="ib loc-edit-btn" onclick="event.stopPropagation();openLocationEdit(${it.id})" title="עדכן מיקום">📍</button>
     </div></td>
   </tr>`;
 }
@@ -1202,6 +1233,7 @@ document.addEventListener('keydown',e=>{
 
 /* ADD */
 function openAddModal(){
+  if(!_isOwner){toast('❌ גישה לבעלים בלבד');return;}
   ['aSz','aBr','aMo','aNo','aCo','aFl','aP1','aP2','aPn1','aPn2','aAgr'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('addOverlay').classList.add('open');
   setTimeout(()=>document.getElementById('aSz').focus(),80);
@@ -1247,12 +1279,42 @@ function addItem(){
 
 /* DELETE */
 function askDelete(id){
+  if(!_isOwner){toast('❌ גישה לבעלים בלבד');return;}
   pendingDel=id;
   const it=items.find(x=>x.id===id);
   document.getElementById('confMsg').textContent=`האם למחוק "${it.brand} ${sz(it)}"?`;
   document.getElementById('confOv').classList.add('open');
 }
 function closeConf(){pendingDel=null;document.getElementById('confOv').classList.remove('open');}
+
+// ── עדכון מיקום (לעובד מנהל) ──
+let _locEditId=null;
+function openLocationEdit(id){
+  if(!_isAdmin){toast('❌ אין הרשאה');return;}
+  const it=items.find(x=>x.id===id);
+  if(!it) return;
+  _locEditId=id;
+  const nameEl=document.getElementById('locEditItemName');
+  if(nameEl) nameEl.textContent=`${it.brand||''} ${it.w?it.w+'/'+it.p+'R'+it.d:''} — ${it.model||''}`.trim();
+  document.getElementById('locEditCol').value=it.col||'';
+  const fl=document.getElementById('locEditFloor');
+  if(fl){ fl.value=String(it.floor||'1'); }
+  document.getElementById('locEditOv').classList.add('open');
+}
+function closeLocEdit(){
+  document.getElementById('locEditOv').classList.remove('open');
+  _locEditId=null;
+}
+function saveLocEdit(){
+  if(!_isAdmin||!_locEditId) return;
+  const it=items.find(x=>x.id===_locEditId);
+  if(!it) return;
+  it.col=document.getElementById('locEditCol').value.trim();
+  it.floor=document.getElementById('locEditFloor').value;
+  if(window._saveItem) window._saveItem(it);
+  closeLocEdit();
+  toast('✅ מיקום עודכן');
+}
 function doDelete(){
   if(window._deleteItem){
     window._deleteItem(pendingDel);
@@ -3623,6 +3685,7 @@ window.resetTurnButtons=resetTurnButtons;
 
 
 function showBackupMenu(){
+  if(!_isOwner){toast('❌ גישה לבעלים בלבד');return;}
   document.getElementById('backupMenu').style.display='flex';
 }
 function closeBackupMenu(){
@@ -3866,6 +3929,9 @@ if(typeof closeAddModal!=="undefined") window.closeAddModal=closeAddModal;
 if(typeof doDelete!=="undefined") window.doDelete=doDelete;
 if(typeof openAddModal!=="undefined") window.openAddModal=openAddModal;
 if(typeof closeConf!=="undefined") window.closeConf=closeConf;
+if(typeof openLocationEdit!=="undefined") window.openLocationEdit=openLocationEdit;
+if(typeof closeLocEdit!=="undefined") window.closeLocEdit=closeLocEdit;
+if(typeof saveLocEdit!=="undefined") window.saveLocEdit=saveLocEdit;
 if(typeof exportJSON!=="undefined") window.exportJSON=exportJSON;
 if(typeof prevPage!=="undefined") window.prevPage=prevPage;
 if(typeof startEdit!=="undefined") window.startEdit=startEdit;
@@ -4131,11 +4197,24 @@ function enterApp(admin, workerName) {
   if (ls) ls.style.display = 'none';
   document.querySelector('.app').style.display = '';
 
+  // הגדר מחלקות הרשאה על ה-body
+  document.body.classList.remove('is-owner','is-admin-worker');
+  if (_isOwner) {
+    document.body.classList.add('is-owner');
+  } else if (_isAdmin) {
+    document.body.classList.add('is-admin-worker');
+  }
+
   if (!admin) {
+    // עובד רגיל — view only
     document.querySelectorAll('.btn-add').forEach(el => el.style.display = 'none');
-    document.querySelectorAll('.ib').forEach(el => el.style.display = 'none');
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+  } else if (!_isOwner) {
+    // עובד מנהל — ניהול מיקומים בלבד
+    document.querySelectorAll('.btn-add').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
   } else {
+    // בעלים — גישה מלאה
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
   }
 
@@ -4162,6 +4241,8 @@ function enterApp(admin, workerName) {
 function _logout() {
   clearSession();
   _isAdmin = false;
+  _isOwner = false;
+  document.body.classList.remove('is-owner','is-admin-worker');
   document.querySelector('.app').style.display = 'none';
   const ls = document.getElementById('loginScreen');
   if (ls) ls.remove();
