@@ -3767,7 +3767,7 @@ const db = getFirestore(fbApp);
 const auth = getAuth(fbApp);
 const itemsCol = collection(db, 'tires');
 // עובדים נשמרים כמסמך מיוחד בתוך אוסף tires (שיש לו הרשאות)
-const WORKERS_DOC_ID = '__workers__';
+const WORKERS_DOC_ID = 'workers-config';
 const workersDocRef = doc(db, 'tires', WORKERS_DOC_ID);
 
 // ── רשימת עובדים (מסונכרנת מ-Firebase) ──
@@ -4270,7 +4270,7 @@ setTimeout(processOfflineQueue, 3000);
 setStatus('🔄 מתחבר...');
 onAuthReady(() => {
   onSnapshot(itemsCol, snapshot => {
-    const newItems = snapshot.docs.filter(d => d.id !== '__workers__').map(d => d.data());
+    const newItems = snapshot.docs.filter(d => d.id !== 'workers-config').map(d => d.data());
     const newNextId = newItems.length > 0 ? Math.max(...newItems.map(i => i.id)) + 1 : 1;
     if (window._updateItems) {
       window._updateItems(newItems, newNextId);
