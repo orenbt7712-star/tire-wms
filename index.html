@@ -317,6 +317,11 @@ td{padding:8px 10px;vertical-align:middle;}
   /* כפתורי פעולה בטבלה */
   .ib{min-width:32px;min-height:32px;}
 }
+/* ════ מערכת הרשאות — שלוש רמות ════ */
+.loc-edit-btn{display:none!important;}
+body.is-admin-worker .loc-edit-btn{display:inline-flex!important;}
+body.is-owner .loc-edit-btn{display:inline-flex!important;}
+body:not(.is-owner) .owner-only{display:none!important;}
 </style>
 
 <script>
@@ -363,7 +368,8 @@ if('serviceWorker' in navigator){
   <span id="syncStatus" style="font-size:11px;color:var(--muted);flex-shrink:0;">🔄</span>
   <button onclick="openAccessPanel()" title="הגדרות תצוגה" style="background:var(--card);border:1px solid var(--border);border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex-shrink:0;">⚙️</button>
   <button id="langBtn" onclick="toggleLang()" title="שפה / لغة" style="background:var(--card);border:1px solid var(--border);border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex-shrink:0;">🌐</button>
-  <button class="btn-locate" onclick="showBackupMenu()" title="גיבוי / ייבוא">💾</button>
+  <button class="btn-locate owner-only" onclick="openExcelImportPanel()" title="ייבוא מ-Excel">📊</button>
+  <button class="btn-locate owner-only" onclick="showBackupMenu()" title="גיבוי / ייבוא">💾</button>
   <button class="btn-locate" onclick="locateNearest()" title="מצא פריט קריטי">📍</button>
   <button class="btn-add" onclick="openAddModal()" title="הוסף צמיג">＋</button>
 </div>
@@ -389,6 +395,48 @@ if('serviceWorker' in navigator){
   </div>
 </div>
 
+<!-- EXCEL IMPORT PANEL -->
+<div id="excelImportOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:8500;align-items:flex-end;justify-content:center;font-family:Heebo,sans-serif;direction:rtl;">
+  <div style="background:var(--surface,#141720);border-radius:18px 18px 0 0;width:100%;max-width:520px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;">
+    <!-- כותרת -->
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--border,#252b3b);flex-shrink:0;">
+      <div style="font-size:15px;font-weight:900;color:var(--text,#eef0f6);">📊 ייבוא מלאי מ-Excel</div>
+      <button onclick="closeExcelImportPanel()" style="background:var(--card,#191d28);border:1px solid var(--border,#252b3b);border-radius:7px;width:32px;height:32px;cursor:pointer;color:var(--muted,#7a8299);font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+    <div id="excelImportBody" style="flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:14px;">
+      <!-- שלב 1: העלאת קובץ -->
+      <div id="excelStep1">
+        <div onclick="document.getElementById('importExcelDirect').click()"
+             style="border:2px dashed var(--border,#252b3b);border-radius:14px;padding:32px 20px;text-align:center;cursor:pointer;transition:border-color .2s;"
+             onmouseenter="this.style.borderColor='var(--accent)'" onmouseleave="this.style.borderColor='var(--border)'">
+          <div style="font-size:36px;margin-bottom:10px;">📂</div>
+          <div style="font-size:14px;font-weight:700;color:var(--text);">לחץ לבחירת קובץ Excel</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:6px;">.xlsx / .xls / .csv</div>
+        </div>
+        <input type="file" id="importExcelDirect" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleExcelImportFile(this)"/>
+        <button onclick="downloadExcelTemplate()"
+                style="width:100%;margin-top:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-family:Heebo,sans-serif;font-size:13px;font-weight:700;padding:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;">
+          ⬇️ הורד תבנית Excel לדוגמה
+        </button>
+        <div style="margin-top:14px;background:var(--card2,#1e2230);border-radius:10px;padding:12px 14px;font-size:12px;color:var(--muted);">
+          <div style="font-weight:700;margin-bottom:6px;color:var(--text);">📋 שמות עמודות מומלצים:</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+            <span>• <b>מידה</b> — 205/55R16</span>
+            <span>• <b>מותג</b> — Michelin</span>
+            <span>• <b>דגם</b> — Primacy 4</span>
+            <span>• <b>כמות</b> — 4</span>
+            <span>• <b>עמודה</b> — מי.3.2</span>
+            <span>• <b>קומה</b> — 1</span>
+            <span>• <b>הערות</b> — טקסט חופשי</span>
+          </div>
+        </div>
+      </div>
+      <!-- שלב 2: מיפוי עמודות + תצוגה מקדימה -->
+      <div id="excelStep2" style="display:none;"></div>
+    </div>
+  </div>
+</div>
+
 <!-- FILTERS ROW -->
 <div class="filters-row">
   <select class="qsel" id="fBrand" onchange="applyFilters()">
@@ -404,11 +452,12 @@ if('serviceWorker' in navigator){
 <div style="padding:10px 12px;background:var(--bg);border-bottom:1px solid var(--border);">
   <div style="display:flex;align-items:center;background:var(--card);border:1.5px solid var(--border2);border-radius:12px;padding:0 14px;height:46px;gap:10px;">
     <span style="color:var(--muted);font-size:18px;">🔍</span>
-    <input id="mainSearch" type="text" placeholder="חיפוש לפי מידה, מותג, מיקום..."
+    <input id="mainSearch" type="tel" placeholder="חיפוש לפי מידה, מותג, מיקום..."
+      inputmode="tel"
       maxlength="20"
       oninput="handleSearchInput(this)"
       onkeydown="if(event.key==='Escape'||event.key==='Delete'){clearSearch();}"
-      style="flex:1;background:none;border:none;outline:none;color:var(--text);font-size:16px;font-family:inherit;direction:rtl;"/>
+      style="flex:1;background:none;border:none;outline:none;color:var(--text);font-size:16px;font-family:inherit;text-align:right;unicode-bidi:plaintext;"/>
     <button onclick="clearSearch()" id="clearSearchBtn"
       style="display:none;background:var(--card2);border:1px solid var(--border);border-radius:7px;color:var(--muted);font-size:14px;cursor:pointer;padding:3px 9px;line-height:1.4;">✕</button>
   </div>
@@ -758,6 +807,32 @@ if('serviceWorker' in navigator){
   </div>
 </div>
 
+<!-- מודל עדכון מיקום — עובד מנהל -->
+<div class="conf-ov" id="locEditOv">
+  <div class="conf-box" style="max-width:320px;text-align:right;direction:rtl;">
+    <h4 style="margin-bottom:14px;">📍 עדכון מיקום</h4>
+    <div id="locEditItemName" style="font-size:13px;color:var(--muted);margin-bottom:14px;"></div>
+    <div class="fi" style="margin-bottom:12px;">
+      <label>עמודה / כלוב</label>
+      <input id="locEditCol" type="text" placeholder="לדוג׳ מי.3.2" autocomplete="off"/>
+    </div>
+    <div class="fi" style="margin-bottom:16px;">
+      <label>קומה</label>
+      <select id="locEditFloor">
+        <option value="1">קומה 1</option>
+        <option value="2">קומה 2</option>
+        <option value="3">קומה 3</option>
+        <option value="4">קומה 4</option>
+        <option value="5">קומה 5</option>
+      </select>
+    </div>
+    <div class="conf-acts">
+      <button class="btn btn-ghost" onclick="closeLocEdit()">ביטול</button>
+      <button class="btn btn-green" id="locEditSaveBtn" onclick="saveLocEdit()">💾 שמור מיקום</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -1018,8 +1093,9 @@ function viewRow(it){
       ${it.rahava?`<span style="color:var(--border2)">·</span><span><span class="lp" style="color:var(--red);">📦</span> רחבה</span>`:''}
     </div></td>
     <td><div class="acts">
-      <button class="ib" onclick="event.stopPropagation();startEdit(${it.id})">✏️</button>
-      <button class="ib del" onclick="event.stopPropagation();askDelete(${it.id})">🗑️</button>
+      <button class="ib owner-only" onclick="event.stopPropagation();startEdit(${it.id})" title="עריכה מלאה">✏️</button>
+      <button class="ib del owner-only" onclick="event.stopPropagation();askDelete(${it.id})" title="מחיקה">🗑️</button>
+      <button class="ib loc-edit-btn" onclick="event.stopPropagation();openLocationEdit(${it.id})" title="עדכן מיקום">📍</button>
     </div></td>
   </tr>`;
 }
@@ -1159,6 +1235,7 @@ document.addEventListener('keydown',e=>{
 
 /* ADD */
 function openAddModal(){
+  if(!_isOwner){toast('❌ גישה לבעלים בלבד');return;}
   ['aSz','aBr','aMo','aNo','aCo','aFl','aP1','aP2','aPn1','aPn2','aAgr'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('addOverlay').classList.add('open');
   setTimeout(()=>document.getElementById('aSz').focus(),80);
@@ -1204,12 +1281,42 @@ function addItem(){
 
 /* DELETE */
 function askDelete(id){
+  if(!_isOwner){toast('❌ גישה לבעלים בלבד');return;}
   pendingDel=id;
   const it=items.find(x=>x.id===id);
   document.getElementById('confMsg').textContent=`האם למחוק "${it.brand} ${sz(it)}"?`;
   document.getElementById('confOv').classList.add('open');
 }
 function closeConf(){pendingDel=null;document.getElementById('confOv').classList.remove('open');}
+
+// ── עדכון מיקום (לעובד מנהל) ──
+let _locEditId=null;
+function openLocationEdit(id){
+  if(!_isAdmin){toast('❌ אין הרשאה');return;}
+  const it=items.find(x=>x.id===id);
+  if(!it) return;
+  _locEditId=id;
+  const nameEl=document.getElementById('locEditItemName');
+  if(nameEl) nameEl.textContent=`${it.brand||''} ${it.w?it.w+'/'+it.p+'R'+it.d:''} — ${it.model||''}`.trim();
+  document.getElementById('locEditCol').value=it.col||'';
+  const fl=document.getElementById('locEditFloor');
+  if(fl){ fl.value=String(it.floor||'1'); }
+  document.getElementById('locEditOv').classList.add('open');
+}
+function closeLocEdit(){
+  document.getElementById('locEditOv').classList.remove('open');
+  _locEditId=null;
+}
+function saveLocEdit(){
+  if(!_isAdmin||!_locEditId) return;
+  const it=items.find(x=>x.id===_locEditId);
+  if(!it) return;
+  it.col=document.getElementById('locEditCol').value.trim();
+  it.floor=document.getElementById('locEditFloor').value;
+  if(window._saveItem) window._saveItem(it);
+  closeLocEdit();
+  toast('✅ מיקום עודכן');
+}
 function doDelete(){
   if(window._deleteItem){
     window._deleteItem(pendingDel);
@@ -3216,23 +3323,91 @@ function parseSize(v){
 }
 
 /* ══ EXCEL / SAP IMPORT ══ */
+function openExcelImportPanel(){
+  const ov=document.getElementById('excelImportOverlay');
+  if(ov){ ov.style.display='flex'; }
+}
+function closeExcelImportPanel(){
+  const ov=document.getElementById('excelImportOverlay');
+  if(ov){ ov.style.display='none'; }
+  const s2=document.getElementById('excelStep2');
+  if(s2){ s2.style.display='none'; s2.innerHTML=''; }
+  const s1=document.getElementById('excelStep1');
+  if(s1) s1.style.display='';
+  const inp=document.getElementById('importExcelDirect');
+  if(inp) inp.value='';
+}
+
+function handleExcelImportFile(input){
+  const file=input.files[0];
+  if(!file) return;
+  const ext=file.name.split('.').pop().toLowerCase();
+  const step2=document.getElementById('excelStep2');
+
+  if(ext==='csv'){
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const rows=_parseCSVToRows(e.target.result);
+      if(!rows||rows.length===0){ toast('❌ קובץ CSV ריק'); return; }
+      document.getElementById('excelStep1').style.display='none';
+      step2.style.display='';
+      showColumnMapper(rows, step2);
+    };
+    reader.readAsText(file,'UTF-8');
+    return;
+  }
+
+  toast('⏳ טוען קובץ...');
+  function processFile(){
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const wb=XLSX.read(e.target.result,{type:'array'});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+        if(!rows||rows.length===0){ toast('❌ הגיליון ריק'); return; }
+        document.getElementById('excelStep1').style.display='none';
+        step2.style.display='';
+        showColumnMapper(rows, step2);
+      }catch(err){ toast('❌ שגיאה בקריאת הקובץ'); }
+      input.value='';
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  if(typeof XLSX!=='undefined'){ processFile(); return; }
+  const script=document.createElement('script');
+  script.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  script.onload=processFile;
+  script.onerror=()=>toast('❌ לא הצלח לטעון ספריית Excel');
+  document.head.appendChild(script);
+}
+
+function downloadExcelTemplate(){
+  // CSV תבנית פשוטה
+  const bom='\uFEFF';
+  const csv=bom+'מידה,מותג,דגם,כמות,עמודה,קומה,הערות\n205/55R16,Michelin,Primacy 4,4,מי.1.2,1,\n225/45R17,Pirelli,P Zero,2,פ1ש.3.1,1,דחוף\n';
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='תבנית_מלאי.csv';
+  a.click();
+}
+
 function importExcel(input){
+  // נקרא מתפריט הגיבוי הישן
   const file=input.files[0];
   if(!file) return;
   const ext=file.name.split('.').pop().toLowerCase();
 
   if(ext==='csv'){
     const reader=new FileReader();
-    reader.onload=e=>{ parseCSV(e.target.result); input.value=''; };
+    reader.onload=e=>{ const rows=_parseCSVToRows(e.target.result); if(rows) processExcelRows(rows); input.value=''; };
     reader.readAsText(file,'UTF-8');
     return;
   }
 
-  // XLSX — טען SheetJS דינמית
-  toast('⏳ '+(currentLang==='ar'?'جاري التحميل...':'טוען קובץ...'));
-  const script=document.createElement('script');
-  script.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-  script.onload=()=>{
+  toast('⏳ טוען קובץ...');
+  function processFile(){
     const reader=new FileReader();
     reader.onload=e=>{
       try{
@@ -3244,175 +3419,200 @@ function importExcel(input){
       input.value='';
     };
     reader.readAsArrayBuffer(file);
-  };
+  }
+  if(typeof XLSX!=='undefined'){ processFile(); return; }
+  const script=document.createElement('script');
+  script.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  script.onload=processFile;
   script.onerror=()=>toast('❌ לא הצלח לטעון SheetJS');
   document.head.appendChild(script);
 }
 
-function parseCSV(text){
+function _parseCSVToRows(text){
   const lines=text.split('\n').filter(l=>l.trim());
-  if(lines.length<2){ toast('❌ קובץ CSV ריק'); return; }
-  const headers=lines[0].split(',').map(h=>h.trim().replace(/"/g,'').toLowerCase());
-  const rows=lines.slice(1).map(line=>{
+  if(lines.length<2){ toast('❌ קובץ CSV ריק'); return null; }
+  // תמיכה ב-BOM
+  const headerLine=lines[0].replace(/^\uFEFF/,'');
+  const headers=headerLine.split(',').map(h=>h.trim().replace(/"/g,''));
+  return lines.slice(1).map(line=>{
     const vals=line.split(',').map(v=>v.trim().replace(/"/g,''));
     const obj={};
     headers.forEach((h,i)=>obj[h]=vals[i]||'');
     return obj;
   });
-  processExcelRows(rows);
+}
+function parseCSV(text){
+  const rows=_parseCSVToRows(text);
+  if(rows) processExcelRows(rows);
 }
 
-function processExcelRows(rows){
+// מיפוי עמודות Excel נפוצות
+const _excelFieldMap={
+  size:  ['מידה','size','tire size','tyre size','גודל','dimension'],
+  brand: ['מותג','brand','manufacturer','יצרן','ספק','supplier'],
+  model: ['דגם','model','description','תיאור','type'],
+  col:   ['עמודה','col','column','מיקום','location','bin','cage'],
+  floor: ['קומה','floor','level','shelf','rack'],
+  qty:   ['כמות','qty','quantity','amount','מספר'],
+  notes: ['הערות','notes','remarks','note','comment'],
+};
+
+function _excelFindCol(headers, keys){
+  const lh=headers.map(h=>({orig:h,low:String(h).toLowerCase().trim()}));
+  for(const key of keys){
+    const kl=key.toLowerCase();
+    const m=lh.find(h=>h.low===kl||h.low.includes(kl));
+    if(m) return m.orig;
+  }
+  return null;
+}
+
+function processExcelRows(rows, colMap){
   if(!rows||rows.length===0){ toast('❌ לא נמצאו שורות'); return; }
+  const headers=Object.keys(rows[0]);
 
-  // מיפוי עמודות SAP / Excel נפוצות
-  const fieldMap={
-    // מידה
-    'מידה':['מידה','size','tire size','tyre size','גודל'],
-    // מותג
-    'מותג':['מותג','brand','manufacturer','יצרן','ספק'],
-    // דגם
-    'דגם':['דגם','model','description','תיאור'],
-    // עמודה
-    'עמודה':['עמודה','col','column','מיקום','location','bin'],
-    // קומה
-    'קומה':['קומה','floor','level','קומה','shelf'],
-    // כמות
-    'כמות':['כמות','qty','quantity','amount'],
-    // הערות
-    'הערות':['הערות','notes','remarks','note'],
-  };
-
-  function findCol(row, keys){
-    const rowKeys=Object.keys(row).map(k=>k.toLowerCase().trim());
-    for(const key of keys){
-      const match=rowKeys.find(k=>k.includes(key.toLowerCase()));
-      if(match) return Object.keys(row).find(k=>k.toLowerCase().trim()===match);
-    }
-    return null;
+  let sizeCol, brandCol, modelCol, colCol, floorCol, qtyCol, notesCol;
+  if(colMap){
+    sizeCol=colMap.size||null; brandCol=colMap.brand||null;
+    modelCol=colMap.model||null; colCol=colMap.col||null;
+    floorCol=colMap.floor||null; qtyCol=colMap.qty||null;
+    notesCol=colMap.notes||null;
+  } else {
+    sizeCol =_excelFindCol(headers,_excelFieldMap.size);
+    brandCol=_excelFindCol(headers,_excelFieldMap.brand);
+    modelCol=_excelFindCol(headers,_excelFieldMap.model);
+    colCol  =_excelFindCol(headers,_excelFieldMap.col);
+    floorCol=_excelFindCol(headers,_excelFieldMap.floor);
+    qtyCol  =_excelFindCol(headers,_excelFieldMap.qty);
+    notesCol=_excelFindCol(headers,_excelFieldMap.notes);
   }
 
-  let added=0, skipped=0, errors=[];
-  const firstRow=rows[0];
-
-  // הצג מיפוי שדות
-  const sizeCol=findCol(firstRow,fieldMap['מידה']);
-  const brandCol=findCol(firstRow,fieldMap['מותג']);
-  const modelCol=findCol(firstRow,fieldMap['דגם']);
-  const colCol=findCol(firstRow,fieldMap['עמודה']);
-  const floorCol=findCol(firstRow,fieldMap['קומה']);
-  const notesCol=findCol(firstRow,fieldMap['הערות']);
-
-  if(!sizeCol&&!brandCol){
-    // הצג בורר עמודות
+  if(!colMap && !sizeCol && !brandCol){
     showColumnMapper(rows);
     return;
   }
 
+  let added=0, skipped=0;
   rows.forEach((row,idx)=>{
     try{
       const sizeVal=sizeCol?String(row[sizeCol]||'').trim():'';
       const brandVal=brandCol?String(row[brandCol]||'').trim():'';
       if(!sizeVal&&!brandVal){ skipped++; return; }
-
       const parsed=sizeVal?parseSize(sizeVal.replace(/\s/g,'').toUpperCase()):null;
-
-      const newItem={
-        id: nextId++,
-        w: parsed?parsed.w:0,
-        p: parsed?parsed.p:0,
-        d: parsed?parsed.d:0,
-        brand: brandVal,
-        model: modelCol?String(row[modelCol]||'').trim():'',
-        notes: notesCol?String(row[notesCol]||'').trim():'',
-        col: colCol?String(row[colCol]||'').trim():'',
-        floor: floorCol?String(row[floorCol]||'1').trim():'1',
-        p1:'',p2:'',pn1:'',pn2:'',agr:''
-      };
-
-      if(window._saveItem) window._saveItem(newItem);
-      added++;
-    }catch(e){ errors.push(idx+2); skipped++; }
+      const qty=Math.max(1, parseInt(qtyCol?String(row[qtyCol]||'1'):1,10)||1);
+      for(let q=0;q<qty;q++){
+        const newItem={
+          id:nextId++,
+          w:parsed?parsed.w:0,p:parsed?parsed.p:0,d:parsed?parsed.d:0,
+          brand:brandVal,
+          model:modelCol?String(row[modelCol]||'').trim():'',
+          notes:notesCol?String(row[notesCol]||'').trim():'',
+          col:colCol?String(row[colCol]||'').trim():'',
+          floor:floorCol?String(row[floorCol]||'1').trim():'1',
+          p1:'',p2:'',pn1:'',pn2:'',agr:''
+        };
+        if(window._saveItem) window._saveItem(newItem);
+        added++;
+      }
+    }catch(e){ skipped++; }
   });
 
   closeBackupMenu();
-  setTimeout(()=>{
-    toast(`✅ יובאו ${added} פריטים${skipped>0?' · '+skipped+' דולגו':''}`);
-  },500);
+  closeExcelImportPanel();
+  setTimeout(()=>toast(`✅ יובאו ${added} פריטים${skipped>0?' · '+skipped+' דולגו':''}`),400);
 }
 
-function showColumnMapper(rows){
+function showColumnMapper(rows, embedIn){
   if(!rows||rows.length===0) return;
   const headers=Object.keys(rows[0]);
-  const options=headers.map(h=>`<option value="${h}">${h}</option>`).join('');
+  const options=headers.map(h=>`<option value="${encodeURIComponent(h)}">${h}</option>`).join('');
   const emptyOpt='<option value="">-- בחר עמודה --</option>';
 
+  // ניחוש אוטומטי של עמודות
+  function autoGuess(keys){
+    const c=_excelFindCol(headers,keys);
+    return c?`value="${encodeURIComponent(c)}"`:'' ;
+  }
+
   const fields=[
-    {key:'size',label:'📐 מידה (לדוג׳ 205/55R16)',ar:'المقاس'},
-    {key:'brand',label:'🏷️ מותג',ar:'الماركة'},
-    {key:'model',label:'🔖 דגם',ar:'الموديل'},
-    {key:'col',label:'📍 עמודה',ar:'العمود'},
-    {key:'floor',label:'🏢 קומה',ar:'الطابق'},
-    {key:'notes',label:'📝 הערות',ar:'ملاحظات'},
+    {key:'size', label:'📐 מידה (205/55R16)', keys:_excelFieldMap.size},
+    {key:'brand',label:'🏷️ מותג',            keys:_excelFieldMap.brand},
+    {key:'model',label:'🔖 דגם',             keys:_excelFieldMap.model},
+    {key:'qty',  label:'🔢 כמות',            keys:_excelFieldMap.qty},
+    {key:'col',  label:'📍 עמודה / כלוב',   keys:_excelFieldMap.col},
+    {key:'floor',label:'🏢 קומה',            keys:_excelFieldMap.floor},
+    {key:'notes',label:'📝 הערות',           keys:_excelFieldMap.notes},
   ];
 
-  const body=document.createElement('div');
-  body.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:700;display:flex;align-items:flex-end;';
-  body.innerHTML=`
-    <div style="background:var(--surface);border-radius:20px 20px 0 0;padding:20px;width:100%;max-height:85vh;overflow-y:auto;">
-      <div style="font-size:15px;font-weight:900;margin-bottom:4px;">📊 ${currentLang==='ar'?'تعيين الأعمدة':'מיפוי עמודות Excel'}</div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:14px;">${currentLang==='ar'?'حدد الأعمدة المقابلة':'בחר איזו עמודה מ-Excel מתאימה לכל שדה'}</div>
-      ${fields.map(f=>`
-        <div style="margin-bottom:10px;">
-          <label style="font-size:12px;color:var(--muted);">${currentLang==='ar'?f.ar:f.label}</label>
-          <select id="map_${f.key}" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px;font-family:inherit;font-size:14px;margin-top:4px;">
-            ${emptyOpt}${options}
-          </select>
-        </div>
-      `).join('')}
-      <div style="display:flex;gap:8px;margin-top:14px;">
-        <button onclick="this.closest('div[style*=fixed]').remove()" style="flex:1;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">${currentLang==='ar'?'إلغاء':'ביטול'}</button>
-        <button onclick="applyColumnMap(${JSON.stringify(rows).replace(/</g,'&lt;')},this)" style="flex:2;background:var(--accent);border:none;color:#111;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">✓ ${currentLang==='ar'?'استيراد':'ייבא'}</button>
+  const preview=rows.slice(0,3).map(r=>`<tr>${headers.map(h=>`<td style="padding:4px 6px;border:1px solid var(--border);font-size:11px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${String(r[h]||'').slice(0,30)}</td>`).join('')}</tr>`).join('');
+
+  const mapHTML=`
+    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;">📋 מיפוי עמודות</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">נמצאו <b>${rows.length}</b> שורות — בחר עמודה מתאימה לכל שדה:</div>
+    ${fields.map(f=>`
+      <div style="margin-bottom:8px;display:flex;align-items:center;gap:8px;">
+        <label style="font-size:12px;color:var(--muted);width:130px;flex-shrink:0;">${f.label}</label>
+        <select id="xmap_${f.key}" style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px;font-family:inherit;font-size:13px;">
+          ${emptyOpt}${options}
+        </select>
       </div>
+    `).join('')}
+    <div style="overflow-x:auto;margin-top:12px;border-radius:8px;border:1px solid var(--border);">
+      <table style="width:100%;border-collapse:collapse;font-size:11px;">
+        <thead><tr>${headers.map(h=>`<th style="padding:5px 6px;border:1px solid var(--border);background:var(--card2);color:var(--muted);text-align:right;white-space:nowrap;">${h}</th>`).join('')}</tr></thead>
+        <tbody>${preview}</tbody>
+      </table>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button id="xmapBack" style="flex:1;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">← חזור</button>
+      <button id="xmapImport" style="flex:2;background:var(--accent);border:none;color:#111;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">✓ ייבא עכשיו</button>
     </div>`;
 
-  // Fix — store rows separately
-  body._rows=rows;
-  body.querySelector('button:last-child').onclick=()=>applyColumnMap(body._rows,body);
-  document.body.appendChild(body);
+  if(embedIn){
+    // הצג בתוך פאנל הייבוא הייעודי
+    embedIn.innerHTML=mapHTML;
+    embedIn._rows=rows;
+    embedIn.querySelector('#xmapBack').onclick=()=>{
+      document.getElementById('excelStep1').style.display='';
+      embedIn.style.display='none';
+      embedIn.innerHTML='';
+    };
+    embedIn.querySelector('#xmapImport').onclick=()=>applyColumnMap(embedIn._rows, null);
+  } else {
+    // fallback — overlay נפרד (מגיע מתפריט גיבוי)
+    const body=document.createElement('div');
+    body.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:8600;display:flex;align-items:flex-end;font-family:Heebo,sans-serif;direction:rtl;';
+    body.innerHTML=`<div style="background:var(--surface);border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:520px;max-height:85vh;overflow-y:auto;">${mapHTML}</div>`;
+    body._rows=rows;
+    body.querySelector('#xmapBack').onclick=()=>body.remove();
+    body.querySelector('#xmapImport').onclick=()=>{ applyColumnMap(body._rows, null); body.remove(); };
+    // הגדר ניחוש אוטומטי
+    fields.forEach(f=>{
+      const sel=body.querySelector(`#xmap_${f.key}`);
+      const guessed=_excelFindCol(headers,f.keys);
+      if(sel&&guessed){ const enc=encodeURIComponent(guessed); const opt=[...sel.options].find(o=>o.value===enc); if(opt) opt.selected=true; }
+    });
+    document.body.appendChild(body);
+    return;
+  }
+
+  // הגדר ניחוש אוטומטי עבור embed
+  fields.forEach(f=>{
+    const sel=document.getElementById(`xmap_${f.key}`);
+    const guessed=_excelFindCol(headers,f.keys);
+    if(sel&&guessed){ const enc=encodeURIComponent(guessed); const opt=[...sel.options].find(o=>o.value===enc); if(opt) opt.selected=true; }
+  });
 }
 
-function applyColumnMap(rows,container){
-  const sizeCol=document.getElementById('map_size')?.value;
-  const brandCol=document.getElementById('map_brand')?.value;
-  const modelCol=document.getElementById('map_model')?.value;
-  const colCol=document.getElementById('map_col')?.value;
-  const floorCol=document.getElementById('map_floor')?.value;
-  const notesCol=document.getElementById('map_notes')?.value;
-
-  let added=0,skipped=0;
-  rows.forEach(row=>{
-    const sizeVal=sizeCol?String(row[sizeCol]||'').trim():'';
-    const brandVal=brandCol?String(row[brandCol]||'').trim():'';
-    if(!brandVal){ skipped++; return; }
-    const parsed=sizeVal?parseSize(sizeVal.replace(/\s/g,'').toUpperCase()):null;
-    const newItem={
-      id:nextId++,
-      w:parsed?parsed.w:0,p:parsed?parsed.p:0,d:parsed?parsed.d:0,
-      brand:brandVal,
-      model:modelCol?String(row[modelCol]||'').trim():'',
-      notes:notesCol?String(row[notesCol]||'').trim():'',
-      col:colCol?String(row[colCol]||'').trim():'',
-      floor:floorCol?String(row[floorCol]||'1').trim():'1',
-      p1:'',p2:'',pn1:'',pn2:'',agr:''
-    };
-    if(window._saveItem) window._saveItem(newItem);
-    added++;
-  });
-  if(container&&container.closest) container.closest('div[style*=fixed]')?.remove();
-  else if(container&&container.remove) container.remove();
-  closeBackupMenu();
-  setTimeout(()=>toast(`✅ יובאו ${added} פריטים${skipped>0?' · '+skipped+' דולגו':''}`),500);
+function applyColumnMap(rows, container){
+  const getVal=id=>{ const el=document.getElementById(id); if(!el||!el.value) return null; return decodeURIComponent(el.value)||null; };
+  const colMap={
+    size: getVal('xmap_size'), brand:getVal('xmap_brand'),
+    model:getVal('xmap_model'),col:  getVal('xmap_col'),
+    floor:getVal('xmap_floor'),qty:  getVal('xmap_qty'),
+    notes:getVal('xmap_notes'),
+  };
+  processExcelRows(rows, colMap);
 }
 
 function prevPage(){ if(currentPage>0){currentPage--;renderTable();} }
@@ -3487,6 +3687,7 @@ window.resetTurnButtons=resetTurnButtons;
 
 
 function showBackupMenu(){
+  if(!_isOwner){toast('❌ גישה לבעלים בלבד');return;}
   document.getElementById('backupMenu').style.display='flex';
 }
 function closeBackupMenu(){
@@ -3516,6 +3717,10 @@ function updateAutoComplete(){
 }
 window.updateAutoComplete=updateAutoComplete;
 window.importExcel=importExcel;
+window.openExcelImportPanel=openExcelImportPanel;
+window.closeExcelImportPanel=closeExcelImportPanel;
+window.handleExcelImportFile=handleExcelImportFile;
+window.downloadExcelTemplate=downloadExcelTemplate;
 window.applyColumnMap=applyColumnMap;
 window.renderDashboard=renderDashboard;
 window.zoomIn=zoomIn;
@@ -3726,6 +3931,9 @@ if(typeof closeAddModal!=="undefined") window.closeAddModal=closeAddModal;
 if(typeof doDelete!=="undefined") window.doDelete=doDelete;
 if(typeof openAddModal!=="undefined") window.openAddModal=openAddModal;
 if(typeof closeConf!=="undefined") window.closeConf=closeConf;
+if(typeof openLocationEdit!=="undefined") window.openLocationEdit=openLocationEdit;
+if(typeof closeLocEdit!=="undefined") window.closeLocEdit=closeLocEdit;
+if(typeof saveLocEdit!=="undefined") window.saveLocEdit=saveLocEdit;
 if(typeof exportJSON!=="undefined") window.exportJSON=exportJSON;
 if(typeof prevPage!=="undefined") window.prevPage=prevPage;
 if(typeof startEdit!=="undefined") window.startEdit=startEdit;
@@ -3991,11 +4199,24 @@ function enterApp(admin, workerName) {
   if (ls) ls.style.display = 'none';
   document.querySelector('.app').style.display = '';
 
+  // הגדר מחלקות הרשאה על ה-body
+  document.body.classList.remove('is-owner','is-admin-worker');
+  if (_isOwner) {
+    document.body.classList.add('is-owner');
+  } else if (_isAdmin) {
+    document.body.classList.add('is-admin-worker');
+  }
+
   if (!admin) {
+    // עובד רגיל — view only
     document.querySelectorAll('.btn-add').forEach(el => el.style.display = 'none');
-    document.querySelectorAll('.ib').forEach(el => el.style.display = 'none');
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+  } else if (!_isOwner) {
+    // עובד מנהל — ניהול מיקומים בלבד
+    document.querySelectorAll('.btn-add').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
   } else {
+    // בעלים — גישה מלאה
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
   }
 
@@ -4022,6 +4243,8 @@ function enterApp(admin, workerName) {
 function _logout() {
   clearSession();
   _isAdmin = false;
+  _isOwner = false;
+  document.body.classList.remove('is-owner','is-admin-worker');
   document.querySelector('.app').style.display = 'none';
   const ls = document.getElementById('loginScreen');
   if (ls) ls.remove();
