@@ -827,67 +827,44 @@ if('serviceWorker' in navigator){
 
 <!-- מודל עדכון מיקום — עובד מנהל -->
 <div class="conf-ov" id="locEditOv">
-  <div class="conf-box" style="max-width:380px;text-align:right;direction:rtl;max-height:90vh;overflow-y:auto;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-      <h4 style="margin:0;">📍 עדכון מיקום</h4>
+  <div class="conf-box" style="max-width:420px;text-align:right;direction:rtl;max-height:92vh;overflow-y:auto;padding:18px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <h4 style="margin:0;color:var(--accent);">📍 עדכון מיקום</h4>
       <button onclick="closeLocEdit()" style="background:var(--card);border:1px solid var(--border);border-radius:7px;width:32px;height:32px;cursor:pointer;color:var(--muted);font-size:16px;">✕</button>
     </div>
     <div id="locEditItemName" style="font-size:12px;color:var(--muted);margin-bottom:14px;"></div>
 
-    <!-- שורה 1: פניה 1 / שורה ימין / עמודה / קומה -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
-      <div class="fi" style="margin:0;">
-        <label style="font-size:10px;color:var(--accent);">פניה 1</label>
-        <input id="lePN1" type="text" placeholder="" autocomplete="off" style="text-align:center;"/>
+    <div class="locbox" style="grid-template-columns:1fr 1fr 1fr;">
+      <div class="fi"><label>פניה 1</label>
+        <input id="lePn1" type="hidden" value=""/>
+        <button type="button" id="btnLePn1" onclick="toggleTurn('lePn1','btnLePn1')" style="width:100%;padding:10px;border-radius:9px;border:2px solid var(--border);background:var(--card);color:var(--muted);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;">פניה 1</button>
       </div>
-      <div class="fi" style="margin:0;">
-        <label style="font-size:10px;color:var(--green);">שו׳ ימין</label>
-        <input id="leP1" type="text" placeholder="" autocomplete="off" style="text-align:center;border-color:var(--green);"/>
+      <div class="fi"><label>שורה ימין</label>
+        <input id="leP1" type="text" placeholder=""/>
       </div>
-      <div class="fi" style="margin:0;">
-        <label style="font-size:10px;">עמודה</label>
-        <input id="leCol" type="text" placeholder="A1" autocomplete="off" style="text-align:center;"/>
+      <div class="fi"><label>עמודה</label>
+        <input id="leCol" type="text" placeholder="1"/>
       </div>
-      <div class="fi" style="margin:0;">
-        <label style="font-size:10px;">קומה</label>
-        <select id="leFloor" style="text-align:center;">
-          <option value="1">1</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="4">4</option>
-          <option value="5">5</option>
-        </select>
+      <div class="fi"><label>פניה 2</label>
+        <input id="lePn2" type="hidden" value=""/>
+        <button type="button" id="btnLePn2" onclick="toggleTurn('lePn2','btnLePn2')" style="width:100%;padding:10px;border-radius:9px;border:2px solid var(--border);background:var(--card);color:var(--muted);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;">פניה 2</button>
       </div>
-    </div>
-
-    <!-- שורה 2: פניה 2 / שורה שמאל -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
-      <div class="fi" style="margin:0;">
-        <label style="font-size:10px;color:var(--accent);">פניה 2</label>
-        <input id="lePN2" type="text" placeholder="" autocomplete="off" style="text-align:center;"/>
+      <div class="fi"><label>שורה שמאל</label>
+        <input id="leP2" type="text" placeholder=""/>
       </div>
-      <div class="fi" style="margin:0;">
-        <label style="font-size:10px;color:var(--purple);">שו׳ שמאל</label>
-        <input id="leP2" type="text" placeholder="" autocomplete="off" style="text-align:center;border-color:var(--purple);"/>
+      <div class="fi"><label>קומה</label>
+        <input id="leFloor" type="text" placeholder="1"/>
+      </div>
+      <div class="fi full"><label>🌾 מחסן חקלאות</label>
+        <input id="leAgr" type="text" placeholder="מיקום במחסן חקלאות (אופציונלי)"/>
+      </div>
+      <div class="fi full">
+        <input id="leRahava" type="hidden" value=""/>
+        <button type="button" id="btnLeRahava" onclick="toggleLeRahava()" style="width:100%;padding:12px;border-radius:9px;border:2px solid var(--border);background:var(--card);color:var(--muted);font-family:inherit;font-size:15px;font-weight:900;cursor:pointer;transition:all .2s;letter-spacing:1px;">📦 רחבה / עמסה</button>
       </div>
     </div>
 
-    <!-- שורה 3: חקלאות / רחבה -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
-      <div class="fi" style="margin:0;">
-        <label style="font-size:10px;color:var(--green);">🌾 חקלאות</label>
-        <input id="leAgr" type="text" placeholder="" autocomplete="off" style="text-align:center;"/>
-      </div>
-      <div class="fi" style="margin:0;">
-        <label style="font-size:10px;color:var(--red);">📦 רחבה</label>
-        <select id="leRahava">
-          <option value="">לא</option>
-          <option value="כן">כן</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="conf-acts">
+    <div class="conf-acts" style="margin-top:16px;">
       <button class="btn btn-ghost" onclick="closeLocEdit()">ביטול</button>
       <button class="btn btn-green" onclick="saveLocEdit()">💾 שמור מיקום</button>
     </div>
@@ -1470,15 +1447,61 @@ function openLocationEdit(id){
   _locEditId=id;
   const nameEl=document.getElementById('locEditItemName');
   if(nameEl) nameEl.textContent=`${it.brand||''} ${it.w?it.w+'/'+it.p+'R'+it.d:''}${it.model?' — '+it.model:''}`;
-  document.getElementById('lePN1').value=it.pn1||'';
+  // שדות טקסט
   document.getElementById('leP1').value=it.p1||'';
   document.getElementById('leCol').value=it.col||'';
   document.getElementById('leFloor').value=String(it.floor||'1');
-  document.getElementById('lePN2').value=it.pn2||'';
   document.getElementById('leP2').value=it.p2||'';
   document.getElementById('leAgr').value=it.agr||'';
-  document.getElementById('leRahava').value=it.rahava||'';
+  // כפתורי toggle — פניה 1
+  _setLeToggle('lePn1','btnLePn1',it.pn1||'');
+  // כפתורי toggle — פניה 2
+  _setLeToggle('lePn2','btnLePn2',it.pn2||'');
+  // רחבה
+  _setLeRahava(it.rahava||'');
   document.getElementById('locEditOv').classList.add('open');
+}
+function _setLeToggle(inputId, btnId, val){
+  const input=document.getElementById(inputId);
+  const btn=document.getElementById(btnId);
+  if(!input||!btn) return;
+  if(val){
+    input.value=val;
+    btn.style.background='rgba(245,166,35,0.2)';
+    btn.style.borderColor='var(--accent)';
+    btn.style.color='var(--accent)';
+    btn.style.boxShadow='0 0 10px rgba(245,166,35,0.3)';
+  } else {
+    input.value='';
+    btn.style.background='var(--card)';
+    btn.style.borderColor='var(--border)';
+    btn.style.color='var(--muted)';
+    btn.style.boxShadow='none';
+  }
+}
+function _setLeRahava(val){
+  const input=document.getElementById('leRahava');
+  const btn=document.getElementById('btnLeRahava');
+  if(!input||!btn) return;
+  if(val==='כן'){
+    input.value='כן';
+    btn.style.background='rgba(232,93,63,0.2)';
+    btn.style.borderColor='var(--red)';
+    btn.style.color='var(--red)';
+    btn.style.boxShadow='0 0 12px rgba(232,93,63,0.35)';
+  } else {
+    input.value='';
+    btn.style.background='var(--card)';
+    btn.style.borderColor='var(--border)';
+    btn.style.color='var(--muted)';
+    btn.style.boxShadow='none';
+  }
+}
+function toggleLeRahava(){
+  const input=document.getElementById('leRahava');
+  if(!input) return;
+  _setLeRahava(input.value==='כן'?'':'כן');
+  vibrate([40]);
 }
 function closeLocEdit(){
   document.getElementById('locEditOv').classList.remove('open');
@@ -1488,11 +1511,11 @@ function saveLocEdit(){
   if((!window.isAdminMode&&!window.isOwnerMode)||!_locEditId) return;
   const it=items.find(x=>x.id===_locEditId);
   if(!it) return;
-  it.pn1=document.getElementById('lePN1').value.trim();
+  it.pn1=document.getElementById('lePn1').value;
   it.p1=document.getElementById('leP1').value.trim();
   it.col=document.getElementById('leCol').value.trim();
-  it.floor=document.getElementById('leFloor').value;
-  it.pn2=document.getElementById('lePN2').value.trim();
+  it.floor=document.getElementById('leFloor').value.trim()||'1';
+  it.pn2=document.getElementById('lePn2').value;
   it.p2=document.getElementById('leP2').value.trim();
   it.agr=document.getElementById('leAgr').value.trim();
   it.rahava=document.getElementById('leRahava').value;
