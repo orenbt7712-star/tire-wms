@@ -1312,12 +1312,12 @@ function closeConf(){pendingDel=null;document.getElementById('confOv').classList
 // ── עדכון מיקום (לעובד מנהל) ──
 // ── סמן כנגמר ──
 function markAsDone(id){
-  if(!_isAdmin){toast('❌ אין הרשאה');return;}
+  if(!window.isAdminMode&&!window.isOwnerMode){toast('❌ אין הרשאה');return;}
   const it=items.find(x=>x.id===id);
   if(!it) return;
   if(it.status==='pending_done'){toast('⏳ כבר ממתין לאישור בעלים');return;}
   it.status='pending_done';
-  it.pendingBy=_currentWorkerName||'עובד';
+  it.pendingBy=window.currentWorkerName||'עובד';
   it.pendingAt=new Date().toISOString();
   if(window._saveItem) window._saveItem(it);
   toast('✅ הפריט סומן — ממתין לאישור בעלים');
@@ -1383,7 +1383,7 @@ function _updatePendingBadge(){
 
 let _locEditId=null;
 function openLocationEdit(id){
-  if(!_isAdmin){toast('❌ אין הרשאה');return;}
+  if(!window.isAdminMode&&!window.isOwnerMode){toast('❌ אין הרשאה');return;}
   const it=items.find(x=>x.id===id);
   if(!it) return;
   _locEditId=id;
@@ -1399,7 +1399,7 @@ function closeLocEdit(){
   _locEditId=null;
 }
 function saveLocEdit(){
-  if(!_isAdmin||!_locEditId) return;
+  if((!window.isAdminMode&&!window.isOwnerMode)||!_locEditId) return;
   const it=items.find(x=>x.id===_locEditId);
   if(!it) return;
   it.col=document.getElementById('locEditCol').value.trim();
@@ -4132,6 +4132,12 @@ Object.defineProperty(window, 'isAdminMode', {
 });
 Object.defineProperty(window, 'isOwnerMode', {
   get: () => _isOwner,
+  set: () => { /* חסום */ },
+  configurable: false,
+  enumerable: false
+});
+Object.defineProperty(window, 'currentWorkerName', {
+  get: () => _currentWorkerName,
   set: () => { /* חסום */ },
   configurable: false,
   enumerable: false
