@@ -453,6 +453,7 @@ if('serviceWorker' in navigator){
   <div style="display:flex;align-items:center;background:var(--card);border:1.5px solid var(--border2);border-radius:12px;padding:0 14px;height:46px;gap:10px;">
     <span style="color:var(--muted);font-size:18px;">🔍</span>
     <input id="mainSearch" type="text" placeholder="חיפוש לפי מידה, מותג, מיקום..."
+      inputmode="numeric"
       maxlength="20"
       oninput="handleSearchInput(this)"
       onkeydown="if(event.key==='Escape'||event.key==='Delete'){clearSearch();}"
