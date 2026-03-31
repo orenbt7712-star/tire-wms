@@ -1255,7 +1255,7 @@ document.addEventListener('keydown',e=>{
 
 /* ADD */
 function openAddModal(){
-  if(!_isOwner){toast('❌ גישה לבעלים בלבד');return;}
+  if(!window.isOwnerMode){toast('❌ גישה לבעלים בלבד');return;}
   ['aSz','aBr','aMo','aNo','aCo','aFl','aP1','aP2','aPn1','aPn2','aAgr'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('addOverlay').classList.add('open');
   setTimeout(()=>document.getElementById('aSz').focus(),80);
@@ -1301,7 +1301,7 @@ function addItem(){
 
 /* DELETE */
 function askDelete(id){
-  if(!_isOwner){toast('❌ גישה לבעלים בלבד');return;}
+  if(!window.isOwnerMode){toast('❌ גישה לבעלים בלבד');return;}
   pendingDel=id;
   const it=items.find(x=>x.id===id);
   document.getElementById('confMsg').textContent=`האם למחוק "${it.brand} ${sz(it)}"?`;
@@ -1325,7 +1325,7 @@ function markAsDone(id){
 
 // ── פאנל אישורים (בעלים) ──
 function openPendingPanel(){
-  if(!_isOwner){toast('❌ גישה לבעלים בלבד');return;}
+  if(!window.isOwnerMode){toast('❌ גישה לבעלים בלבד');return;}
   _renderPendingList();
   document.getElementById('pendingPanel').style.display='flex';
 }
@@ -1354,13 +1354,13 @@ function _renderPendingList(){
   }).join('');
 }
 function approveDeletion(id){
-  if(!_isOwner) return;
+  if(!window.isOwnerMode) return;
   if(window._deleteItem) window._deleteItem(id);
   toast('🗑️ הפריט נמחק');
   setTimeout(()=>_renderPendingList(),500);
 }
 function cancelPending(id){
-  if(!_isOwner) return;
+  if(!window.isOwnerMode) return;
   const it=items.find(x=>x.id===id);
   if(!it) return;
   delete it.status; delete it.pendingBy; delete it.pendingAt;
@@ -3779,7 +3779,7 @@ window.resetTurnButtons=resetTurnButtons;
 
 
 function showBackupMenu(){
-  if(!_isOwner){toast('❌ גישה לבעלים בלבד');return;}
+  if(!window.isOwnerMode){toast('❌ גישה לבעלים בלבד');return;}
   document.getElementById('backupMenu').style.display='flex';
 }
 function closeBackupMenu(){
@@ -4127,6 +4127,12 @@ let _isOwner = false; // רק כניסה עם סיסמת בעלים — מאפש
 Object.defineProperty(window, 'isAdminMode', {
   get: () => _isAdmin,
   set: () => { /* חסום — לא ניתן לשינוי ידני */ },
+  configurable: false,
+  enumerable: false
+});
+Object.defineProperty(window, 'isOwnerMode', {
+  get: () => _isOwner,
+  set: () => { /* חסום */ },
   configurable: false,
   enumerable: false
 });
