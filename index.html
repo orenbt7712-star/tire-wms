@@ -1425,7 +1425,23 @@ function openLocationEdit(id){
   const it=items.find(x=>x.id===id);
   if(!it) return;
   _locEditId=id;
-  openLocPicker(id);
+  // אם יש כלובים מוגדרים במפה — פתח בוחר ויזואלי, אחרת דיאלוג ידני
+  let pickerCages=cages&&cages.length?cages:[];
+  if(!pickerCages.length){
+    const saved=localStorage.getItem('tirewms_map2');
+    if(saved){try{const d=JSON.parse(saved);pickerCages=d.cages||[];}catch(e){}}
+  }
+  if(pickerCages.length>0){
+    openLocPicker(id);
+  } else {
+    // דיאלוג ידני — עמודה + קומה
+    const nameEl=document.getElementById('locEditItemName');
+    if(nameEl) nameEl.textContent=`${it.brand||''} ${it.w?it.w+'/'+it.p+'R'+it.d:''}${it.model?' — '+it.model:''}`;
+    document.getElementById('locEditCol').value=it.col||'';
+    const fl=document.getElementById('locEditFloor');
+    if(fl) fl.value=String(it.floor||'1');
+    document.getElementById('locEditOv').classList.add('open');
+  }
 }
 function closeLocEdit(){
   document.getElementById('locEditOv').classList.remove('open');
