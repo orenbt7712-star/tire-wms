@@ -1281,7 +1281,8 @@ document.addEventListener('keydown',e=>{
 /* ADD */
 function openAddModal(){
   if(!window.isOwnerMode){toast('❌ גישה לבעלים בלבד');return;}
-  ['aSz','aBr','aMo','aNo','aCo','aFl','aP1','aP2','aPn1','aPn2','aAgr'].forEach(id=>document.getElementById(id).value='');
+  ['aSz','aBr','aMo','aNo','aCo','aP1','aP2','aPn1','aPn2','aAgr'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('aFl').value='1';
   document.getElementById('addOverlay').classList.add('open');
   setTimeout(()=>document.getElementById('aSz').focus(),80);
 }
@@ -1305,9 +1306,11 @@ function addItem(){
   const rahava=document.getElementById('aRahava')?document.getElementById('aRahava').value:'';
   const newItem={id:nextId++,w,p,d,brand:b,model:m,notes:no,col:co,floor:fl,p1,p2,pn1,pn2,agr,rahava};
 
-  // בדוק כפילות מיקום — אותה מידה באותו כלוב+קומה
-  if(co){
-    const dup=items.find(x=>String(x.col)===co&&String(x.floor)===fl&&Number(x.w)===Number(w)&&Number(x.p)===Number(p)&&Number(x.d)===Number(d)&&x.status!=='pending_done');
+  // בדוק כפילות מיקום — כל צמיג באותו כלוב+קומה
+  if(co.trim()){
+    const trimCo=co.trim();
+    const normFl=fl||'1';
+    const dup=items.find(x=>String(x.col).trim()===trimCo&&String(x.floor||'1')===normFl&&x.status!=='pending_done');
     if(dup){
       showDupConflict(dup,newItem);
       return;
