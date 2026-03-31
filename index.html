@@ -321,6 +321,12 @@ td{padding:8px 10px;vertical-align:middle;}
 .loc-edit-btn{display:none!important;}
 body.is-admin-worker .loc-edit-btn{display:inline-flex!important;}
 body.is-owner .loc-edit-btn{display:inline-flex!important;}
+/* ── pending / done styles ── */
+tr.pending-row td:not(:last-child){opacity:.5;text-decoration:line-through;}
+tr.pending-row{background:rgba(255,160,0,.06)!important;}
+.pending-badge{background:var(--red,#e85d3f);color:#fff;border-radius:999px;font-size:10px;font-weight:900;padding:1px 5px;min-width:16px;text-align:center;line-height:1.4;display:inline-block;}
+.ib.done-btn{font-size:11px;padding:0 6px;width:auto;gap:3px;}
+.ib.done-btn.active{background:rgba(232,93,63,.15);border-color:var(--red,#e85d3f);color:var(--red,#e85d3f);}
 body:not(.is-owner) .owner-only{display:none!important;}
 </style>
 
@@ -368,6 +374,7 @@ if('serviceWorker' in navigator){
   <span id="syncStatus" style="font-size:11px;color:var(--muted);flex-shrink:0;">🔄</span>
   <button onclick="openAccessPanel()" title="הגדרות תצוגה" style="background:var(--card);border:1px solid var(--border);border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex-shrink:0;">⚙️</button>
   <button id="langBtn" onclick="toggleLang()" title="שפה / لغة" style="background:var(--card);border:1px solid var(--border);border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex-shrink:0;">🌐</button>
+  <button class="btn-locate owner-only" id="pendingBell" onclick="openPendingPanel()" title="ממתינים לאישור" style="position:relative;">🔔<span id="pendingCount" class="pending-badge" style="display:none;position:absolute;top:2px;right:2px;"></span></button>
   <button class="btn-locate owner-only" onclick="openExcelImportPanel()" title="ייבוא מ-Excel">📊</button>
   <button class="btn-locate owner-only" onclick="showBackupMenu()" title="גיבוי / ייבוא">💾</button>
   <button class="btn-locate" onclick="locateNearest()" title="מצא פריט קריטי">📍</button>
@@ -796,6 +803,17 @@ if('serviceWorker' in navigator){
 </div>
 
 <!-- CONFIRM DELETE -->
+<!-- פאנל ממתינים לאישור — בעלים בלבד -->
+<div id="pendingPanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:8500;align-items:flex-end;justify-content:center;font-family:Heebo,sans-serif;direction:rtl;">
+  <div style="background:var(--surface,#141720);border-radius:18px 18px 0 0;width:100%;max-width:520px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--border,#252b3b);flex-shrink:0;">
+      <div style="font-size:15px;font-weight:900;color:var(--text,#eef0f6);">🔔 ממתינים לאישור מחיקה</div>
+      <button onclick="closePendingPanel()" style="background:var(--card,#191d28);border:1px solid var(--border,#252b3b);border-radius:7px;width:32px;height:32px;cursor:pointer;color:var(--muted,#7a8299);font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+    <div id="pendingList" style="flex:1;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:10px;"></div>
+  </div>
+</div>
+
 <div class="conf-ov" id="confOv">
   <div class="conf-box">
     <h4>🗑️ מחיקת פריט</h4>
@@ -1077,7 +1095,8 @@ function renderTable(){
 }
 
 function viewRow(it){
-  return `<tr id="tr-${it.id}" class="tr-anim" onclick="showItemLocation(${it.id})" style="cursor:pointer;">
+  const isPending=it.status==='pending_done';
+  return `<tr id="tr-${it.id}" class="tr-anim${isPending?' pending-row':''}" onclick="showItemLocation(${it.id})" style="cursor:pointer;">
     <td style="color:var(--muted);font-size:10px;">#${it.id}</td>
     <td><span class="sz">${sz(it)}</span></td>
     <td><span style="font-weight:700;">${escHTML(it.brand)}</span>${it.model?`<br><span style="font-size:10px;color:var(--muted)">${escHTML(it.model)}</span>`:''}</td>
@@ -1095,7 +1114,8 @@ function viewRow(it){
     <td><div class="acts">
       <button class="ib owner-only" onclick="event.stopPropagation();startEdit(${it.id})" title="עריכה מלאה">✏️</button>
       <button class="ib del owner-only" onclick="event.stopPropagation();askDelete(${it.id})" title="מחיקה">🗑️</button>
-      <button class="ib loc-edit-btn" onclick="event.stopPropagation();openLocationEdit(${it.id})" title="עדכן מיקום">📍</button>
+      <button class="ib loc-edit-btn" onclick="event.stopPropagation();openLocationEdit(${it.id})" title="עבר למיקום">🔄 מיקום</button>
+      <button class="ib loc-edit-btn done-btn${isPending?' active':''}" onclick="event.stopPropagation();markAsDone(${it.id})" title="${isPending?'ממתין לאישור בעלים':'סמן כנגמר'}">${isPending?'⏳ ממתין':'✅ נגמר'}</button>
     </div></td>
   </tr>`;
 }
@@ -1290,6 +1310,77 @@ function askDelete(id){
 function closeConf(){pendingDel=null;document.getElementById('confOv').classList.remove('open');}
 
 // ── עדכון מיקום (לעובד מנהל) ──
+// ── סמן כנגמר ──
+function markAsDone(id){
+  if(!_isAdmin){toast('❌ אין הרשאה');return;}
+  const it=items.find(x=>x.id===id);
+  if(!it) return;
+  if(it.status==='pending_done'){toast('⏳ כבר ממתין לאישור בעלים');return;}
+  it.status='pending_done';
+  it.pendingBy=_currentWorkerName||'עובד';
+  it.pendingAt=new Date().toISOString();
+  if(window._saveItem) window._saveItem(it);
+  toast('✅ הפריט סומן — ממתין לאישור בעלים');
+}
+
+// ── פאנל אישורים (בעלים) ──
+function openPendingPanel(){
+  if(!_isOwner){toast('❌ גישה לבעלים בלבד');return;}
+  _renderPendingList();
+  document.getElementById('pendingPanel').style.display='flex';
+}
+function closePendingPanel(){
+  document.getElementById('pendingPanel').style.display='none';
+}
+function _renderPendingList(){
+  const pending=items.filter(x=>x.status==='pending_done');
+  const el=document.getElementById('pendingList');
+  if(!el) return;
+  if(!pending.length){
+    el.innerHTML=`<div style="text-align:center;padding:32px;color:var(--muted);font-size:14px;">✅ אין פריטים ממתינים לאישור</div>`;
+    return;
+  }
+  el.innerHTML=pending.map(it=>{
+    const date=it.pendingAt?new Date(it.pendingAt).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+    return `<div style="background:var(--card,#191d28);border:1px solid var(--border,#252b3b);border-radius:12px;padding:14px 16px;">
+      <div style="font-size:14px;font-weight:800;color:var(--text);">${escHTML(it.brand)} ${it.w?it.w+'/'+it.p+'R'+it.d:''} ${it.model?'— '+escHTML(it.model):''}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px;">📍 ${escHTML(it.col||'—')} · קומה ${it.floor||1}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px;">סומן ע״י: <b>${escHTML(it.pendingBy||'')}</b>${date?' · '+date:''}</div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button onclick="cancelPending(${it.id})" style="flex:1;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">↩️ בטל סימון</button>
+        <button onclick="approveDeletion(${it.id})" style="flex:1;background:rgba(232,93,63,.15);border:1px solid var(--red,#e85d3f);color:var(--red,#e85d3f);border-radius:9px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">🗑️ אשר מחיקה</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function approveDeletion(id){
+  if(!_isOwner) return;
+  if(window._deleteItem) window._deleteItem(id);
+  toast('🗑️ הפריט נמחק');
+  setTimeout(()=>_renderPendingList(),500);
+}
+function cancelPending(id){
+  if(!_isOwner) return;
+  const it=items.find(x=>x.id===id);
+  if(!it) return;
+  delete it.status; delete it.pendingBy; delete it.pendingAt;
+  if(window._saveItem) window._saveItem(it);
+  _renderPendingList();
+  toast('↩️ הסימון בוטל');
+}
+function _updatePendingBadge(){
+  const count=items.filter(x=>x.status==='pending_done').length;
+  const badge=document.getElementById('pendingCount');
+  if(!badge) return;
+  badge.textContent=count;
+  badge.style.display=count>0?'':'none';
+  const bell=document.getElementById('pendingBell');
+  if(bell) bell.style.color=count>0?'var(--red,#e85d3f)':'';
+  // רענן פאנל אם פתוח
+  const pp=document.getElementById('pendingPanel');
+  if(pp&&pp.style.display!=='none') _renderPendingList();
+}
+
 let _locEditId=null;
 function openLocationEdit(id){
   if(!_isAdmin){toast('❌ אין הרשאה');return;}
@@ -3057,6 +3148,7 @@ window._updateItems = function(newItems, newNextId){
   nextId = newNextId;
   refreshDropdowns();
   renderTable();
+  if(typeof _updatePendingBadge==='function') _updatePendingBadge();
 };
 window.addCage = addCage;
 window.rotateCage = rotateCage;
@@ -3934,6 +4026,11 @@ if(typeof closeConf!=="undefined") window.closeConf=closeConf;
 if(typeof openLocationEdit!=="undefined") window.openLocationEdit=openLocationEdit;
 if(typeof closeLocEdit!=="undefined") window.closeLocEdit=closeLocEdit;
 if(typeof saveLocEdit!=="undefined") window.saveLocEdit=saveLocEdit;
+if(typeof markAsDone!=="undefined") window.markAsDone=markAsDone;
+if(typeof openPendingPanel!=="undefined") window.openPendingPanel=openPendingPanel;
+if(typeof closePendingPanel!=="undefined") window.closePendingPanel=closePendingPanel;
+if(typeof approveDeletion!=="undefined") window.approveDeletion=approveDeletion;
+if(typeof cancelPending!=="undefined") window.cancelPending=cancelPending;
 if(typeof exportJSON!=="undefined") window.exportJSON=exportJSON;
 if(typeof prevPage!=="undefined") window.prevPage=prevPage;
 if(typeof startEdit!=="undefined") window.startEdit=startEdit;
@@ -3980,7 +4077,8 @@ const workersDocRef = doc(db, 'tires', WORKERS_DOC_ID);
 
 // ── רשימת עובדים (מסונכרנת מ-Firebase) ──
 let _workers = [];
-let _currentWorkerId = null; // מזהה העובד המחובר כעת (null = בעלים)
+let _currentWorkerId = null;   // מזהה העובד המחובר כעת (null = בעלים)
+let _currentWorkerName = null; // שם העובד המחובר כעת
 
 function _genWorkerId() { return 'w_' + Date.now() + '_' + Math.random().toString(36).slice(2,7); }
 
@@ -4169,8 +4267,9 @@ async function _doWorkerLogin() {
     return;
   }
   _isAdmin = !!worker.isAdmin;
-  _isOwner = false; // עובד — גם עם הרשאת מנהל, לא יכול לנהל עובדים
+  _isOwner = false;
   _currentWorkerId = worker.id;
+  _currentWorkerName = worker.name;
   await saveSession(_isAdmin, worker.id, worker.name);
   enterApp(_isAdmin, worker.name);
 }
@@ -4185,6 +4284,7 @@ function checkPass() {
       _isAdmin = true;
       _isOwner = true;
       _currentWorkerId = null;
+      _currentWorkerName = 'בעלים';
       enterApp(true, 'בעלים');
     } else {
       document.getElementById('passErr').style.display = 'block';
@@ -4244,6 +4344,7 @@ function _logout() {
   clearSession();
   _isAdmin = false;
   _isOwner = false;
+  _currentWorkerName = null;
   document.body.classList.remove('is-owner','is-admin-worker');
   document.querySelector('.app').style.display = 'none';
   const ls = document.getElementById('loginScreen');
