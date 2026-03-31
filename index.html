@@ -851,6 +851,31 @@ if('serviceWorker' in navigator){
   </div>
 </div>
 
+<!-- Location Picker Overlay -->
+<div class="conf-ov" id="locPickerOv">
+  <div class="conf-box" style="max-width:440px;max-height:82vh;overflow-y:auto;direction:rtl;text-align:right;padding:18px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <h4 style="margin:0;font-size:15px;">📍 בחר מיקום חדש</h4>
+      <button onclick="closeLocPicker()" style="background:var(--card);border:1px solid var(--border);border-radius:7px;width:32px;height:32px;cursor:pointer;color:var(--muted);font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+    <div id="locPickerItemName" style="font-size:12px;color:var(--muted);margin-bottom:14px;"></div>
+    <div id="locPickerGrid"></div>
+  </div>
+</div>
+
+<!-- Duplicate Location Conflict Overlay -->
+<div class="conf-ov" id="dupConflictOv">
+  <div class="conf-box" style="max-width:360px;direction:rtl;text-align:right;">
+    <div style="font-size:20px;margin-bottom:8px;">⚠️ מיקום תפוס</div>
+    <div id="dupConflictMsg" style="font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.5;"></div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button class="btn btn-green" onclick="dupMarkDoneAndAdd()" style="width:100%;">✅ סמן ישן כנגמר ← הוסף חדש</button>
+      <button class="btn" onclick="dupMoveExisting()" style="width:100%;background:var(--blue-dim);border-color:var(--blue);color:var(--blue);">📍 העבר ישן למיקום אחר</button>
+      <button class="btn btn-ghost" onclick="closeDupConflict()" style="width:100%;">ביטול</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -1279,6 +1304,16 @@ function addItem(){
   if(!b){toast('❌ נא להזין מותג');return;}
   const rahava=document.getElementById('aRahava')?document.getElementById('aRahava').value:'';
   const newItem={id:nextId++,w,p,d,brand:b,model:m,notes:no,col:co,floor:fl,p1,p2,pn1,pn2,agr,rahava};
+
+  // בדוק כפילות מיקום — אותה מידה באותו כלוב+קומה
+  if(co){
+    const dup=items.find(x=>String(x.col)===co&&String(x.floor)===fl&&Number(x.w)===Number(w)&&Number(x.p)===Number(p)&&Number(x.d)===Number(d)&&x.status!=='pending_done');
+    if(dup){
+      showDupConflict(dup,newItem);
+      return;
+    }
+  }
+
   // שמור ברקוד לזיכרון
   const barcodeResult = document.getElementById('barcodeResult');
   if(barcodeResult && barcodeResult.dataset.code){
@@ -1387,12 +1422,7 @@ function openLocationEdit(id){
   const it=items.find(x=>x.id===id);
   if(!it) return;
   _locEditId=id;
-  const nameEl=document.getElementById('locEditItemName');
-  if(nameEl) nameEl.textContent=`${it.brand||''} ${it.w?it.w+'/'+it.p+'R'+it.d:''} — ${it.model||''}`.trim();
-  document.getElementById('locEditCol').value=it.col||'';
-  const fl=document.getElementById('locEditFloor');
-  if(fl){ fl.value=String(it.floor||'1'); }
-  document.getElementById('locEditOv').classList.add('open');
+  openLocPicker(id);
 }
 function closeLocEdit(){
   document.getElementById('locEditOv').classList.remove('open');
@@ -1407,6 +1437,98 @@ function saveLocEdit(){
   if(window._saveItem) window._saveItem(it);
   closeLocEdit();
   toast('✅ מיקום עודכן');
+}
+
+// ── בוחר מיקום ויזואלי ──
+function openLocPicker(id){
+  _locEditId=id;
+  const it=items.find(x=>x.id===id);
+  if(!it) return;
+  const nameEl=document.getElementById('locPickerItemName');
+  if(nameEl) nameEl.textContent=`${it.brand||''} ${it.w?it.w+'/'+it.p+'R'+it.d:''}${it.model?' — '+it.model:''}`;
+
+  // טען כלובים משמורה
+  let pickerCages=cages&&cages.length?cages:[];
+  if(!pickerCages.length){
+    const saved=localStorage.getItem('tirewms_map2');
+    if(saved){try{const d=JSON.parse(saved);pickerCages=d.cages||[];}catch(e){}}
+  }
+
+  // קבץ לפי קומה
+  const byFloor={};
+  pickerCages.forEach(g=>{const f=String(g.floor||'1');(byFloor[f]=byFloor[f]||[]).push(g);});
+
+  const floorColors={'1':'var(--blue)','2':'var(--green)','3':'var(--yellow,#f5a623)'};
+  let html='';
+  if(!pickerCages.length){
+    html='<div style="color:var(--muted);font-size:13px;">אין כלובים מוגדרים במפה — הגדר קודם במפת המחסן</div>';
+  } else {
+    Object.keys(byFloor).sort().forEach(f=>{
+      const col=floorColors[f]||'var(--muted)';
+      html+=`<div style="margin-bottom:14px;"><div style="font-size:11px;font-weight:800;color:${col};margin-bottom:7px;letter-spacing:.5px;">קומה ${f}</div><div style="display:flex;flex-wrap:wrap;gap:7px;">`;
+      byFloor[f].sort((a,b)=>String(a.name).localeCompare(String(b.name),'he')).forEach(g=>{
+        const isCur=String(it.col)===String(g.name)&&String(it.floor)===String(g.floor||'1');
+        const cnt=items.filter(x=>String(x.col)===String(g.name)&&String(x.floor)===String(g.floor||'1')).length;
+        html+=`<button onclick="pickLocation('${escHTML(g.name)}','${escHTML(g.floor||'1')}')" style="padding:8px 12px;border-radius:8px;border:2px solid ${isCur?col:'var(--border)'};background:${isCur?'rgba(74,158,255,0.12)':'var(--card)'};color:${isCur?col:'var(--text)'};font-family:inherit;font-size:13px;font-weight:${isCur?'900':'600'};cursor:pointer;min-width:60px;position:relative;">
+          ${escHTML(g.name)}${cnt>0?`<span style="position:absolute;top:-5px;left:-5px;background:${col};color:#fff;border-radius:999px;font-size:9px;font-weight:900;padding:1px 4px;min-width:14px;text-align:center;">${cnt}</span>`:''}
+        </button>`;
+      });
+      html+='</div></div>';
+    });
+  }
+  document.getElementById('locPickerGrid').innerHTML=html;
+  document.getElementById('locPickerOv').classList.add('open');
+}
+function closeLocPicker(){
+  document.getElementById('locPickerOv').classList.remove('open');
+  _locEditId=null;
+}
+function pickLocation(name,floor){
+  if(!_locEditId) return;
+  const it=items.find(x=>x.id===_locEditId);
+  if(!it) return;
+  it.col=name; it.floor=floor;
+  if(window._saveItem) window._saveItem(it);
+  closeLocPicker();
+  toast(`📍 מיקום עודכן: ${name} קומה ${floor}`);
+}
+
+// ── זיהוי כפילות מיקום ──
+let _dupPendingItem=null;
+let _dupExistingId=null;
+function showDupConflict(existing,newItem){
+  _dupPendingItem=newItem;
+  _dupExistingId=existing.id;
+  const msg=document.getElementById('dupConflictMsg');
+  if(msg) msg.innerHTML=`במיקום <b>${escHTML(newItem.col)} קומה ${escHTML(newItem.floor)}</b> כבר נמצא:<br><b>${escHTML(existing.brand||'')} ${escHTML(sz(existing))}</b><br>מה לעשות?`;
+  document.getElementById('dupConflictOv').classList.add('open');
+}
+function closeDupConflict(){
+  document.getElementById('dupConflictOv').classList.remove('open');
+  _dupPendingItem=null;
+  _dupExistingId=null;
+}
+function dupMarkDoneAndAdd(){
+  // סמן ישן כנגמר
+  const ex=items.find(x=>x.id===_dupExistingId);
+  if(ex){
+    ex.status='pending_done';
+    ex.pendingBy=window.currentWorkerName||'בעלים';
+    ex.pendingAt=new Date().toISOString();
+    if(window._saveItem) window._saveItem(ex);
+  }
+  // הוסף חדש
+  if(_dupPendingItem&&window._saveItem){
+    window._saveItem(_dupPendingItem);
+    toast('✅ הצמיג הישן סומן כנגמר — הצמיג החדש נוסף!');
+  }
+  closeDupConflict();
+  closeAddModal();
+}
+function dupMoveExisting(){
+  const id=_dupExistingId;
+  closeDupConflict();
+  if(id!=null) openLocPicker(id);
 }
 function doDelete(){
   if(window._deleteItem){
