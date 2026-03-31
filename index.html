@@ -452,8 +452,8 @@ if('serviceWorker' in navigator){
 <div style="padding:10px 12px;background:var(--bg);border-bottom:1px solid var(--border);">
   <div style="display:flex;align-items:center;background:var(--card);border:1.5px solid var(--border2);border-radius:12px;padding:0 14px;height:46px;gap:10px;">
     <span style="color:var(--muted);font-size:18px;">🔍</span>
-    <input id="mainSearch" type="text" placeholder="חיפוש לפי מידה, מותג, מיקום..."
-      inputmode="numeric"
+    <input id="mainSearch" type="tel" placeholder="חיפוש לפי מידה, מותג, מיקום..."
+      inputmode="tel"
       maxlength="20"
       oninput="handleSearchInput(this)"
       onkeydown="if(event.key==='Escape'||event.key==='Delete'){clearSearch();}"
