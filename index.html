@@ -827,26 +827,69 @@ if('serviceWorker' in navigator){
 
 <!-- מודל עדכון מיקום — עובד מנהל -->
 <div class="conf-ov" id="locEditOv">
-  <div class="conf-box" style="max-width:320px;text-align:right;direction:rtl;">
-    <h4 style="margin-bottom:14px;">📍 עדכון מיקום</h4>
-    <div id="locEditItemName" style="font-size:13px;color:var(--muted);margin-bottom:14px;"></div>
-    <div class="fi" style="margin-bottom:12px;">
-      <label>עמודה / כלוב</label>
-      <input id="locEditCol" type="text" placeholder="לדוג׳ מי.3.2" autocomplete="off"/>
+  <div class="conf-box" style="max-width:380px;text-align:right;direction:rtl;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <h4 style="margin:0;">📍 עדכון מיקום</h4>
+      <button onclick="closeLocEdit()" style="background:var(--card);border:1px solid var(--border);border-radius:7px;width:32px;height:32px;cursor:pointer;color:var(--muted);font-size:16px;">✕</button>
     </div>
-    <div class="fi" style="margin-bottom:16px;">
-      <label>קומה</label>
-      <select id="locEditFloor">
-        <option value="1">קומה 1</option>
-        <option value="2">קומה 2</option>
-        <option value="3">קומה 3</option>
-        <option value="4">קומה 4</option>
-        <option value="5">קומה 5</option>
-      </select>
+    <div id="locEditItemName" style="font-size:12px;color:var(--muted);margin-bottom:14px;"></div>
+
+    <!-- שורה 1: פניה 1 / שורה ימין / עמודה / קומה -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
+      <div class="fi" style="margin:0;">
+        <label style="font-size:10px;color:var(--accent);">פניה 1</label>
+        <input id="lePN1" type="text" placeholder="" autocomplete="off" style="text-align:center;"/>
+      </div>
+      <div class="fi" style="margin:0;">
+        <label style="font-size:10px;color:var(--green);">שו׳ ימין</label>
+        <input id="leP1" type="text" placeholder="" autocomplete="off" style="text-align:center;border-color:var(--green);"/>
+      </div>
+      <div class="fi" style="margin:0;">
+        <label style="font-size:10px;">עמודה</label>
+        <input id="leCol" type="text" placeholder="A1" autocomplete="off" style="text-align:center;"/>
+      </div>
+      <div class="fi" style="margin:0;">
+        <label style="font-size:10px;">קומה</label>
+        <select id="leFloor" style="text-align:center;">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+        </select>
+      </div>
     </div>
+
+    <!-- שורה 2: פניה 2 / שורה שמאל -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+      <div class="fi" style="margin:0;">
+        <label style="font-size:10px;color:var(--accent);">פניה 2</label>
+        <input id="lePN2" type="text" placeholder="" autocomplete="off" style="text-align:center;"/>
+      </div>
+      <div class="fi" style="margin:0;">
+        <label style="font-size:10px;color:var(--purple);">שו׳ שמאל</label>
+        <input id="leP2" type="text" placeholder="" autocomplete="off" style="text-align:center;border-color:var(--purple);"/>
+      </div>
+    </div>
+
+    <!-- שורה 3: חקלאות / רחבה -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
+      <div class="fi" style="margin:0;">
+        <label style="font-size:10px;color:var(--green);">🌾 חקלאות</label>
+        <input id="leAgr" type="text" placeholder="" autocomplete="off" style="text-align:center;"/>
+      </div>
+      <div class="fi" style="margin:0;">
+        <label style="font-size:10px;color:var(--red);">📦 רחבה</label>
+        <select id="leRahava">
+          <option value="">לא</option>
+          <option value="כן">כן</option>
+        </select>
+      </div>
+    </div>
+
     <div class="conf-acts">
       <button class="btn btn-ghost" onclick="closeLocEdit()">ביטול</button>
-      <button class="btn btn-green" id="locEditSaveBtn" onclick="saveLocEdit()">💾 שמור מיקום</button>
+      <button class="btn btn-green" onclick="saveLocEdit()">💾 שמור מיקום</button>
     </div>
   </div>
 </div>
@@ -1425,23 +1468,17 @@ function openLocationEdit(id){
   const it=items.find(x=>x.id===id);
   if(!it) return;
   _locEditId=id;
-  // אם יש כלובים מוגדרים במפה — פתח בוחר ויזואלי, אחרת דיאלוג ידני
-  let pickerCages=cages&&cages.length?cages:[];
-  if(!pickerCages.length){
-    const saved=localStorage.getItem('tirewms_map2');
-    if(saved){try{const d=JSON.parse(saved);pickerCages=d.cages||[];}catch(e){}}
-  }
-  if(pickerCages.length>0){
-    openLocPicker(id);
-  } else {
-    // דיאלוג ידני — עמודה + קומה
-    const nameEl=document.getElementById('locEditItemName');
-    if(nameEl) nameEl.textContent=`${it.brand||''} ${it.w?it.w+'/'+it.p+'R'+it.d:''}${it.model?' — '+it.model:''}`;
-    document.getElementById('locEditCol').value=it.col||'';
-    const fl=document.getElementById('locEditFloor');
-    if(fl) fl.value=String(it.floor||'1');
-    document.getElementById('locEditOv').classList.add('open');
-  }
+  const nameEl=document.getElementById('locEditItemName');
+  if(nameEl) nameEl.textContent=`${it.brand||''} ${it.w?it.w+'/'+it.p+'R'+it.d:''}${it.model?' — '+it.model:''}`;
+  document.getElementById('lePN1').value=it.pn1||'';
+  document.getElementById('leP1').value=it.p1||'';
+  document.getElementById('leCol').value=it.col||'';
+  document.getElementById('leFloor').value=String(it.floor||'1');
+  document.getElementById('lePN2').value=it.pn2||'';
+  document.getElementById('leP2').value=it.p2||'';
+  document.getElementById('leAgr').value=it.agr||'';
+  document.getElementById('leRahava').value=it.rahava||'';
+  document.getElementById('locEditOv').classList.add('open');
 }
 function closeLocEdit(){
   document.getElementById('locEditOv').classList.remove('open');
@@ -1451,8 +1488,14 @@ function saveLocEdit(){
   if((!window.isAdminMode&&!window.isOwnerMode)||!_locEditId) return;
   const it=items.find(x=>x.id===_locEditId);
   if(!it) return;
-  it.col=document.getElementById('locEditCol').value.trim();
-  it.floor=document.getElementById('locEditFloor').value;
+  it.pn1=document.getElementById('lePN1').value.trim();
+  it.p1=document.getElementById('leP1').value.trim();
+  it.col=document.getElementById('leCol').value.trim();
+  it.floor=document.getElementById('leFloor').value;
+  it.pn2=document.getElementById('lePN2').value.trim();
+  it.p2=document.getElementById('leP2').value.trim();
+  it.agr=document.getElementById('leAgr').value.trim();
+  it.rahava=document.getElementById('leRahava').value;
   if(window._saveItem) window._saveItem(it);
   closeLocEdit();
   toast('✅ מיקום עודכן');
