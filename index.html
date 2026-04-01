@@ -731,7 +731,8 @@ if('serviceWorker' in navigator){
             <input id="aFl" type="text" placeholder="1"/>
           </div>
           <div class="fi full"><label>🌾 מחסן חקלאות</label>
-            <input id="aAgr" type="text" placeholder="מיקום במחסן חקלאות (אופציונלי)"/>
+            <input id="aAgr" type="hidden" value=""/>
+            <button type="button" id="btnAgr" onclick="toggleAgr()" style="width:100%;padding:12px;border-radius:9px;border:2px solid var(--border);background:var(--card);color:var(--muted);font-family:inherit;font-size:15px;font-weight:900;cursor:pointer;transition:all .2s;letter-spacing:1px;">🌾 חקלאות</button>
           </div>
           <div class="fi full">
             <input id="aRahava" type="hidden" value=""/>
@@ -856,7 +857,8 @@ if('serviceWorker' in navigator){
         <input id="leFloor" type="text" placeholder="1"/>
       </div>
       <div class="fi full"><label>🌾 מחסן חקלאות</label>
-        <input id="leAgr" type="text" placeholder="מיקום במחסן חקלאות (אופציונלי)"/>
+        <input id="leAgr" type="hidden" value=""/>
+        <button type="button" id="btnLeAgr" onclick="toggleLeAgr()" style="width:100%;padding:12px;border-radius:9px;border:2px solid var(--border);background:var(--card);color:var(--muted);font-family:inherit;font-size:15px;font-weight:900;cursor:pointer;transition:all .2s;letter-spacing:1px;">🌾 חקלאות</button>
       </div>
       <div class="fi full">
         <input id="leRahava" type="hidden" value=""/>
@@ -1301,15 +1303,18 @@ document.addEventListener('keydown',e=>{
 /* ADD */
 function openAddModal(){
   if(!window.isOwnerMode){toast('❌ גישה לבעלים בלבד');return;}
-  ['aSz','aBr','aMo','aNo','aCo','aP1','aP2','aPn1','aPn2','aAgr'].forEach(id=>document.getElementById(id).value='');
+  ['aSz','aBr','aMo','aNo','aCo','aP1','aP2','aPn1','aPn2'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('aFl').value='1';
+  _setAgrBtn('aAgr','btnAgr','');
   document.getElementById('addOverlay').classList.add('open');
   setTimeout(()=>document.getElementById('aSz').focus(),80);
 }
 function closeAddModal(){
   resetTurnButtons();
   const ri=document.getElementById('aRahava'); if(ri) ri.value='';
-  const rb=document.getElementById('btnRahava'); if(rb){ rb.style.background='var(--card)'; rb.style.borderColor='var(--border)'; rb.style.color='var(--muted)'; rb.style.boxShadow='none'; }stopBarcode();resetVoiceBtn();document.getElementById('addOverlay').classList.remove('open');}
+  const rb=document.getElementById('btnRahava'); if(rb){ rb.style.background='var(--card)'; rb.style.borderColor='var(--border)'; rb.style.color='var(--muted)'; rb.style.boxShadow='none'; }
+  _setAgrBtn('aAgr','btnAgr','');
+  stopBarcode();resetVoiceBtn();document.getElementById('addOverlay').classList.remove('open');}
 function closeAddOutside(e){if(e.target===document.getElementById('addOverlay'))closeAddModal();}
 function addItem(){
   const szv=document.getElementById('aSz').value.trim();
@@ -1452,7 +1457,7 @@ function openLocationEdit(id){
   document.getElementById('leCol').value=it.col||'';
   document.getElementById('leFloor').value=String(it.floor||'1');
   document.getElementById('leP2').value=it.p2||'';
-  document.getElementById('leAgr').value=it.agr||'';
+  _setAgrBtn('leAgr','btnLeAgr',it.agr==='כן'?'כן':'');
   // כפתורי toggle — פניה 1
   _setLeToggle('lePn1','btnLePn1',it.pn1||'');
   // כפתורי toggle — פניה 2
@@ -2252,10 +2257,7 @@ function parseVoiceInput(text){
   if(pn2Match) document.getElementById('aPn2').value = pn2Match[1];
 
   // ─── מחסן חקלאות ───
-  if(t.includes('חקלאות')){
-    const agrMatch = t.match(/חקלאות\s*([\d\w]+)/);
-    if(agrMatch) document.getElementById('aAgr').value = agrMatch[1];
-  }
+  if(t.includes('חקלאות')) _setAgrBtn('aAgr','btnAgr','כן');
 
   toast('✅ שדות מולאו — בדוק ותקן אם צריך');
 }
@@ -3917,6 +3919,36 @@ function applyColumnMap(rows, container){
 function prevPage(){ if(currentPage>0){currentPage--;renderTable();} }
 function nextPage(total){ if(currentPage<total-1){currentPage++;renderTable();} }
 
+function _setAgrBtn(inputId, btnId, val){
+  const input=document.getElementById(inputId);
+  const btn=document.getElementById(btnId);
+  if(!input||!btn) return;
+  if(val==='כן'){
+    input.value='כן';
+    btn.style.background='rgba(62,207,142,0.2)';
+    btn.style.borderColor='var(--green)';
+    btn.style.color='var(--green)';
+    btn.style.boxShadow='0 0 12px rgba(62,207,142,0.35)';
+  } else {
+    input.value='';
+    btn.style.background='var(--card)';
+    btn.style.borderColor='var(--border)';
+    btn.style.color='var(--muted)';
+    btn.style.boxShadow='none';
+  }
+}
+function toggleAgr(){
+  const input=document.getElementById('aAgr');
+  if(!input) return;
+  _setAgrBtn('aAgr','btnAgr',input.value==='כן'?'':'כן');
+  vibrate([40]);
+}
+function toggleLeAgr(){
+  const input=document.getElementById('leAgr');
+  if(!input) return;
+  _setAgrBtn('leAgr','btnLeAgr',input.value==='כן'?'':'כן');
+  vibrate([40]);
+}
 function toggleRahava(){
   const input=document.getElementById('aRahava');
   const btn=document.getElementById('btnRahava');
