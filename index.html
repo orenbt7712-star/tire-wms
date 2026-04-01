@@ -613,12 +613,18 @@ if('serviceWorker' in navigator){
         <div style="font-size:13px;font-weight:800;">📏 הוספת שורת כלובים</div>
         <button onclick="closeRowPanel()" style="background:var(--card);border:1px solid var(--border);border-radius:7px;width:36px;height:36px;cursor:pointer;color:var(--muted);font-size:18px;display:flex;align-items:center;justify-content:center;">✕</button>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
         <div>
           <label style="font-size:10px;color:var(--accent);font-weight:700;">כמות כלובים</label>
           <input id="rowPanelCount" type="number" min="1" max="50" value="5"
             onkeydown="if(event.key==='Enter')confirmRowPanel()"
             style="width:100%;background:var(--card);border:1px solid var(--accent);border-radius:7px;color:var(--text);padding:8px;font-family:inherit;font-size:16px;margin-top:4px;"/>
+        </div>
+        <div>
+          <label style="font-size:10px;color:var(--green);font-weight:700;">מספר התחלה</label>
+          <input id="rowPanelStart" type="number" min="1" max="999" value="1"
+            onkeydown="if(event.key==='Enter')confirmRowPanel()"
+            style="width:100%;background:var(--card);border:1px solid var(--green);border-radius:7px;color:var(--text);padding:8px;font-family:inherit;font-size:16px;margin-top:4px;"/>
         </div>
         <div>
           <label style="font-size:10px;color:var(--blue);font-weight:700;">כיוון</label>
@@ -3263,6 +3269,7 @@ function openRowPanel(){
 function closeRowPanel(){ const p=document.getElementById('rowPanel'); if(p) p.style.display='none'; }
 function confirmRowPanel(){
   const num=parseInt(document.getElementById('rowPanelCount').value)||0;
+  const startNum=parseInt(document.getElementById('rowPanelStart').value)||1;
   const dir=document.getElementById('rowPanelDir').value;
   const fl=document.getElementById('rowPanelFloor').value;
   if(num<1||num>50){ toast('❌ כמות לא חוקית (1–50)'); return; }
@@ -3275,11 +3282,11 @@ function confirmRowPanel(){
     if(dir==='hr') x=baseX+i;                     // אופקי ימין
     else if(dir==='hl') x=Math.max(0,baseX-i);    // אופקי שמאל
     else if(dir==='v')  y=baseY+i;                // אנכי
-    cages.push({id,name:String(id),floor:fl,x,y,rot:false});
+    cages.push({id,name:String(startNum+i),floor:fl,x,y,rot:false});
   }
   closeRowPanel();
   drawMap();
-  toast(`✅ נוספה שורה של ${num} כלובים`);
+  toast(`✅ נוספה שורה של ${num} כלובים (${startNum}–${startNum+num-1})`);
 }
 
 function onWheel(e){
