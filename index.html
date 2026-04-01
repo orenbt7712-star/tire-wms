@@ -892,6 +892,8 @@ if('serviceWorker' in navigator){
     <div id="dupConflictMsg" style="font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.5;"></div>
     <div style="display:flex;flex-direction:column;gap:8px;">
       <button class="btn btn-green" onclick="dupMarkDoneAndAdd()" style="width:100%;">✅ סמן ישן כנגמר ← הוסף חדש</button>
+      <button class="btn" onclick="dupHalfHalf()" style="width:100%;background:rgba(245,166,35,0.15);border-color:var(--accent);color:var(--accent);">½ חצי / חצי — שמור שניהם בכלוב</button>
+      <button class="btn" onclick="dupSingles()" style="width:100%;background:rgba(74,158,255,0.12);border-color:var(--blue);color:var(--blue);">🔲 צמיגים בודדים — כלוב משותף</button>
       <button class="btn" onclick="dupMoveExisting()" style="width:100%;background:var(--blue-dim);border-color:var(--blue);color:var(--blue);">📍 העבר ישן למיקום אחר</button>
       <button class="btn btn-ghost" onclick="closeDupConflict()" style="width:100%;">ביטול</button>
     </div>
@@ -1157,6 +1159,8 @@ function viewRow(it){
       ${it.p2?`<span style="color:var(--border2)">·</span><span><span class="lp">שו׳ שמאל</span> ${escHTML(it.p2)}</span>`:''}
       ${it.agr?`<span style="color:var(--border2)">·</span><span><span class="lp" style="color:var(--green);">🌾</span> ${escHTML(it.agr)}</span>`:''}
       ${it.rahava?`<span style="color:var(--border2)">·</span><span><span class="lp" style="color:var(--red);">📦</span> רחבה</span>`:''}
+      ${it.shareMode==='half'?`<span style="color:var(--border2)">·</span><span style="background:rgba(245,166,35,0.2);color:var(--accent);border-radius:4px;padding:1px 5px;font-size:10px;font-weight:900;">½</span>`:''}
+      ${it.shareMode==='singles'?`<span style="color:var(--border2)">·</span><span style="background:rgba(74,158,255,0.15);color:var(--blue);border-radius:4px;padding:1px 5px;font-size:10px;font-weight:900;">יח׳</span>`:''}
     </div></td>
     <td><div class="acts">
       <button class="ib owner-only" onclick="event.stopPropagation();startEdit(${it.id})" title="עריכה מלאה">✏️</button>
@@ -1259,6 +1263,16 @@ function showItemLocation(id){
       <div style="font-size:11px;color:var(--red);font-weight:700;margin-bottom:6px;">📦 רחבה / עמסה</div>
       <div style="font-size:28px;font-weight:900;color:var(--red);">✓ פעיל</div>
     </div>`:''}
+    ${it.shareMode==='half'?`
+    <div style="background:rgba(245,166,35,0.1);border:2px solid var(--accent);border-radius:12px;padding:12px;margin-bottom:12px;text-align:center;">
+      <div style="font-size:15px;font-weight:900;color:var(--accent);">½ חצי / חצי</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px;">כלוב זה משותף בין שתי מידות</div>
+    </div>`:''}
+    ${it.shareMode==='singles'?`
+    <div style="background:rgba(74,158,255,0.1);border:2px solid var(--blue);border-radius:12px;padding:12px;margin-bottom:12px;text-align:center;">
+      <div style="font-size:15px;font-weight:900;color:var(--blue);">🔲 כלוב צמיגים בודדים</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px;">כלוב זה מכיל צמיגים יחידים ממידות שונות</div>
+    </div>`:''}
     ${it.notes?`
     <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;font-size:13px;color:var(--muted);">
       📝 ${escHTML(it.notes)}
@@ -1337,6 +1351,23 @@ function addItem(){
     const normFl=fl||'1';
     const dup=items.find(x=>String(x.col).trim()===trimCo&&String(x.floor||'1')===normFl&&x.status!=='pending_done');
     if(dup){
+      // כלוב צמיגים בודדים — הוסף ישירות ללא אזהרה
+      if(dup.shareMode==='singles'){
+        newItem.shareMode='singles';
+        if(window._saveItem){ window._saveItem(newItem); closeAddModal(); toast('🔲 נוסף לכלוב צמיגים בודדים'); }
+        else { items.push(newItem); refreshDropdowns(); renderTable(); closeAddModal(); toast('🔲 נוסף (לא מחובר לענן)'); }
+        return;
+      }
+      // כלוב חצי/חצי — אם עוד מקום (פחות מ-2) הוסף אוטומטית
+      if(dup.shareMode==='half'){
+        const countAtLoc=items.filter(x=>String(x.col).trim()===trimCo&&String(x.floor||'1')===normFl&&x.status!=='pending_done').length;
+        if(countAtLoc<2){
+          newItem.shareMode='half';
+          if(window._saveItem){ window._saveItem(newItem); closeAddModal(); toast('½ נוסף לכלוב חצי/חצי'); }
+          else { items.push(newItem); refreshDropdowns(); renderTable(); closeAddModal(); toast('½ נוסף (לא מחובר לענן)'); }
+          return;
+        }
+      }
       showDupConflict(dup,newItem);
       return;
     }
@@ -1619,6 +1650,30 @@ function dupMoveExisting(){
   const id=_dupExistingId;
   closeDupConflict();
   if(id!=null) openLocationEdit(id);
+}
+function dupHalfHalf(){
+  const ex=items.find(x=>x.id===_dupExistingId);
+  if(ex){ ex.shareMode='half'; if(window._saveItem) window._saveItem(ex); }
+  if(_dupPendingItem){
+    _dupPendingItem.shareMode='half';
+    if(window._saveItem) window._saveItem(_dupPendingItem);
+  }
+  toast('½ שני הצמיגים נשמרו כחצי/חצי בכלוב');
+  closeDupConflict(); closeAddModal();
+}
+function dupSingles(){
+  const co=_dupPendingItem&&_dupPendingItem.col, fl=(_dupPendingItem&&_dupPendingItem.floor)||'1';
+  if(co){
+    const trimCo=String(co).trim();
+    items.filter(x=>String(x.col).trim()===trimCo&&String(x.floor||'1')===fl&&x.status!=='pending_done')
+      .forEach(x=>{ x.shareMode='singles'; if(window._saveItem) window._saveItem(x); });
+  }
+  if(_dupPendingItem){
+    _dupPendingItem.shareMode='singles';
+    if(window._saveItem) window._saveItem(_dupPendingItem);
+  }
+  toast('🔲 הצמיג נוסף לכלוב צמיגים בודדים');
+  closeDupConflict(); closeAddModal();
 }
 function doDelete(){
   if(window._deleteItem){
