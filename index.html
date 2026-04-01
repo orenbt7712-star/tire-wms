@@ -3803,13 +3803,14 @@ function parseCSV(text){
 
 // מיפוי עמודות Excel נפוצות
 const _excelFieldMap={
-  size:  ['מידה','size','tire size','tyre size','גודל','dimension'],
-  brand: ['מותג','brand','manufacturer','יצרן','ספק','supplier'],
-  model: ['דגם','model','description','תיאור','type'],
+  size:  ['מידה','size','tire size','tyre size','גודל','dimension','מידת צמיג'],
+  brand: ['מותג','brand','manufacturer','יצרן','ספק','supplier','פריט','item','item name','שם פריט'],
+  model: ['דגם','model','description','תיאור','type','תיאור פריט','item description','תאור פריט','תאור'],
   col:   ['עמודה','col','column','מיקום','location','bin','cage'],
   floor: ['קומה','floor','level','shelf','rack'],
-  qty:   ['כמות','qty','quantity','amount','מספר'],
+  qty:   ['כמות','qty','quantity','amount','מספר','יתרה','stock','מלאי'],
   notes: ['הערות','notes','remarks','note','comment'],
+  warehouse:['מחסן','warehouse','store','סניף','branch','אתר'],
 };
 
 function _excelFindCol(headers, keys){
@@ -3826,12 +3827,12 @@ function processExcelRows(rows, colMap){
   if(!rows||rows.length===0){ toast('❌ לא נמצאו שורות'); return; }
   const headers=Object.keys(rows[0]);
 
-  let sizeCol, brandCol, modelCol, colCol, floorCol, qtyCol, notesCol;
+  let sizeCol, brandCol, modelCol, colCol, floorCol, qtyCol, notesCol, warehouseCol;
   if(colMap){
     sizeCol=colMap.size||null; brandCol=colMap.brand||null;
     modelCol=colMap.model||null; colCol=colMap.col||null;
     floorCol=colMap.floor||null; qtyCol=colMap.qty||null;
-    notesCol=colMap.notes||null;
+    notesCol=colMap.notes||null; warehouseCol=colMap.warehouse||null;
   } else {
     sizeCol =_excelFindCol(headers,_excelFieldMap.size);
     brandCol=_excelFindCol(headers,_excelFieldMap.brand);
@@ -3840,6 +3841,7 @@ function processExcelRows(rows, colMap){
     floorCol=_excelFindCol(headers,_excelFieldMap.floor);
     qtyCol  =_excelFindCol(headers,_excelFieldMap.qty);
     notesCol=_excelFindCol(headers,_excelFieldMap.notes);
+    warehouseCol=_excelFindCol(headers,_excelFieldMap.warehouse);
   }
 
   if(!colMap && !sizeCol && !brandCol){
@@ -3847,9 +3849,19 @@ function processExcelRows(rows, colMap){
     return;
   }
 
-  let added=0, skipped=0;
+  // סינון לפי מחסן — אם יש עמודת מחסן, ייבא רק שורות של מחסן 01
+  const _warehouseFilter = warehouseCol ? true : false;
+
+  let added=0, skipped=0, warehouseSkipped=0;
   rows.forEach((row,idx)=>{
     try{
+      // סנן לפי מחסן 01 אם קיימת עמודת מחסן
+      if(_warehouseFilter){
+        const wh=String(row[warehouseCol]||'').trim();
+        if(wh!=='01'&&wh!=='1'&&!wh.includes('מחסן 01')&&!wh.includes('מחסן 1')&&wh.toLowerCase()!=='main'){
+          warehouseSkipped++; return;
+        }
+      }
       const sizeVal=sizeCol?String(row[sizeCol]||'').trim():'';
       const brandVal=brandCol?String(row[brandCol]||'').trim():'';
       if(!sizeVal&&!brandVal){ skipped++; return; }
@@ -3874,7 +3886,8 @@ function processExcelRows(rows, colMap){
 
   closeBackupMenu();
   closeExcelImportPanel();
-  setTimeout(()=>toast(`✅ יובאו ${added} פריטים${skipped>0?' · '+skipped+' דולגו':''}`),400);
+  const whMsg=warehouseSkipped>0?` · ${warehouseSkipped} ממחסנים אחרים דולגו`:'';
+  setTimeout(()=>toast(`✅ יובאו ${added} פריטים${skipped>0?' · '+skipped+' דולגו':''}${whMsg}`),400);
 }
 
 function showColumnMapper(rows, embedIn){
@@ -3897,6 +3910,7 @@ function showColumnMapper(rows, embedIn){
     {key:'col',  label:'📍 עמודה / כלוב',   keys:_excelFieldMap.col},
     {key:'floor',label:'🏢 קומה',            keys:_excelFieldMap.floor},
     {key:'notes',label:'📝 הערות',           keys:_excelFieldMap.notes},
+    {key:'warehouse',label:'🏭 מחסן (סינון)',keys:_excelFieldMap.warehouse},
   ];
 
   const preview=rows.slice(0,3).map(r=>`<tr>${headers.map(h=>`<td style="padding:4px 6px;border:1px solid var(--border);font-size:11px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${String(r[h]||'').slice(0,30)}</td>`).join('')}</tr>`).join('');
@@ -3966,6 +3980,7 @@ function applyColumnMap(rows, container){
     model:getVal('xmap_model'),col:  getVal('xmap_col'),
     floor:getVal('xmap_floor'),qty:  getVal('xmap_qty'),
     notes:getVal('xmap_notes'),
+    warehouse:getVal('xmap_warehouse'),
   };
   processExcelRows(rows, colMap);
 }
