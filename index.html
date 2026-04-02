@@ -1179,35 +1179,35 @@ function viewRow(it){
 function editRow(it){
   return `<tr id="tr-${it.id}" class="erow">
     <td style="color:var(--accent);font-size:10px;">#${it.id}</td>
-    <td><input class="ie" id="esz" type="text" value="${sz(it)}" oninput="formatSize(this)" style="width:90px;font-family:monospace;font-weight:800;text-align:center;letter-spacing:.5px;"/></td>
+    <td><input class="ie" id="esz" type="text" value="${escHTML(sz(it))}" oninput="formatSize(this)" style="width:90px;font-family:monospace;font-weight:800;text-align:center;letter-spacing:.5px;"/></td>
     <td><div style="display:flex;flex-direction:column;gap:3px;">
-      <input class="ie ie-lg" id="eb" type="text" value="${it.brand}" placeholder="מותג"/>
-      <input class="ie ie-lg" id="em" type="text" value="${it.model}" placeholder="דגם"/>
+      <input class="ie ie-lg" id="eb" type="text" value="${escHTML(it.brand)}" placeholder="מותג"/>
+      <input class="ie ie-lg" id="em" type="text" value="${escHTML(it.model)}" placeholder="דגם"/>
     </div></td>
     <td><div style="display:flex;gap:3px;align-items:flex-end;flex-wrap:wrap;">
       <div style="display:flex;flex-direction:column;align-items:center;gap:1px;">
         <span style="font-size:8px;color:var(--accent);">פניה 1</span>
-        <input class="ie" id="epn1" type="text" value="${it.pn1||''}" style="width:44px;text-align:center;"/>
+        <input class="ie" id="epn1" type="text" value="${escHTML(it.pn1||'')}" style="width:44px;text-align:center;"/>
       </div>
       <div style="display:flex;flex-direction:column;align-items:center;gap:1px;">
         <span style="font-size:8px;color:var(--muted);">שו׳ ימין</span>
-        <input class="ie" id="ep1" type="text" value="${it.p1||''}" style="width:48px;text-align:center;"/>
+        <input class="ie" id="ep1" type="text" value="${escHTML(it.p1||'')}" style="width:48px;text-align:center;"/>
       </div>
       <div style="display:flex;flex-direction:column;align-items:center;gap:1px;">
         <span style="font-size:8px;color:var(--muted);">עמ׳</span>
-        <input class="ie" id="ec" type="text" value="${it.col}" style="width:34px;text-align:center;"/>
+        <input class="ie" id="ec" type="text" value="${escHTML(it.col)}" style="width:34px;text-align:center;"/>
       </div>
       <div style="display:flex;flex-direction:column;align-items:center;gap:1px;">
         <span style="font-size:8px;color:var(--muted);">קו׳</span>
-        <input class="ie" id="ef" type="text" value="${it.floor}" style="width:34px;text-align:center;"/>
+        <input class="ie" id="ef" type="text" value="${escHTML(it.floor)}" style="width:34px;text-align:center;"/>
       </div>
       <div style="display:flex;flex-direction:column;align-items:center;gap:1px;">
         <span style="font-size:8px;color:var(--accent);">פניה 2</span>
-        <input class="ie" id="epn2" type="text" value="${it.pn2||''}" style="width:44px;text-align:center;"/>
+        <input class="ie" id="epn2" type="text" value="${escHTML(it.pn2||'')}" style="width:44px;text-align:center;"/>
       </div>
       <div style="display:flex;flex-direction:column;align-items:center;gap:1px;">
         <span style="font-size:8px;color:var(--muted);">שו׳ שמאל</span>
-        <input class="ie" id="ep2" type="text" value="${it.p2||''}" style="width:48px;text-align:center;"/>
+        <input class="ie" id="ep2" type="text" value="${escHTML(it.p2||'')}" style="width:48px;text-align:center;"/>
       </div>
     </div></td>
     <td><div class="acts">
