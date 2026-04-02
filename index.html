@@ -1763,8 +1763,8 @@ function svgCell(col,row,x,y){
   const sw=isSel?2:1;
   let inner='';
   if(has){
-    const b=(its[0].brand||'').substring(0,6);
-    const s=sz(its[0]).substring(0,9);
+    const b=escHTML((its[0].brand||'').substring(0,6));
+    const s=escHTML(sz(its[0]).substring(0,9));
     inner+=`<circle cx="${x+CW-6}" cy="${y+7}" r="4" fill="#3ecf8e"/>`;
     inner+=`<text x="${x+CW/2}" y="${y+18}" text-anchor="middle" fill="#eef0f6" font-size="9" font-weight="700">${b}</text>`;
     inner+=`<text x="${x+CW/2}" y="${y+29}" text-anchor="middle" fill="#f5a623" font-size="8" font-family="monospace">${s}</text>`;
@@ -3740,6 +3740,7 @@ function handleExcelImportFile(input){
   if(typeof XLSX!=='undefined'){ processFile(); return; }
   const script=document.createElement('script');
   script.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  script.crossOrigin='anonymous';
   script.onload=processFile;
   script.onerror=()=>toast('❌ לא הצלח לטעון ספריית Excel');
   document.head.appendChild(script);
@@ -3900,7 +3901,7 @@ function processExcelRows(rows, colMap){
 function showColumnMapper(rows, embedIn){
   if(!rows||rows.length===0) return;
   const headers=Object.keys(rows[0]);
-  const options=headers.map(h=>`<option value="${encodeURIComponent(h)}">${h}</option>`).join('');
+  const options=headers.map(h=>`<option value="${encodeURIComponent(h)}">${escHTML(h)}</option>`).join('');
   const emptyOpt='<option value="">-- בחר עמודה --</option>';
 
   // ניחוש אוטומטי של עמודות
@@ -3920,7 +3921,7 @@ function showColumnMapper(rows, embedIn){
     {key:'warehouse',label:'🏭 מחסן (סינון)',keys:_excelFieldMap.warehouse},
   ];
 
-  const preview=rows.slice(0,3).map(r=>`<tr>${headers.map(h=>`<td style="padding:4px 6px;border:1px solid var(--border);font-size:11px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${String(r[h]||'').slice(0,30)}</td>`).join('')}</tr>`).join('');
+  const preview=rows.slice(0,3).map(r=>`<tr>${headers.map(h=>`<td style="padding:4px 6px;border:1px solid var(--border);font-size:11px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHTML(String(r[h]||'').slice(0,30))}</td>`).join('')}</tr>`).join('');
 
   const mapHTML=`
     <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;">📋 מיפוי עמודות</div>
@@ -3935,7 +3936,7 @@ function showColumnMapper(rows, embedIn){
     `).join('')}
     <div style="overflow-x:auto;margin-top:12px;border-radius:8px;border:1px solid var(--border);">
       <table style="width:100%;border-collapse:collapse;font-size:11px;">
-        <thead><tr>${headers.map(h=>`<th style="padding:5px 6px;border:1px solid var(--border);background:var(--card2);color:var(--muted);text-align:right;white-space:nowrap;">${h}</th>`).join('')}</tr></thead>
+        <thead><tr>${headers.map(h=>`<th style="padding:5px 6px;border:1px solid var(--border);background:var(--card2);color:var(--muted);text-align:right;white-space:nowrap;">${escHTML(h)}</th>`).join('')}</tr></thead>
         <tbody>${preview}</tbody>
       </table>
     </div>
