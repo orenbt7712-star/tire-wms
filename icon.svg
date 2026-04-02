@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="100" fill="#1a3a7a"/>
+  <rect width="512" height="512" rx="100" fill="url(#bg)"/>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1e4fa0"/>
+      <stop offset="100%" stop-color="#0d2557"/>
+    </linearGradient>
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.18)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </linearGradient>
+  </defs>
+  <!-- Gloss -->
+  <rect width="512" height="256" rx="100" fill="url(#gloss)"/>
+
+  <!-- Tablet frame -->
+  <rect x="100" y="60" width="312" height="220" rx="22" fill="#1a2e5e" stroke="#4a7fd4" stroke-width="6"/>
+  <rect x="112" y="72" width="288" height="196" rx="14" fill="#f0f6ff"/>
+
+  <!-- Screen content: checklist lines -->
+  <circle cx="148" cy="118" r="12" fill="#2563eb"/>
+  <polyline points="142,118 147,124 156,112" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="168" y="111" width="100" height="14" rx="7" fill="#c5d8f5"/>
+
+  <circle cx="148" cy="152" r="12" fill="#2563eb"/>
+  <polyline points="142,152 147,158 156,146" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="168" y="145" width="120" height="14" rx="7" fill="#c5d8f5"/>
+
+  <circle cx="148" cy="186" r="12" fill="#2563eb"/>
+  <polyline points="142,186 147,192 156,180" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="168" y="179" width="85" height="14" rx="7" fill="#c5d8f5"/>
+
+  <!-- Gear icon -->
+  <g transform="translate(340,100) scale(0.9)">
+    <circle cx="30" cy="30" r="12" fill="none" stroke="#2563eb" stroke-width="6"/>
+    <circle cx="30" cy="30" r="5" fill="#2563eb"/>
+    <g stroke="#2563eb" stroke-width="5" stroke-linecap="round">
+      <line x1="30" y1="8" x2="30" y2="15"/>
+      <line x1="30" y1="45" x2="30" y2="52"/>
+      <line x1="8" y1="30" x2="15" y2="30"/>
+      <line x1="45" y1="30" x2="52" y2="30"/>
+      <line x1="14" y1="14" x2="19" y2="19"/>
+      <line x1="41" y1="41" x2="46" y2="46"/>
+      <line x1="46" y1="14" x2="41" y2="19"/>
+      <line x1="19" y1="41" x2="14" y2="46"/>
+    </g>
+  </g>
+
+  <!-- Bar chart -->
+  <rect x="300" y="185" width="20" height="35" rx="4" fill="#f59e0b"/>
+  <rect x="326" y="165" width="20" height="55" rx="4" fill="#3b82f6"/>
+  <rect x="352" y="175" width="20" height="45" rx="4" fill="#f59e0b"/>
+
+  <!-- WMS Text -->
+  <text x="256" y="350" text-anchor="middle" font-family="Arial Black, Arial" font-weight="900" font-size="88" fill="white" letter-spacing="2">WMS</text>
+
+  <!-- Boxes at bottom -->
+  <!-- Box center -->
+  <g transform="translate(216,370)">
+    <rect x="0" y="0" width="56" height="48" rx="6" fill="#cd853f"/>
+    <rect x="0" y="0" width="56" height="12" rx="6" fill="#daa060"/>
+    <line x1="28" y1="0" x2="28" y2="48" stroke="#b8722e" stroke-width="2"/>
+  </g>
+  <!-- Box left -->
+  <g transform="translate(156,384)">
+    <rect x="0" y="0" width="50" height="42" rx="6" fill="#b8722e"/>
+    <rect x="0" y="0" width="50" height="11" rx="6" fill="#cd853f"/>
+    <line x1="25" y1="0" x2="25" y2="42" stroke="#a0612a" stroke-width="2"/>
+  </g>
+  <!-- Box right -->
+  <g transform="translate(280,382)">
+    <rect x="0" y="0" width="50" height="44" rx="6" fill="#e8c090"/>
+    <rect x="0" y="0" width="50" height="11" rx="6" fill="#f0d0a0"/>
+    <line x1="25" y1="0" x2="25" y2="44" stroke="#d0a870" stroke-width="2"/>
+  </g>
+
+  <!-- Glow ring -->
+  <circle cx="256" cy="180" r="145" fill="none" stroke="rgba(100,160,255,0.18)" stroke-width="30"/>
+</svg>

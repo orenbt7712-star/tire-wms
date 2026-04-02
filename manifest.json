@@ -1,0 +1,22 @@
+{
+  "name": "מחסן צמיגים WMS",
+  "short_name": "TireWMS",
+  "description": "מערכת ניהול מחסן צמיגים",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0a0c12",
+  "theme_color": "#1a3a7a",
+  "lang": "he",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "screenshots": []
+}
