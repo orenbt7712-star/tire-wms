@@ -4363,7 +4363,7 @@ if(typeof undoMap!=="undefined") window.undoMap=undoMap;
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDocs, updateDoc, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDocs, updateDoc, addDoc, serverTimestamp, getDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -4389,6 +4389,12 @@ let _currentWorkerId = null;   // מזהה העובד המחובר כעת (null 
 let _currentWorkerName = null; // שם העובד המחובר כעת
 
 function _genWorkerId() { return 'w_' + Date.now() + '_' + Math.random().toString(36).slice(2,7); }
+
+function generateLoginToken() {
+  const arr = new Uint8Array(24);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(b => b.toString(16).padStart(2,'0')).join('');
+}
 
 async function _saveWorkersDoc() {
   await new Promise(resolve => onAuthReady(resolve));
@@ -4432,6 +4438,7 @@ const SESSION_SALT = 'tirewms_sess_v2_2024';
 
 let _isAdmin = false;
 let _isOwner = false; // רק כניסה עם סיסמת בעלים — מאפשר ניהול עובדים
+let _tokenInvalid = false;
 Object.defineProperty(window, 'isAdminMode', {
   get: () => _isAdmin,
   set: () => { /* חסום — לא ניתן לשינוי ידני */ },
@@ -4498,6 +4505,38 @@ window.setStatus = setStatus;
 
 // ── מסך כניסה ──
 async function buildLoginScreen() {
+  // בדיקת Magic Link בURL
+  const urlToken = new URLSearchParams(location.search).get('t');
+  if (urlToken) {
+    history.replaceState({}, '', location.pathname);
+    await new Promise(resolve => onAuthReady(resolve));
+    // המתן לטעינת עובדים מ-Firestore
+    await new Promise(resolve => {
+      if (_workers.length > 0) { resolve(); return; }
+      let resolved = false;
+      const unsub = onSnapshot(workersDocRef, snap => {
+        if (snap.exists() && snap.data().list) _workers = snap.data().list;
+        if (!resolved) { resolved = true; unsub(); resolve(); }
+      });
+      setTimeout(() => { if (!resolved) { resolved = true; unsub(); resolve(); } }, 3000);
+    });
+    const worker = _workers.find(w =>
+      w.loginToken === urlToken &&
+      (w.tokenExpiry === null || w.tokenExpiry === undefined || w.tokenExpiry > Date.now())
+    );
+    if (worker) {
+      _isAdmin = !!worker.isAdmin;
+      _isOwner = false;
+      _currentWorkerId = worker.id;
+      _currentWorkerName = worker.name;
+      await saveSession(_isAdmin, worker.id, worker.name);
+      enterApp(_isAdmin, worker.name);
+      return;
+    } else {
+      _tokenInvalid = true;
+    }
+  }
+
   const session = await loadSession();
   if (session) {
     _isAdmin = session.admin;
@@ -4511,19 +4550,25 @@ async function buildLoginScreen() {
   ls.id = 'loginScreen';
   ls.style.cssText = 'position:fixed;inset:0;background:#0c0e14;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:9999;font-family:Heebo,sans-serif;direction:rtl;padding:24px;overflow-y:auto;';
 
-  const renderWorkerOptions = () => {
-    if (!_workers.length) return '<option value="" disabled>ממתין לחיבור...</option>';
-    return _workers.map(w => `<option value="${escHTML(w.id)}">${escHTML(w.name)}</option>`).join('');
-  };
-
   ls.innerHTML = `
     <div style="font-size:52px;">🛞</div>
     <div style="font-size:22px;font-weight:900;color:#eef0f6;">TireWMS</div>
     <div style="font-size:13px;color:#7a8299;text-align:center;">מחסן ניהול צמיגים</div>
 
-    <div style="width:100%;max-width:300px;background:#191d28;border:1px solid #2a3045;border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px;">
-      <div style="font-size:13px;color:#7a8299;font-weight:700;">👤 כניסת עובד</div>
-      <input id="workerNameInput" type="text" placeholder="הקלד שם עובד..." autocomplete="off" list="workersList"
+    <div style="width:100%;max-width:300px;background:#191d28;border:1px solid #2a3045;border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:12px;text-align:center;">
+      <div style="font-size:32px;">📲</div>
+      <div style="font-size:15px;font-weight:700;color:#eef0f6;">כניסת עובד</div>
+      ${_tokenInvalid
+        ? `<div style="background:rgba(232,93,63,0.15);border:1px solid #e85d3f;border-radius:8px;padding:10px;font-size:13px;color:#e85d3f;">❌ הקישור אינו תקף<br><span style="font-size:11px;color:#7a8299;">פנה למנהל לקבלת קישור חדש</span></div>`
+        : `<div style="font-size:13px;color:#7a8299;line-height:1.6;">לכניסה, פנה למנהל לקבלת<br><strong style="color:#25d366;">קישור WhatsApp</strong> אישי</div>`
+      }
+    </div>
+
+    <button id="btnPinLoginToggle" style="background:none;border:none;color:#3a4260;font-size:11px;cursor:pointer;font-family:Heebo,sans-serif;text-decoration:underline;">כניסה עם שם + PIN (עובדים ישנים)</button>
+
+    <div id="pinLoginWrap" style="display:none;width:100%;max-width:300px;background:#191d28;border:1px solid #2a3045;border-radius:14px;padding:18px;flex-direction:column;gap:10px;">
+      <div style="font-size:12px;color:#7a8299;font-weight:700;">👤 כניסה עם PIN</div>
+      <input id="workerNameInput" type="text" placeholder="שם עובד..." autocomplete="off" list="workersList"
         style="background:#0c0e14;border:1px solid #2a3045;border-radius:8px;color:#eef0f6;font-family:Heebo,sans-serif;font-size:15px;padding:11px 12px;width:100%;outline:none;box-sizing:border-box;"/>
       <datalist id="workersList"></datalist>
       <input id="workerPinInput" type="password" inputmode="numeric" maxlength="6" placeholder="קוד PIN"
@@ -4547,6 +4592,10 @@ async function buildLoginScreen() {
 
   document.body.appendChild(ls);
 
+  document.getElementById('btnPinLoginToggle').addEventListener('click', () => {
+    const wrap = document.getElementById('pinLoginWrap');
+    wrap.style.display = wrap.style.display === 'flex' ? 'none' : 'flex';
+  });
   document.getElementById('btnWorkerLogin').addEventListener('click', () => _doWorkerLogin());
   document.getElementById('workerPinInput').addEventListener('keydown', e => { if(e.key==='Enter') _doWorkerLogin(); });
   document.getElementById('btnOwnerToggle').addEventListener('click', () => {
@@ -4654,6 +4703,7 @@ function enterApp(admin, workerName) {
   ub.innerHTML = `
     <span style="font-size:11px;color:${admin ? '#f5a623' : '#7a8299'};font-weight:700;white-space:nowrap;">${roleIcon} ${escHTML(displayName)}</span>
     ${_isOwner ? `<button id="btnWorkerMgmt" onclick="openWorkerMgmt()" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:12px;padding:5px 9px;cursor:pointer;font-family:inherit;white-space:nowrap;">👥 עובדים</button>` : ''}
+    ${_isOwner ? `<button onclick="openInventoryImport()" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:12px;padding:5px 9px;cursor:pointer;font-family:inherit;white-space:nowrap;">📥 מלאי</button>` : ''}
     <button id="logoutBtn" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:12px;padding:5px 9px;cursor:pointer;font-family:inherit;white-space:nowrap;">🚪 יציאה</button>
   `;
   document.getElementById('logoutBtn').addEventListener('click', _logout);
@@ -4694,8 +4744,8 @@ function openWorkerMgmt() {
             <input id="newWorkerName" type="text" placeholder="שם העובד" maxlength="40"
               style="background:var(--card,#191d28);border:1px solid var(--border,#252b3b);border-radius:8px;color:var(--text,#eef0f6);font-family:Heebo,sans-serif;font-size:14px;padding:9px 12px;width:100%;outline:none;box-sizing:border-box;"/>
             <div style="display:flex;gap:8px;">
-              <input id="newWorkerPin" type="password" inputmode="numeric" maxlength="6" placeholder="קוד PIN (ספרות)"
-                style="background:var(--card,#191d28);border:1px solid var(--border,#252b3b);border-radius:8px;color:var(--text,#eef0f6);font-family:Heebo,sans-serif;font-size:14px;padding:9px 12px;flex:1;outline:none;text-align:center;letter-spacing:4px;"/>
+              <input id="newWorkerPhone" type="tel" placeholder="מספר טלפון (05X...)" maxlength="15"
+                style="background:var(--card,#191d28);border:1px solid var(--border,#252b3b);border-radius:8px;color:var(--text,#eef0f6);font-family:Heebo,sans-serif;font-size:14px;padding:9px 12px;flex:1;outline:none;direction:ltr;text-align:left;"/>
               <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted,#7a8299);cursor:pointer;white-space:nowrap;">
                 <input type="checkbox" id="newWorkerAdmin" style="width:15px;height:15px;cursor:pointer;"/> מנהל
               </label>
@@ -4730,12 +4780,19 @@ function _renderWorkerMgmtList() {
       <div style="display:flex;align-items:center;gap:8px;" id="wrow-${escHTML(w.id)}">
         <div style="flex:1;">
           <div style="font-size:14px;font-weight:700;color:var(--text,#eef0f6);">${escHTML(w.name)}</div>
-          <div style="font-size:11px;color:${w.isAdmin ? '#f5a623' : '#7a8299'};">${w.isAdmin ? '👑 מנהל' : '👁️ עובד בלבד'}</div>
+          <div style="font-size:11px;color:${w.isAdmin ? '#f5a623' : '#7a8299'};">
+            ${w.isAdmin ? '👑 מנהל' : '👁️ עובד בלבד'}
+            ${w.phone ? ` · 📱 ${escHTML(w.phone)}` : ''}
+            ${w.loginToken ? ` · <span style="color:#3ecf8e;">✓ קישור פעיל</span>` : ''}
+          </div>
         </div>
-        <button onclick="openEditWorker('${escHTML(w.id)}')"
+        ${w.phone ? `<button onclick="sendWorkerWhatsAppLink('${escHTML(w.id)}')"
+          style="background:rgba(37,211,102,0.15);border:1px solid #25d366;color:#25d366;border-radius:7px;padding:5px 8px;font-size:11px;cursor:pointer;white-space:nowrap;">
+          📲 שלח
+        </button>` : `<button onclick="openEditWorker('${escHTML(w.id)}')"
           style="background:var(--card,#191d28);border:1px solid var(--border,#252b3b);color:var(--muted,#7a8299);border-radius:7px;padding:5px 8px;font-size:11px;cursor:pointer;">
           ✏️
-        </button>
+        </button>`}
         <button onclick="toggleWorkerAdmin('${escHTML(w.id)}', ${!w.isAdmin})"
           style="background:${w.isAdmin ? 'var(--red-dim,#2a1515)' : 'rgba(245,166,35,0.15)'};border:1px solid ${w.isAdmin ? 'var(--red,#e85d3f)' : '#f5a623'};color:${w.isAdmin ? 'var(--red,#e85d3f)' : '#f5a623'};border-radius:7px;padding:5px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;white-space:nowrap;">
           ${w.isAdmin ? '🔒 בטל' : '🔓 מנהל'}
@@ -4748,8 +4805,10 @@ function _renderWorkerMgmtList() {
       <div id="wedit-${escHTML(w.id)}" style="display:none;flex-direction:column;gap:6px;margin-top:8px;">
         <input id="wedit-name-${escHTML(w.id)}" type="text" value="${escHTML(w.name)}" maxlength="40"
           style="background:var(--bg,#0c0e14);border:1px solid var(--accent,#f5a623);border-radius:7px;color:var(--text,#eef0f6);font-family:Heebo,sans-serif;font-size:13px;padding:7px 10px;outline:none;width:100%;box-sizing:border-box;"/>
-        <input id="wedit-pin-${escHTML(w.id)}" type="password" inputmode="numeric" maxlength="6" placeholder="קוד PIN חדש (השאר ריק לאין שינוי)"
-          style="background:var(--bg,#0c0e14);border:1px solid var(--border,#252b3b);border-radius:7px;color:var(--text,#eef0f6);font-family:Heebo,sans-serif;font-size:13px;padding:7px 10px;outline:none;width:100%;box-sizing:border-box;text-align:center;letter-spacing:4px;"/>
+        <input id="wedit-phone-${escHTML(w.id)}" type="tel" value="${escHTML(w.phone||'')}" placeholder="מספר טלפון (05X...)"
+          style="background:var(--bg,#0c0e14);border:1px solid var(--border,#252b3b);border-radius:7px;color:var(--text,#eef0f6);font-family:Heebo,sans-serif;font-size:13px;padding:7px 10px;outline:none;width:100%;box-sizing:border-box;direction:ltr;text-align:left;"/>
+        ${w.pinHash ? `<input id="wedit-pin-${escHTML(w.id)}" type="password" inputmode="numeric" maxlength="6" placeholder="PIN חדש (אופציונלי)"
+          style="background:var(--bg,#0c0e14);border:1px solid var(--border,#252b3b);border-radius:7px;color:var(--text,#eef0f6);font-family:Heebo,sans-serif;font-size:13px;padding:7px 10px;outline:none;width:100%;box-sizing:border-box;text-align:center;letter-spacing:4px;"/>` : ''}
         <div style="display:flex;gap:6px;">
           <button onclick="saveEditWorker('${escHTML(w.id)}')"
             style="flex:1;background:var(--accent,#f5a623);border:none;color:#111;border-radius:7px;padding:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">שמור</button>
@@ -4763,25 +4822,25 @@ function _renderWorkerMgmtList() {
 
 async function addWorker() {
   const nameEl = document.getElementById('newWorkerName');
-  const pinEl = document.getElementById('newWorkerPin');
+  const phoneEl = document.getElementById('newWorkerPhone');
   const adminEl = document.getElementById('newWorkerAdmin');
   const errEl = document.getElementById('newWorkerErr');
   const name = nameEl ? nameEl.value.trim() : '';
-  const pin = pinEl ? pinEl.value.trim() : '';
+  const phone = phoneEl ? phoneEl.value.trim() : '';
   if (!name) { if(errEl){errEl.textContent='הכנס שם עובד';errEl.style.display='block';} return; }
-  if (!pin || !/^\d{4,6}$/.test(pin)) { if(errEl){errEl.textContent='קוד PIN חייב להיות 4-6 ספרות';errEl.style.display='block';} return; }
+  if (!phone) { if(errEl){errEl.textContent='הכנס מספר טלפון';errEl.style.display='block';} return; }
   if (_workers.some(w => w.name.trim().toLowerCase() === name.toLowerCase())) {
     if(errEl){errEl.textContent='עובד עם שם זה כבר קיים';errEl.style.display='block';} return;
   }
   if(errEl) errEl.style.display='none';
-  const pinHash = await hashPass(pin);
+  const loginToken = generateLoginToken();
   try {
-    _workers.push({ id: _genWorkerId(), name, pinHash, isAdmin: !!(adminEl && adminEl.checked), createdAt: new Date().toISOString() });
+    _workers.push({ id: _genWorkerId(), name, phone, loginToken, tokenExpiry: null, isAdmin: !!(adminEl && adminEl.checked), createdAt: new Date().toISOString() });
     await _saveWorkersDoc();
     if(nameEl) nameEl.value='';
-    if(pinEl) pinEl.value='';
+    if(phoneEl) phoneEl.value='';
     if(adminEl) adminEl.checked=false;
-    toast('✅ עובד נוסף');
+    toast('✅ עובד נוסף — לחץ "📲 שלח" לשליחת קישור WhatsApp');
   } catch(e) { console.error('addWorker error:', e); if(errEl){errEl.textContent='שגיאה: '+e.message;errEl.style.display='block';} }
 }
 
@@ -4809,21 +4868,146 @@ function closeEditWorker(wid) {
   document.getElementById('wedit-'+wid).style.display = 'none';
 }
 async function saveEditWorker(wid) {
-  const nameEl = document.getElementById('wedit-name-'+wid);
-  const pinEl  = document.getElementById('wedit-pin-'+wid);
-  const name = nameEl ? nameEl.value.trim() : '';
-  const pin  = pinEl  ? pinEl.value.trim()  : '';
+  const nameEl  = document.getElementById('wedit-name-'+wid);
+  const phoneEl = document.getElementById('wedit-phone-'+wid);
+  const pinEl   = document.getElementById('wedit-pin-'+wid);
+  const name  = nameEl  ? nameEl.value.trim()  : '';
+  const phone = phoneEl ? phoneEl.value.trim() : '';
+  const pin   = pinEl   ? pinEl.value.trim()   : '';
   if (!name) { toast('❌ שם לא יכול להיות ריק'); return; }
   if (pin && !/^\d{4,6}$/.test(pin)) { toast('❌ PIN חייב להיות 4-6 ספרות'); return; }
   try {
     const w = _workers.find(x => x.id === wid);
     if (!w) { toast('❌ עובד לא נמצא'); return; }
     w.name = name;
+    if (phone) w.phone = phone;
     if (pin) w.pinHash = await hashPass(pin);
+    // אם הוספנו טלפון לראשונה ואין token עדיין — צור אחד
+    if (phone && !w.loginToken) {
+      w.loginToken = generateLoginToken();
+      w.tokenExpiry = null;
+    }
     await _saveWorkersDoc();
     toast('✅ פרטי עובד עודכנו');
     closeEditWorker(wid);
   } catch(e) { console.error('saveEditWorker error:', e); toast('❌ שגיאה: '+e.message); }
+}
+
+async function sendWorkerWhatsAppLink(wid) {
+  const w = _workers.find(x => x.id === wid);
+  if (!w) { toast('❌ עובד לא נמצא'); return; }
+  if (!w.phone) { toast('❌ אין מספר טלפון לעובד זה'); return; }
+  // יצירת token חדש (מבטל קישור ישן)
+  w.loginToken = generateLoginToken();
+  w.tokenExpiry = null;
+  await _saveWorkersDoc();
+  const appUrl = 'https://tire-wms-nhix.vercel.app/?t=' + w.loginToken;
+  const msg = `שלום ${w.name}! 👋\n\nקישור הכניסה שלך למערכת מחסן הצמיגים:\n${appUrl}\n\n📱 *הנחיות התקנה:*\n\n*אנדרואיד:*\n1. פתח את הקישור בכרום\n2. לחץ על 3 הנקודות ← "הוסף למסך הבית"\n\n*iPhone:*\n1. פתח ב-Safari\n2. לחץ שיתוף ← "הוסף למסך הבית"\n\nהקישור בתוקף ללא הגבלת זמן 🔒`;
+  const phone = w.phone.replace(/^0/, '');
+  const waUrl = 'https://wa.me/972' + phone + '?text=' + encodeURIComponent(msg);
+  window.open(waUrl, '_blank');
+  toast('✅ נפתח WhatsApp עם הקישור');
+}
+
+// ══ ייבוא מלאי מ-Excel ══
+function openInventoryImport() {
+  if (!_isOwner) { toast('❌ גישה לבעלים בלבד'); return; }
+  let panel = document.getElementById('inventoryImportPanel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'inventoryImportPanel';
+    panel.style.cssText = 'position:fixed;inset:0;background:rgba(12,14,20,0.92);z-index:8000;display:flex;align-items:flex-end;justify-content:center;font-family:Heebo,sans-serif;direction:rtl;';
+    panel.innerHTML = `
+      <div style="background:var(--surface,#141720);border-radius:18px 18px 0 0;width:100%;max-width:480px;padding:20px 18px 28px;display:flex;flex-direction:column;gap:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-size:15px;font-weight:800;color:var(--text,#eef0f6);">📥 ייבוא מלאי מ-Excel</div>
+          <button onclick="closeInventoryImport()" style="background:var(--card,#191d28);border:1px solid var(--border,#252b3b);border-radius:7px;width:30px;height:30px;cursor:pointer;color:var(--muted,#7a8299);font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
+        </div>
+        <div style="font-size:12px;color:var(--muted,#7a8299);line-height:1.6;">
+          הקובץ חייב לכלול את העמודות:<br>
+          <strong style="color:var(--text,#eef0f6);">קוד פריט · תיאור פריט · קיסריה 01</strong><br>
+          תיאור פריט נשמר פעם אחת ולא מתעדכן. קיסריה 01 מתעדכן בכל ייבוא.
+        </div>
+        <label style="display:flex;flex-direction:column;gap:8px;">
+          <input type="file" id="inventoryFileInput" accept=".xlsx,.xls"
+            style="background:var(--card,#191d28);border:1px solid var(--border,#252b3b);border-radius:8px;color:var(--text,#eef0f6);font-size:13px;padding:10px;cursor:pointer;"/>
+        </label>
+        <button onclick="runInventoryImport()" style="background:var(--accent,#f5a623);border:none;color:#111;border-radius:9px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">📥 ייבא</button>
+        <div id="inventoryImportResult" style="display:none;background:var(--card,#191d28);border:1px solid var(--border,#252b3b);border-radius:8px;padding:12px;font-size:13px;color:var(--text,#eef0f6);text-align:center;"></div>
+      </div>
+    `;
+    document.body.appendChild(panel);
+    panel.addEventListener('click', e => { if(e.target===panel) closeInventoryImport(); });
+  }
+  document.getElementById('inventoryImportResult').style.display = 'none';
+  panel.style.display = 'flex';
+}
+
+function closeInventoryImport() {
+  const p = document.getElementById('inventoryImportPanel');
+  if (p) p.style.display = 'none';
+}
+
+async function runInventoryImport() {
+  const fileInput = document.getElementById('inventoryFileInput');
+  const resultEl = document.getElementById('inventoryImportResult');
+  if (!fileInput || !fileInput.files[0]) { toast('❌ בחר קובץ Excel'); return; }
+  const file = fileInput.files[0];
+  resultEl.style.display = 'block';
+  resultEl.textContent = '⏳ מעבד...';
+
+  function doImport() {
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      try {
+        const wb = XLSX.read(e.target.result, {type:'array'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+        await new Promise(resolve => onAuthReady(resolve));
+        let added = 0, updated = 0, skipped = 0;
+        // קרא את כל מזהי הפריטים הקיימים בבת אחת
+        const invCol = collection(db, 'inventory');
+        const existingSnap = await getDocs(invCol);
+        const existingCodes = new Set(existingSnap.docs.map(d => d.id));
+        // עבד ב-batches של 500
+        let batch = writeBatch(db);
+        let batchCount = 0;
+        const flush = async () => { await batch.commit(); batch = writeBatch(db); batchCount = 0; };
+        const now = serverTimestamp();
+        for (const row of rows) {
+          const code = String(row['קוד פריט'] || '').trim();
+          const desc = String(row['תיאור פריט'] || '').trim();
+          const qty  = Number(row['קיסריה 01']) || 0;
+          if (!code) { skipped++; continue; }
+          const ref = doc(db, 'inventory', code);
+          if (!existingCodes.has(code)) {
+            batch.set(ref, { itemCode: code, itemDescription: desc, caesareaQty: qty, createdAt: now, lastUpdated: now });
+            added++;
+          } else {
+            batch.update(ref, { caesareaQty: qty, lastUpdated: now });
+            updated++;
+          }
+          batchCount++;
+          if (batchCount >= 499) await flush();
+        }
+        if (batchCount > 0) await flush();
+        resultEl.innerHTML = `✅ <strong>ייבוא הושלם</strong><br>${added} פריטים חדשים נוספו<br>${updated} פריטים עודכנו`;
+        if(fileInput) fileInput.value = '';
+      } catch(err) {
+        console.error('inventory import error:', err);
+        resultEl.textContent = '❌ שגיאה: ' + err.message;
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  if (typeof XLSX !== 'undefined') { doImport(); return; }
+  const script = document.createElement('script');
+  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  script.crossOrigin = 'anonymous';
+  script.onload = doImport;
+  script.onerror = () => { resultEl.textContent = '❌ לא ניתן לטעון ספריית Excel'; };
+  document.head.appendChild(script);
 }
 
 window.openWorkerMgmt = openWorkerMgmt;
@@ -4834,6 +5018,10 @@ window.openEditWorker = openEditWorker;
 window.closeEditWorker = closeEditWorker;
 window.saveEditWorker = saveEditWorker;
 window.deleteWorker = deleteWorker;
+window.sendWorkerWhatsAppLink = sendWorkerWhatsAppLink;
+window.openInventoryImport = openInventoryImport;
+window.closeInventoryImport = closeInventoryImport;
+window.runInventoryImport = runInventoryImport;
 
 // ── תור אופליין ──
 function getOfflineQueue() { try { return JSON.parse(localStorage.getItem('tirewms_offline') || '[]'); } catch(e) { return []; } }
