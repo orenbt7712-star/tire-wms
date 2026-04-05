@@ -2009,10 +2009,7 @@ function parseQRData(text){
     result.style.color='var(--green)'; result.style.borderColor='var(--green)'; result.style.background='var(--green-dim)';
 
     // נסה לחלץ מותג מה-QR
-    const brands = ['MICHELIN','BRIDGESTONE','CONTINENTAL','PIRELLI','GOODYEAR',
-      'HANKOOK','KUMHO','YOKOHAMA','FALKEN','TOYO','DUNLOP','MAXXIS',
-      'TRIANGLE','LINGLONG','SAILUN','SEMPERIT','NEXEN','NANKANG','FEDERAL'];
-    const foundBrand = brands.find(b => raw.includes(b));
+    const foundBrand = KNOWN_BRANDS.find(b => raw.includes(b));
     if(foundBrand){
       document.getElementById('aBr').value = foundBrand.charAt(0)+foundBrand.slice(1).toLowerCase();
       result.textContent += ` · ${foundBrand}`;
@@ -2269,13 +2266,12 @@ function parseVoiceInput(text){
   }
 
   // ─── מותג ───
-  const brands = ['michelin','bridgestone','continental','pirelli','goodyear','dunlop','yokohama','bfgoodrich','falken','toyo','hankook','kumho','nexen','cooper','nitto','firestone'];
-  const hebrewBrands = {'מישלן':'Michelin','ברידג\'סטון':'Bridgestone','קונטיננטל':'Continental','פירלי':'Pirelli','גודייר':'Goodyear','דנלופ':'Dunlop','יוקוהמה':'Yokohama','פאלקן':'Falken','טויו':'Toyo','האנקוק':'Hankook','קומהו':'Kumho','נקסן':'Nexen','קופר':'Cooper','ניטו':'Nitto','פיירסטון':'Firestone'};
+  const hebrewBrands = {'מישלן':'Michelin','ברידג\'סטון':'Bridgestone','קונטיננטל':'Continental','פירלי':'Pirelli','גודייר':'Goodyear','דנלופ':'Dunlop','יוקוהמה':'Yokohama','פאלקן':'Falken','טויו':'Toyo','האנקוק':'Hankook','קומהו':'Kumho','נקסן':'Nexen','קופר':'Cooper','ניטו':'Nitto','פיירסטון':'Firestone','מיטס':'Mitas','פטלס':'Petlas','ספידוויז':'Speedways','אסנסו':'Ascenso'};
   for(const [heb,eng] of Object.entries(hebrewBrands)){
     if(t.includes(heb.toLowerCase())){ document.getElementById('aBr').value = eng; break; }
   }
-  for(const b of brands){
-    if(t.includes(b)){ document.getElementById('aBr').value = b.charAt(0).toUpperCase()+b.slice(1); break; }
+  for(const b of KNOWN_BRANDS){
+    if(t.includes(b.toLowerCase())){ document.getElementById('aBr').value = b.charAt(0)+b.slice(1).toLowerCase(); break; }
   }
 
   // ─── עמודה ───
@@ -4106,10 +4102,26 @@ window.clearSearch=clearSearch;
 window.showBackupMenu=showBackupMenu;
 window.closeBackupMenu=closeBackupMenu;
 window.prevPage=prevPage;
+
+// ── רשימת מותגים ידועים (מתוך המלאי) ──
+const KNOWN_BRANDS = [
+  'ARIVO','ASCENSO','ATLAS','AUTOGREEN','AVON','BKT','BRIDGESTONE',
+  'CEAT','COMFORSER','CONTINENTAL','CONTI','COOPER','DOUBLE COIN',
+  'DUNLOP','EFFIPLUS','ELASTOMERIC','FALKEN','FEDERAL','FIRESTONE',
+  'FORERUNNER','GALAXY','GENERAL','GOODYEAR','GREENTRAC','HAIDA',
+  'HANKOOK','HAULMAX BIAS','KUMHO','KUNLUN','LEAO','LEXXIS',
+  'LINGLONG','MATADOR','MAXXIS','MICHELIN','MITAS','NANKANG',
+  'NEXEN','NITTO','PETLAS','PIRELLI','ROADCRUZA','SAILUN','SALIMAX',
+  'SAMSON','SAVA','SEMPERIT','SPEEDWAYS','TAIHAO','TECHKING',
+  'THREE-A','TIGAR','TOYO','TRELLEBORG','TRIANGLE','UNIROYAL',
+  'VENOM','WANLI','WINDFORCE','YOKOHAMA','ZESTINO'
+];
+
 function updateAutoComplete(){
-  const brands=[...new Set(items.map(it=>it.brand).filter(Boolean))].sort();
+  const firestoreBrands=[...new Set(items.map(it=>it.brand).filter(Boolean))];
+  const all=[...new Set([...firestoreBrands,...KNOWN_BRANDS])].sort();
   const bl=document.getElementById('brandList');
-  if(bl) bl.innerHTML=brands.map(b=>`<option value="${escHTML(b)}">`).join('');
+  if(bl) bl.innerHTML=all.map(b=>`<option value="${escHTML(b)}">`).join('');
   const sb=document.getElementById('aBr')?document.getElementById('aBr').value:'';
   const models=[...new Set(items.filter(it=>!sb||it.brand===sb).map(it=>it.model).filter(Boolean))].sort();
   const ml=document.getElementById('modelList');
