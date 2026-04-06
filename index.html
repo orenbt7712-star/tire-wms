@@ -3689,8 +3689,8 @@ function formatSize(el){
   let v=el.value.replace(/[^0-9]/g,'');
   let out='';
   if(v.length>0) out+=v.slice(0,3);
-  if(v.length>=3) out+='/'+v.slice(3,5);
-  if(v.length>=5) out+='R'+v.slice(5,7);
+  if(v.length>=4) out+='/'+v.slice(3,5);
+  if(v.length>=6) out+='R'+v.slice(5,7);
   el.value=out;
 }
 function parseSize(v){
