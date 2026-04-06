@@ -725,7 +725,7 @@ if('serviceWorker' in navigator){
         <input id="aSz" type="text" placeholder="205/55R16" inputmode="numeric" maxlength="10" oninput="formatSize(this)" style="font-family:monospace;font-size:16px;font-weight:800;letter-spacing:1px;text-align:center;"/>
       </div>
 
-      <div class="fi"><label>📝 הערות</label><input id="aNo" type="text" placeholder="אופציונלי"/></div>
+      <div class="fi"><label>🔲 ברקוד</label><input id="aNo" type="text" placeholder="יוזן בעתיד" inputmode="numeric"/></div>
       <div class="fi full">
         <label style="color:var(--accent);font-size:12px;">📍 מיקום במחסן *</label>
         <div class="locbox" style="grid-template-columns:1fr 1fr 1fr;">
@@ -1292,6 +1292,10 @@ function showItemLocation(id){
       <div style="font-size:15px;font-weight:900;color:var(--blue);">🔲 כלוב צמיגים בודדים</div>
       <div style="font-size:12px;color:var(--muted);margin-top:4px;">כלוב זה מכיל צמיגים יחידים ממידות שונות</div>
     </div>`:''}
+    ${it.barcode?`
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;font-size:13px;color:var(--muted);">
+      🔲 ${escHTML(it.barcode)}
+    </div>`:''}
     ${it.notes?`
     <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;font-size:13px;color:var(--muted);">
       📝 ${escHTML(it.notes)}
@@ -1356,14 +1360,14 @@ function addItem(){
   const {w,p,d}=parsed;
   const b=document.getElementById('aBr').value.trim(),m=document.getElementById('aMo').value.trim();
   const itemCode=document.getElementById('aItemCode')?document.getElementById('aItemCode').value.trim():'';
-  const no=document.getElementById('aNo').value.trim();
+  const barcode=document.getElementById('aNo').value.trim();
   const co=document.getElementById('aCo').value,fl=document.getElementById('aFl').value;
   const p1=document.getElementById('aP1').value.trim(),p2=document.getElementById('aP2').value.trim();
   const pn1=document.getElementById('aPn1').value.trim(),pn2=document.getElementById('aPn2').value.trim();
   const agr=document.getElementById('aAgr').value.trim();
   if(!b){toast('❌ נא להזין מותג');return;}
   const rahava=document.getElementById('aRahava')?document.getElementById('aRahava').value:'';
-  const newItem={id:nextId++,w,p,d,brand:b,model:m,itemCode,notes:no,col:co,floor:fl,p1,p2,pn1,pn2,agr,rahava};
+  const newItem={id:nextId++,w,p,d,brand:b,model:m,itemCode,barcode,col:co,floor:fl,p1,p2,pn1,pn2,agr,rahava};
 
   // בדוק כפילות מיקום — כל צמיג באותו כלוב+קומה
   if(co.trim()){
