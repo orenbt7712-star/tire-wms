@@ -3714,8 +3714,8 @@ function parseSize(v){
   // Passenger: ###/##R##
   const mp=s.match(/^(\d{3})\D?(\d{2})\D?(\d{2})$/);
   if(mp) return {w:+mp[1],p:+mp[2],d:+mp[3]};
-  // Truck: ##R##[.#]
-  const mt=s.match(/^(\d{1,2})[R\/](\d{2}\.?\d?)$/);
+  // Truck: ##R##[.#] — e.g. 13R22.5, 10R20
+  const mt=s.match(/^(\d{1,2})R(\d{2}\.?\d?)$/);
   if(mt) return {w:+mt[1],p:0,d:+mt[2]};
   return null;
 }
@@ -8698,7 +8698,7 @@ window._saveItem = async function(it) {
     const q = getOfflineQueue();
     q.push({type: 'set', id: it.id, data: it});
     saveOfflineQueue(q);
-    window._toast && window._toast('📵 נשמר מקומית');
+    window._toast && window._toast('⚠️ שמירה נכשלה — נשמר מקומית ויסונכרן כשיחזור חיבור');
   }
 };
 
@@ -8712,7 +8712,12 @@ window._deleteItem = async function(id) {
   }
   await new Promise(resolve => onAuthReady(resolve));
   try { await deleteDoc(doc(db, 'tires', String(id))); }
-  catch(e) { window._toast && window._toast('❌ שגיאת מחיקה'); }
+  catch(e) {
+    const q = getOfflineQueue();
+    q.push({type: 'del', id});
+    saveOfflineQueue(q);
+    window._toast && window._toast('⚠️ מחיקה נכשלה — תסונכרן כשיחזור חיבור');
+  }
 };
 
 window._importItems = async function(data) {
@@ -8747,6 +8752,7 @@ onAuthReady(() => {
     }
   }, err => {
     setStatus('🔴 אין חיבור');
+    window._toast && window._toast('🔴 אין חיבור לענן — הנתונים עלולים להיות לא מעודכנים');
     console.error('Firebase error:', err);
   });
 });
