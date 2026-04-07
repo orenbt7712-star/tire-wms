@@ -1366,6 +1366,8 @@ function addItem(){
   const pn1=document.getElementById('aPn1').value.trim(),pn2=document.getElementById('aPn2').value.trim();
   const agr=document.getElementById('aAgr').value.trim();
   if(!b){toast('❌ נא להזין מותג');return;}
+  if(!co.trim()){toast('❌ נא להזין עמודה (מיקום במחסן)');return;}
+  if(!fl){toast('❌ נא לבחור קומה');return;}
   const rahava=document.getElementById('aRahava')?document.getElementById('aRahava').value:'';
   const newItem={id:nextId++,w,p,d,brand:b,model:m,itemCode,barcode,col:co,floor:fl,p1,p2,pn1,pn2,agr,rahava};
 
@@ -1700,6 +1702,7 @@ function dupSingles(){
   closeDupConflict(); closeAddModal();
 }
 function doDelete(){
+  if(!items.find(x=>x.id===pendingDel)){toast('❌ פריט לא נמצא');closeConf();return;}
   if(window._deleteItem){
     window._deleteItem(pendingDel);
   } else {
@@ -8662,7 +8665,7 @@ async function processOfflineQueue() {
     } catch(e) { break; }
   }
   if (done.length) {
-    saveOfflineQueue(q.filter(op => !done.includes(op)));
+    saveOfflineQueue(q.filter(op => !done.some(d => d.type === op.type && d.id === op.id)));
     window._toast && window._toast(`✅ סונכרנו ${done.length} פריטים מאופליין`);
   }
 }
