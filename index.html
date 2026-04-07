@@ -930,7 +930,7 @@ const ROWS=['A','B','C','D','E','F'],COLS=['1','2','3','4','5','6','7','8'];
 const TC={קיץ:'ts',חורף:'tw','ארבע עונות':'ta',שטח:'to',משאית:'tt'};
 const TE={קיץ:'☀️',חורף:'❄️','ארבע עונות':'🍂',שטח:'🏔️',משאית:'🚛'};
 const TYPES=['קיץ','חורף','ארבע עונות','שטח','משאית'];
-const sz=it=>`${it.w}/${it.p}R${it.d}`;
+const sz=it=>it.p?`${it.w}/${it.p}R${it.d}`:`${it.w}R${it.d}`;
 
 
 
@@ -1315,7 +1315,7 @@ function cancelEdit(){editingId=null;renderTable();}
 function saveEdit(id){
   const szv=document.getElementById('esz').value.trim();
   const parsed=parseSize(szv);
-  if(!parsed){toast('❌ מידה לא תקינה — לדוגמה: 205/55R16');return;}
+  if(!parsed){toast('❌ מידה לא תקינה — לדוגמה: 205/55R16 או 13R22.5');return;}
   const {w,p,d}=parsed;
   const b=document.getElementById('eb').value.trim(),m=document.getElementById('em').value.trim();
   const co=document.getElementById('ec').value,fl=document.getElementById('ef').value;
@@ -1356,7 +1356,7 @@ function closeAddOutside(e){if(e.target===document.getElementById('addOverlay'))
 function addItem(){
   const szv=document.getElementById('aSz').value.trim();
   const parsed=parseSize(szv);
-  if(!parsed){toast('❌ מידה לא תקינה — לדוגמה: 205/55R16');return;}
+  if(!parsed){toast('❌ מידה לא תקינה — לדוגמה: 205/55R16 או 13R22.5');return;}
   const {w,p,d}=parsed;
   const b=document.getElementById('aBr').value.trim(),m=document.getElementById('aMo').value.trim();
   const itemCode=document.getElementById('aItemCode')?document.getElementById('aItemCode').value.trim():'';
@@ -1401,7 +1401,7 @@ function addItem(){
   const barcodeResult = document.getElementById('barcodeResult');
   if(barcodeResult && barcodeResult.dataset.code){
     saveBarcodeMemory(barcodeResult.dataset.code, {
-      size: `${newItem.w}/${newItem.p}R${newItem.d}`,
+      size: `${newItem.w}${newItem.p?'/'+newItem.p:''}R${newItem.d}`,
       brand: newItem.brand,
       model: newItem.model
     });
@@ -1461,7 +1461,7 @@ function _renderPendingList(){
   el.innerHTML=pending.map(it=>{
     const date=it.pendingAt?new Date(it.pendingAt).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
     return `<div style="background:var(--card,#191d28);border:1px solid var(--border,#252b3b);border-radius:12px;padding:14px 16px;">
-      <div style="font-size:14px;font-weight:800;color:var(--text);">${escHTML(it.brand)} ${it.w?it.w+'/'+it.p+'R'+it.d:''} ${it.model?'— '+escHTML(it.model):''}</div>
+      <div style="font-size:14px;font-weight:800;color:var(--text);">${escHTML(it.brand)} ${it.w?it.w+(it.p?'/'+it.p:'')+'R'+it.d:''} ${it.model?'— '+escHTML(it.model):''}</div>
       <div style="font-size:12px;color:var(--muted);margin-top:4px;">📍 ${escHTML(it.col||'—')} · קומה ${it.floor||1}</div>
       <div style="font-size:11px;color:var(--muted);margin-top:3px;">סומן ע״י: <b>${escHTML(it.pendingBy||'')}</b>${date?' · '+date:''}</div>
       <div style="display:flex;gap:8px;margin-top:12px;">
@@ -1506,7 +1506,7 @@ function openLocationEdit(id){
   if(!it) return;
   _locEditId=id;
   const nameEl=document.getElementById('locEditItemName');
-  if(nameEl) nameEl.textContent=`${it.brand||''} ${it.w?it.w+'/'+it.p+'R'+it.d:''}${it.model?' — '+it.model:''}`;
+  if(nameEl) nameEl.textContent=`${it.brand||''} ${it.w?it.w+(it.p?'/'+it.p:'')+'R'+it.d:''}${it.model?' — '+it.model:''}`;
   // שדות טקסט
   document.getElementById('leP1').value=it.p1||'';
   document.getElementById('leCol').value=it.col||'';
@@ -1590,7 +1590,7 @@ function openLocPicker(id){
   const it=items.find(x=>x.id===id);
   if(!it) return;
   const nameEl=document.getElementById('locPickerItemName');
-  if(nameEl) nameEl.textContent=`${it.brand||''} ${it.w?it.w+'/'+it.p+'R'+it.d:''}${it.model?' — '+it.model:''}`;
+  if(nameEl) nameEl.textContent=`${it.brand||''} ${it.w?it.w+(it.p?'/'+it.p:'')+'R'+it.d:''}${it.model?' — '+it.model:''}`;
 
   // טען כלובים משמורה
   let pickerCages=cages&&cages.length?cages:[];
@@ -3686,17 +3686,35 @@ function applyLang(){
 }
 
 function formatSize(el){
-  let v=el.value.replace(/[^0-9]/g,'');
+  const digits=el.value.replace(/[^0-9]/g,'');
   let out='';
-  if(v.length>0) out+=v.slice(0,3);
-  if(v.length>=4) out+='/'+v.slice(3,5);
-  if(v.length>=6) out+='R'+v.slice(5,7);
+  // Truck format detection: first 2 digits ≤ 14 AND 3rd digit is not '5'
+  // Examples: 13R22.5, 10R20, 11R22.5 (not 135/70R13 where first2=13 but d3='5')
+  const first2=digits.length>=2?parseInt(digits.slice(0,2)):null;
+  const d3=digits.length>=3?digits[2]:null;
+  const isTruck=first2!==null&&first2<=14&&digits.length>=3&&d3!=='5';
+  if(isTruck){
+    // ##R##[.#]
+    out+=digits.slice(0,2);
+    if(digits.length>=3) out+='R'+digits.slice(2,4);
+    if(digits.length>=5) out+='.'+digits.slice(4,5);
+  } else {
+    // ###/##R##
+    if(digits.length>0) out+=digits.slice(0,3);
+    if(digits.length>=4) out+='/'+digits.slice(3,5);
+    if(digits.length>=6) out+='R'+digits.slice(5,7);
+  }
   el.value=out;
 }
 function parseSize(v){
-  const m=v.replace(/\s/g,'').toUpperCase().match(/^(\d{3})\D?(\d{2})\D?(\d{2})$/);
-  if(!m)return null;
-  return {w:+m[1],p:+m[2],d:+m[3]};
+  const s=v.replace(/\s/g,'').toUpperCase();
+  // Passenger: ###/##R##
+  const mp=s.match(/^(\d{3})\D?(\d{2})\D?(\d{2})$/);
+  if(mp) return {w:+mp[1],p:+mp[2],d:+mp[3]};
+  // Truck: ##R##[.#]
+  const mt=s.match(/^(\d{1,2})[R\/](\d{2}\.?\d?)$/);
+  if(mt) return {w:+mt[1],p:0,d:+mt[2]};
+  return null;
 }
 
 /* ══ EXCEL / SAP IMPORT ══ */
