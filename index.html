@@ -1229,8 +1229,8 @@ function viewRow(it){
       <button class="ib owner-only" onclick="event.stopPropagation();startEdit(${it.id})" title="עריכה מלאה">✏️</button>
       <button class="ib del owner-only" onclick="event.stopPropagation();askDelete(${it.id})" title="מחיקה">🗑️</button>
       <button class="ib loc-edit-btn" onclick="event.stopPropagation();openLocationEdit(${it.id})" title="עבר למיקום">🔄 מיקום</button>
-      <button class="ib loc-edit-btn done-btn${isPending?' active':''}" onclick="event.stopPropagation();markAsDone(${it.id})" title="${isPending?'ממתין לאישור בעלים':'סמן כנגמר'}">${isPending?'⏳ ממתין':'✅ נגמר'}</button>
-      <button class="ib worker-report-btn${isPending?' active':''}" onclick="event.stopPropagation();reportByWorker(${it.id})" style="font-size:11px;padding:0 6px;width:auto;gap:3px;${isPending?'background:rgba(232,93,63,.15);border-color:var(--red);color:var(--red);':''}" title="${isPending?'ממתין לטיפול מנהל':'דווח למנהל — נגמר'}">${isPending?'⏳ דווח':'📢 נגמר'}</button>
+      <button class="ib loc-edit-btn done-btn${isPending?' active':''}" onclick="event.stopPropagation();markAsDone(${it.id})" title="${isPending?'ממתין לאישור בעלים':'סמן כנגמר'}">${isPending?'⏳ ממתין':'✅ <span style="color:var(--red,#e85d3f)">נגמר</span>'}</button>
+      <button class="ib worker-report-btn${isPending?' active':''}" onclick="event.stopPropagation();reportByWorker(${it.id})" style="font-size:11px;padding:0 6px;width:auto;gap:3px;${isPending?'background:rgba(232,93,63,.15);border-color:var(--red);color:var(--red);':''}" title="${isPending?'ממתין לטיפול מנהל':'דווח למנהל — נגמר'}">${isPending?'⏳ דווח':'📢 <span style="color:var(--red,#e85d3f)">נגמר</span>'}</button>
     </div></td>
   </tr>`;
 }
