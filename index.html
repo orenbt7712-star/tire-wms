@@ -8667,11 +8667,19 @@ async function runInventoryImport() {
           <div style="font-size:11px;color:var(--muted,#888);margin-top:4px;">${Math.round(pct)}%</div>`;
       };
       try {
-        showProgress(0, '⏳ מפרסר Excel...');
-        await new Promise(r => setTimeout(r, 30)); // yield לפני עיבוד כבד
-        const wb = XLSX.read(e.target.result, {type:'array', dense:true});
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+        showProgress(2, '⏳ מפרסר Excel — עלול לקחת עד דקה לקבצים גדולים...');
+        // Parse Excel in a Web Worker so the UI thread stays responsive
+        const rows = await new Promise((resolve, reject) => {
+          const workerSrc = `self.onmessage=function(e){try{importScripts(e.data.u);var wb=XLSX.read(new Uint8Array(e.data.b),{type:'array',dense:true});var ws=wb.Sheets[wb.SheetNames[0]];var rows=XLSX.utils.sheet_to_json(ws,{defval:''});self.postMessage({ok:true,rows:rows});}catch(err){self.postMessage({ok:false,error:err.message});}};`;
+          const blobUrl = URL.createObjectURL(new Blob([workerSrc], {type:'text/javascript'}));
+          const w = new Worker(blobUrl);
+          w.onmessage = function(msg) {
+            w.terminate(); URL.revokeObjectURL(blobUrl);
+            if(msg.data.ok) resolve(msg.data.rows); else reject(new Error(msg.data.error));
+          };
+          w.onerror = function(err) { w.terminate(); URL.revokeObjectURL(blobUrl); reject(err); };
+          w.postMessage({b: e.target.result, u:'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'}, [e.target.result]);
+        });
         showProgress(5, `⏳ מתחבר לענן... (${rows.length} שורות)`);
         await new Promise(resolve => onAuthReady(resolve));
         let added = 0, updated = 0, skipped = 0;
