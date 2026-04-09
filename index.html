@@ -8653,30 +8653,38 @@ async function runInventoryImport() {
   if (!fileInput || !fileInput.files[0]) { toast('❌ בחר קובץ Excel'); return; }
   const file = fileInput.files[0];
   resultEl.style.display = 'block';
-  resultEl.textContent = '⏳ מעבד...';
+  resultEl.textContent = '⏳ קורא קובץ...';
 
   function doImport() {
     const reader = new FileReader();
+    reader.onerror = () => { resultEl.textContent = '❌ שגיאה בקריאת הקובץ — נסה שוב'; };
     reader.onload = async function(e) {
       try {
+        resultEl.textContent = '⏳ מפרסר Excel...';
+        await new Promise(r => setTimeout(r, 30)); // yield לפני עיבוד כבד
         const wb = XLSX.read(e.target.result, {type:'array'});
         const ws = wb.Sheets[wb.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+        resultEl.textContent = `⏳ מתחבר לענן... (${rows.length} שורות)`;
         await new Promise(resolve => onAuthReady(resolve));
         let added = 0, updated = 0, skipped = 0;
-        // קרא את כל מזהי הפריטים הקיימים בבת אחת
         const invCol = collection(db, 'inventory');
         const existingSnap = await getDocs(invCol);
         const existingCodes = new Set(existingSnap.docs.map(d => d.id));
-        // עבד ב-batches של 500
         let batch = writeBatch(db);
-        let batchCount = 0;
-        const flush = async () => { await batch.commit(); batch = writeBatch(db); batchCount = 0; };
+        let batchCount = 0, processed = 0;
+        const flush = async () => {
+          await batch.commit();
+          batch = writeBatch(db);
+          batchCount = 0;
+          await new Promise(r => setTimeout(r, 0)); // yield ל-UI thread
+        };
         const now = serverTimestamp();
         for (const row of rows) {
           const code = String(row['קוד פריט'] || '').trim();
           const desc = String(row['תיאור פריט'] || '').trim();
           const qty  = Number(row['קיסריה 01']) || 0;
+          processed++;
           if (!code) { skipped++; continue; }
           const ref = doc(db, 'inventory', code);
           if (!existingCodes.has(code)) {
@@ -8687,25 +8695,34 @@ async function runInventoryImport() {
             updated++;
           }
           batchCount++;
-          if (batchCount >= 499) await flush();
+          if (batchCount >= 499) {
+            resultEl.textContent = `⏳ מעלה... ${processed}/${rows.length}`;
+            await flush();
+          }
         }
         if (batchCount > 0) await flush();
-        resultEl.innerHTML = `✅ <strong>ייבוא הושלם</strong><br>${added} פריטים חדשים נוספו<br>${updated} פריטים עודכנו`;
+        resultEl.innerHTML = `✅ <strong>ייבוא הושלם</strong><br>${added} פריטים חדשים נוספו · ${updated} עודכנו`;
         if(fileInput) fileInput.value = '';
+        window._invData = null; // אפס cache של מלאי כדי שייטען מחדש
       } catch(err) {
         console.error('inventory import error:', err);
-        resultEl.textContent = '❌ שגיאה: ' + err.message;
+        if(err.code==='permission-denied'||String(err.message).includes('Missing or insufficient')){
+          resultEl.innerHTML = '❌ <strong>שגיאת הרשאות Firestore</strong><br>יש לפתוח Firebase Console ← Firestore ← Rules ולהוסיף:<br><code style="font-size:11px;direction:ltr;display:block;margin-top:6px;">match /inventory/{d}{allow read,write:if request.auth!=null;}</code>';
+        } else {
+          resultEl.textContent = '❌ שגיאה: ' + err.message;
+        }
       }
     };
     reader.readAsArrayBuffer(file);
   }
 
   if (typeof XLSX !== 'undefined') { doImport(); return; }
+  resultEl.textContent = '⏳ טוען ספריית Excel...';
   const script = document.createElement('script');
   script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
   script.crossOrigin = 'anonymous';
   script.onload = doImport;
-  script.onerror = () => { resultEl.textContent = '❌ לא ניתן לטעון ספריית Excel'; };
+  script.onerror = () => { resultEl.textContent = '❌ לא ניתן לטעון ספריית Excel — בדוק חיבור אינטרנט'; };
   document.head.appendChild(script);
 }
 
