@@ -329,6 +329,9 @@ td{padding:8px 10px;vertical-align:middle;}
 .loc-edit-btn{display:none!important;}
 body.is-admin-worker .loc-edit-btn{display:inline-flex!important;}
 body.is-owner .loc-edit-btn{display:inline-flex!important;}
+/* כפתור דיווח עובד רגיל — גלוי רק כשאין is-admin-worker ואין is-owner */
+.worker-report-btn{display:none!important;}
+body:not(.is-admin-worker):not(.is-owner) .worker-report-btn{display:inline-flex!important;}
 /* ── pending / done styles ── */
 tr.pending-row td:not(:last-child){opacity:.5;text-decoration:line-through;}
 tr.pending-row{background:rgba(255,160,0,.06)!important;}
@@ -1186,6 +1189,7 @@ function viewRow(it){
       <button class="ib del owner-only" onclick="event.stopPropagation();askDelete(${it.id})" title="מחיקה">🗑️</button>
       <button class="ib loc-edit-btn" onclick="event.stopPropagation();openLocationEdit(${it.id})" title="עבר למיקום">🔄 מיקום</button>
       <button class="ib loc-edit-btn done-btn${isPending?' active':''}" onclick="event.stopPropagation();markAsDone(${it.id})" title="${isPending?'ממתין לאישור בעלים':'סמן כנגמר'}">${isPending?'⏳ ממתין':'✅ נגמר'}</button>
+      <button class="ib worker-report-btn${isPending?' active':''}" onclick="event.stopPropagation();reportByWorker(${it.id})" style="font-size:11px;padding:0 6px;width:auto;gap:3px;${isPending?'background:rgba(232,93,63,.15);border-color:var(--red);color:var(--red);':''}" title="${isPending?'ממתין לטיפול מנהל':'דווח למנהל — נגמר'}">${isPending?'⏳ דווח':'📢 נגמר'}</button>
     </div></td>
   </tr>`;
 }
@@ -1443,6 +1447,20 @@ function markAsDone(id){
   toast('✅ הפריט סומן — ממתין לאישור בעלים');
 }
 
+function reportByWorker(id){
+  const it=items.find(x=>x.id===id);
+  if(!it) return;
+  if(it.status==='pending_done'){toast('⏳ כבר דווח — ממתין לטיפול המנהל');return;}
+  it.status='pending_done';
+  it.pendingBy=window.currentWorkerName||'עובד';
+  it.pendingAt=new Date().toISOString();
+  it.workerReport=true;
+  if(window._saveItem) window._saveItem(it);
+  renderTable();
+  toast('📢 הדיווח נשלח למנהל — תודה!');
+}
+window.reportByWorker=reportByWorker;
+
 // ── פאנל אישורים (בעלים) ──
 function openPendingPanel(){
   if(!window.isOwnerMode){toast('❌ גישה לבעלים בלבד');return;}
@@ -1465,7 +1483,7 @@ function _renderPendingList(){
     return `<div style="background:var(--card,#191d28);border:1px solid var(--border,#252b3b);border-radius:12px;padding:14px 16px;">
       <div style="font-size:14px;font-weight:800;color:var(--text);">${escHTML(it.brand)} ${it.w?it.w+(it.p?'/'+it.p:'')+'R'+it.d:''} ${it.model?'— '+escHTML(it.model):''}</div>
       <div style="font-size:12px;color:var(--muted);margin-top:4px;">📍 ${escHTML(it.col||'—')} · קומה ${it.floor||1}</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:3px;">סומן ע״י: <b>${escHTML(it.pendingBy||'')}</b>${date?' · '+date:''}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px;">${it.workerReport?'📢 דיווח עובד:':'סומן ע״י:'} <b>${escHTML(it.pendingBy||'')}</b>${date?' · '+date:''}</div>
       <div style="display:flex;gap:8px;margin-top:12px;">
         <button onclick="cancelPending(${it.id})" style="flex:1;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">↩️ בטל סימון</button>
         <button onclick="approveDeletion(${it.id})" style="flex:1;background:rgba(232,93,63,.15);border:1px solid var(--red,#e85d3f);color:var(--red,#e85d3f);border-radius:9px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">🗑️ אשר מחיקה</button>
@@ -1483,7 +1501,7 @@ function cancelPending(id){
   if(!window.isOwnerMode) return;
   const it=items.find(x=>x.id===id);
   if(!it) return;
-  delete it.status; delete it.pendingBy; delete it.pendingAt;
+  delete it.status; delete it.pendingBy; delete it.pendingAt; delete it.workerReport;
   if(window._saveItem) window._saveItem(it);
   _renderPendingList();
   toast('↩️ הסימון בוטל');
