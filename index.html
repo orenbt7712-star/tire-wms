@@ -7871,11 +7871,37 @@ function updateAutoComplete(){
   if(ml) ml.innerHTML=allDescs.map(d=>`<option value="${escHTML(d)}">`).join('');
 }
 
-// כשמשתמש בוחר/כותב תיאור פריט — ממלא קוד פריט ומידה אוטומטית
+// cache של כל הזוגות [תיאור, קוד] לחיפוש מהיר
+let _allDescPairs = null;
+function _getAllDescPairs(){
+  if(!_allDescPairs) _allDescPairs = Object.values(KNOWN_ITEMS_BY_BRAND).flatMap(v=>v);
+  return _allDescPairs;
+}
+
+// כשמשתמש בוחר/כותב תיאור פריט — ממלא קוד פריט ומידה אוטומטית + מציג הצעות
 function onDescInput(el){
   const desc = el.value.trim();
   const codeEl = document.getElementById('aItemCode');
   const sizeEl = document.getElementById('aSz');
+
+  // עדכן רשימת הצעות לפי מה שמוקלד
+  const ml = document.getElementById('modelList');
+  if(ml && desc.length >= 2){
+    const q = desc.toUpperCase();
+    const sb = (document.getElementById('aBr')||{}).value.trim().toUpperCase();
+    let pairs;
+    if(sb && KNOWN_ITEMS_BY_BRAND[sb]){
+      pairs = KNOWN_ITEMS_BY_BRAND[sb];
+    } else if(sb){
+      pairs = Object.entries(KNOWN_ITEMS_BY_BRAND)
+        .filter(([b])=>b.includes(sb)||sb.includes(b.slice(0,4)))
+        .flatMap(([,v])=>v);
+    } else {
+      pairs = _getAllDescPairs();
+    }
+    const matches = pairs.filter(([d])=>d.toUpperCase().includes(q)).slice(0,60);
+    ml.innerHTML = matches.map(([d])=>`<option value="${escHTML(d)}">`).join('');
+  }
 
   // קוד פריט מהמיפוי
   const code = KNOWN_CODE_BY_DESC[desc] || '';
