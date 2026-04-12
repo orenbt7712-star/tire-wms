@@ -386,8 +386,7 @@ if('serviceWorker' in navigator){
   <button onclick="openAccessPanel()" title="הגדרות תצוגה" style="background:var(--card);border:1px solid var(--border);border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex-shrink:0;">⚙️</button>
   <button id="langBtn" onclick="toggleLang()" title="שפה / لغة" style="background:var(--card);border:1px solid var(--border);border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex-shrink:0;">🌐</button>
   <button class="btn-locate owner-only" id="pendingBell" onclick="openPendingPanel()" title="ממתינים לאישור" style="position:relative;">🔔<span id="pendingCount" class="pending-badge" style="display:none;position:absolute;top:2px;right:2px;"></span></button>
-  <button class="btn-locate owner-only" onclick="openExcelImportPanel()" title="ייבוא מ-Excel">📊</button>
-  <button class="btn-locate" id="btnInvReport" style="display:none;" onclick="document.getElementById('invReportInput').click()" title="עדכון דוח מלאי — קיסריה 01">📋</button>
+  <button class="btn-locate owner-only" onclick="document.getElementById('invReportInput').click()" title="עדכון דוח מלאי">📊</button>
   <input type="file" id="invReportInput" accept=".xlsx,.xls" style="display:none;" onchange="autoUpdateInventory(this)"/>
   <button class="btn-locate owner-only" onclick="showBackupMenu()" title="גיבוי / ייבוא">💾</button>
   <button class="btn-locate" onclick="locateNearest()" title="מצא פריט קריטי">📍</button>
@@ -8490,9 +8489,6 @@ function enterApp(admin, workerName) {
     document.body.classList.add('is-admin-worker');
   }
 
-  // כפתור דוח מלאי — גלוי למנהל ובעלים בלבד
-  const invBtn = document.getElementById('btnInvReport');
-  if (invBtn) invBtn.style.display = (_isOwner || _isAdmin) ? '' : 'none';
 
   if (!admin) {
     // עובד רגיל — view only
