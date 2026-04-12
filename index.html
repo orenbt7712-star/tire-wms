@@ -8260,6 +8260,11 @@ async function _loadInvData(){
   _invData = {};
   snap.docs.forEach(d=>{ _invData[d.id]=d.data(); });
   _buildInvBrandIdx();
+  // DEBUG — מה יש במלאי
+  const cnt=snap.docs.length;
+  const sample=snap.docs.slice(0,1).map(d=>{const x=d.data();return `"${x.itemDescription||'(ריק)'}" qty:${x.caesareaQty}`;}).join('');
+  const idxSz=Object.keys(_invBrandIdx||{}).length;
+  toast(`🗄️ מלאי Firestore: ${cnt} | תיאור: ${sample.slice(0,40)} | idx: ${idxSz}`);
   return _invData;
 }
 window._loadInvData=_loadInvData;
