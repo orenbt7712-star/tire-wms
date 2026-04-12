@@ -4036,7 +4036,7 @@ function processExcelRows(rows, colMap){
           if(cnt>=499){await batch.commit();batch=writeBatch(db);cnt=0;}
         }
         if(cnt>0) await batch.commit();
-        _invData=null; _invSizeIdx=null;
+        _invData=null; _invBrandIdx=null;
         toast(`📦 מלאי קיסריה עודכן — ${entries.length} פריטים`);
       }catch(e){console.error('inv update error',e);}
     })();
@@ -8238,17 +8238,19 @@ const itemsCol = collection(db, 'tires');
 const invCol = collection(db, 'inventory');
 // מלאי מ-Excel — נטען פעם אחת בעת הצורך
 let _invData = null; // map: itemCode → {caesareaQty, itemDescription}
-let _invSizeIdx = null; // map: "205/55R16" → [{brandKey, qty}]
-function _buildInvSizeIdx(){
-  _invSizeIdx={};
-  for(const d of Object.values(_invData||{})){
+let _invBrandIdx = null; // 5chars_of_word → [{code, qty, descNorm}]
+function _buildInvBrandIdx(){
+  _invBrandIdx={};
+  for(const [code,d] of Object.entries(_invData||{})){
     const desc=(d.itemDescription||'').toUpperCase();
-    const m=desc.match(/(\d{2,4})[\/.](\d{1,3})[R](\d{1,2}(?:[.,]\d)?)/i);
-    if(!m) continue;
-    const sKey=m[1]+'/'+m[2]+'R'+String(m[3]).replace(',','.');
-    const brandKey=desc.replace(/[^A-Z]/g,'').slice(0,6);
-    if(!_invSizeIdx[sKey]) _invSizeIdx[sKey]=[];
-    _invSizeIdx[sKey].push({brandKey, qty:d.caesareaQty});
+    const words=desc.match(/[A-Z]{3,}/g)||[];
+    const seen=new Set();
+    for(const w of words){
+      const key=w.slice(0,5);
+      if(seen.has(key)) continue; seen.add(key);
+      if(!_invBrandIdx[key]) _invBrandIdx[key]=[];
+      _invBrandIdx[key].push({code,qty:d.caesareaQty,descNorm:desc.replace(/[^A-Z0-9]/g,'')});
+    }
   }
 }
 async function _loadInvData(){
@@ -8257,22 +8259,23 @@ async function _loadInvData(){
   const snap = await getDocs(invCol);
   _invData = {};
   snap.docs.forEach(d=>{ _invData[d.id]=d.data(); });
-  _buildInvSizeIdx();
+  _buildInvBrandIdx();
   return _invData;
 }
 window._loadInvData=_loadInvData;
 window._getInvQty=function(code,it){
-  // 1. Try by itemCode
+  // 1. exact itemCode
   if(_invData&&code&&_invData[code]) return _invData[code].caesareaQty;
-  // 2. Fallback: match by size + brand from description index
-  if(!it||!_invSizeIdx) return null;
-  const sKey=it.w+'/'+it.p+'R'+it.d;
-  const entries=_invSizeIdx[sKey];
-  if(!entries||!entries.length) return null;
-  if(entries.length===1) return entries[0].qty;
-  const br=(it.brand||'').toUpperCase().replace(/[^A-Z]/g,'').slice(0,4);
-  const hit=entries.find(e=>e.brandKey.startsWith(br)||br.startsWith(e.brandKey.slice(0,4)));
-  return hit?hit.qty:entries[0].qty;
+  // 2. brand+model match from index
+  if(!it||!_invBrandIdx) return null;
+  const bKey=(it.brand||'').toUpperCase().replace(/[^A-Z]/g,'').slice(0,5);
+  if(!bKey||bKey.length<3) return null;
+  const candidates=_invBrandIdx[bKey]||[];
+  if(!candidates.length) return null;
+  if(candidates.length===1) return candidates[0].qty;
+  const mKey=(it.model||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,5);
+  if(mKey){const hit=candidates.find(c=>c.descNorm.includes(mKey));if(hit) return hit.qty;}
+  return candidates[0].qty;
 };
 // עובדים נשמרים כמסמך מיוחד בתוך אוסף tires (שיש לו הרשאות)
 const WORKERS_DOC_ID = 'workers-config';
@@ -8943,9 +8946,31 @@ async function autoUpdateInventory(input) {
       if (cnt >= 499) { await batch.commit(); batch = writeBatch(db); cnt = 0; }
     }
     if (cnt > 0) await batch.commit();
-    _invData = null; // אפס cache — חייב להשתמש במשתנה המקומי, לא window
-    _invSizeIdx = null;
+    _invData = null; _invBrandIdx = null;
     await _loadInvData();
+    // קישור אוטומטי של itemCode לצמיגים ללא קוד
+    const untagged=(window.items||[]).filter(t=>!t.itemCode);
+    if(untagged.length&&_invBrandIdx){
+      let b2=writeBatch(db);let c2=0,tagged=0;
+      for(const tire of untagged){
+        const bKey=(tire.brand||'').toUpperCase().replace(/[^A-Z]/g,'').slice(0,5);
+        const cands=_invBrandIdx[bKey]||[];
+        let match=null;
+        if(cands.length===1){match=cands[0];}
+        else if(cands.length>1){
+          const mKey=(tire.model||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,5);
+          match=mKey?cands.find(c=>c.descNorm.includes(mKey)):null;
+          if(!match)match=cands[0];
+        }
+        if(!match)continue;
+        tire.itemCode=match.code;
+        b2.update(doc(db,'tires',String(tire.id)),{itemCode:match.code});
+        c2++;tagged++;
+        if(c2>=499){await b2.commit();b2=writeBatch(db);c2=0;}
+      }
+      if(c2>0)await b2.commit();
+      if(tagged>0)toast(`🔗 ${tagged} צמיגים קושרו לקוד פריט`);
+    }
     renderTable();
     toast(`✅ מלאי עודכן — ${updated} עודכנו · ${added} חדשים נוספו`);
   } catch(e) {
@@ -8981,7 +9006,7 @@ async function clearAllInventory() {
       if (cnt >= 499) { await batch.commit(); batch = writeBatch(db); cnt = 0; }
     }
     if (cnt > 0) await batch.commit();
-    _invData = null; _invSizeIdx = null;
+    _invData = null; _invBrandIdx = null;
     renderTable();
     toast(`✅ המלאי נמחק — ${snap.docs.length} פריטים`);
   } catch(e) { toast('❌ שגיאה: ' + e.message); }
