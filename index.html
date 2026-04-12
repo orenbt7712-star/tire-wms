@@ -1215,7 +1215,7 @@ function viewRow(it){
     <td style="color:var(--muted);font-size:10px;">#${it.id}</td>
     <td><span class="sz">${sz(it)}</span></td>
     <td><span style="font-weight:700;">${escHTML(it.brand)}</span>${it.model?`<br><span style="font-size:10px;color:var(--muted)">${escHTML(it.model)}</span>`:''}</td>
-    <td style="text-align:center;">${(()=>{const q=window._getInvQty&&it.itemCode?window._getInvQty(it.itemCode):null;return q!=null?`<span style="font-weight:700;color:${q===0?'var(--muted)':q>=100?'var(--green,#4caf50)':'var(--text)'}">${q}</span>`:``;})()}</td>
+    <td style="text-align:center;">${(()=>{const q=window._getInvQty?window._getInvQty(it.itemCode||'',it):null;return q!=null?`<span style="font-weight:700;color:${q===0?'var(--muted)':q>=100?'var(--green,#4caf50)':'var(--text)'}">${q}</span>`:``;})()}</td>
     <td><div class="locbadge">
       ${it.pn1?`<span><span class="lp" style="color:var(--accent);">פ1</span> ${escHTML(it.pn1)}</span><span style="color:var(--border2)">·</span>`:''}
       ${it.p1?`<span><span class="lp">שו׳ ימין</span> ${escHTML(it.p1)}</span><span style="color:var(--border2)">·</span>`:''}
@@ -4000,6 +4000,7 @@ function processExcelRows(rows, colMap){
           w:parsed?parsed.w:0,p:parsed?parsed.p:0,d:parsed?parsed.d:0,
           brand:brandVal,
           model:modelCol?String(row[modelCol]||'').trim():'',
+          itemCode:itemCodeCol?String(row[itemCodeCol]||'').trim():'',
           notes:notesCol?String(row[notesCol]||'').trim():'',
           col:colCol?String(row[colCol]||'').trim():'',
           floor:floorCol?String(row[floorCol]||'1').trim():'1',
@@ -4035,7 +4036,7 @@ function processExcelRows(rows, colMap){
           if(cnt>=499){await batch.commit();batch=writeBatch(db);cnt=0;}
         }
         if(cnt>0) await batch.commit();
-        window._invData=null;
+        _invData=null; _invSizeIdx=null;
         toast(`📦 מלאי קיסריה עודכן — ${entries.length} פריטים`);
       }catch(e){console.error('inv update error',e);}
     })();
@@ -8237,16 +8238,42 @@ const itemsCol = collection(db, 'tires');
 const invCol = collection(db, 'inventory');
 // מלאי מ-Excel — נטען פעם אחת בעת הצורך
 let _invData = null; // map: itemCode → {caesareaQty, itemDescription}
+let _invSizeIdx = null; // map: "205/55R16" → [{brandKey, qty}]
+function _buildInvSizeIdx(){
+  _invSizeIdx={};
+  for(const d of Object.values(_invData||{})){
+    const desc=(d.itemDescription||'').toUpperCase();
+    const m=desc.match(/(\d{2,4})[\/.](\d{1,3})[R](\d{1,2}(?:[.,]\d)?)/i);
+    if(!m) continue;
+    const sKey=m[1]+'/'+m[2]+'R'+String(m[3]).replace(',','.');
+    const brandKey=desc.replace(/[^A-Z]/g,'').slice(0,6);
+    if(!_invSizeIdx[sKey]) _invSizeIdx[sKey]=[];
+    _invSizeIdx[sKey].push({brandKey, qty:d.caesareaQty});
+  }
+}
 async function _loadInvData(){
   if(_invData) return _invData;
   await new Promise(resolve => onAuthReady(resolve));
   const snap = await getDocs(invCol);
   _invData = {};
   snap.docs.forEach(d=>{ _invData[d.id]=d.data(); });
+  _buildInvSizeIdx();
   return _invData;
 }
 window._loadInvData=_loadInvData;
-window._getInvQty=code=>(_invData&&code&&_invData[code])?_invData[code].caesareaQty:null;
+window._getInvQty=function(code,it){
+  // 1. Try by itemCode
+  if(_invData&&code&&_invData[code]) return _invData[code].caesareaQty;
+  // 2. Fallback: match by size + brand from description index
+  if(!it||!_invSizeIdx) return null;
+  const sKey=it.w+'/'+it.p+'R'+it.d;
+  const entries=_invSizeIdx[sKey];
+  if(!entries||!entries.length) return null;
+  if(entries.length===1) return entries[0].qty;
+  const br=(it.brand||'').toUpperCase().replace(/[^A-Z]/g,'').slice(0,4);
+  const hit=entries.find(e=>e.brandKey.startsWith(br)||br.startsWith(e.brandKey.slice(0,4)));
+  return hit?hit.qty:entries[0].qty;
+};
 // עובדים נשמרים כמסמך מיוחד בתוך אוסף tires (שיש לו הרשאות)
 const WORKERS_DOC_ID = 'workers-config';
 const workersDocRef = doc(db, 'tires', WORKERS_DOC_ID);
@@ -8917,14 +8944,8 @@ async function autoUpdateInventory(input) {
     }
     if (cnt > 0) await batch.commit();
     _invData = null; // אפס cache — חייב להשתמש במשתנה המקומי, לא window
+    _invSizeIdx = null;
     await _loadInvData();
-    // DEBUG — מציג כמה פריטים נטענו מהמלאי ומהם הצמיגים עם קוד פריט
-    const invKeys = Object.keys(_invData || {});
-    const tiresWithCode = (window.items||[]).filter(i=>i.itemCode).slice(0,3);
-    toast(`🔍 מלאי: ${invKeys.length} | דוגמה: ${invKeys.slice(0,2).join('·')||'אין'}`);
-    await new Promise(r=>setTimeout(r,3000));
-    toast(`🔍 צמיגים עם קוד: ${(window.items||[]).filter(i=>i.itemCode).length} | דוגמה: ${tiresWithCode.map(i=>i.itemCode).join('·')||'אין'}`);
-    await new Promise(r=>setTimeout(r,3000));
     renderTable();
     toast(`✅ מלאי עודכן — ${updated} עודכנו · ${added} חדשים נוספו`);
   } catch(e) {
@@ -8960,7 +8981,7 @@ async function clearAllInventory() {
       if (cnt >= 499) { await batch.commit(); batch = writeBatch(db); cnt = 0; }
     }
     if (cnt > 0) await batch.commit();
-    _invData = null; // אפס cache — חייב להשתמש במשתנה המקומי, לא window
+    _invData = null; _invSizeIdx = null;
     renderTable();
     toast(`✅ המלאי נמחק — ${snap.docs.length} פריטים`);
   } catch(e) { toast('❌ שגיאה: ' + e.message); }
