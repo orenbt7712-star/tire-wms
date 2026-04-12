@@ -8918,6 +8918,13 @@ async function autoUpdateInventory(input) {
     if (cnt > 0) await batch.commit();
     _invData = null; // אפס cache — חייב להשתמש במשתנה המקומי, לא window
     await _loadInvData();
+    // DEBUG — מציג כמה פריטים נטענו מהמלאי ומהם הצמיגים עם קוד פריט
+    const invKeys = Object.keys(_invData || {});
+    const tiresWithCode = (window.items||[]).filter(i=>i.itemCode).slice(0,3);
+    toast(`🔍 מלאי: ${invKeys.length} | דוגמה: ${invKeys.slice(0,2).join('·')||'אין'}`);
+    await new Promise(r=>setTimeout(r,3000));
+    toast(`🔍 צמיגים עם קוד: ${(window.items||[]).filter(i=>i.itemCode).length} | דוגמה: ${tiresWithCode.map(i=>i.itemCode).join('·')||'אין'}`);
+    await new Promise(r=>setTimeout(r,3000));
     renderTable();
     toast(`✅ מלאי עודכן — ${updated} עודכנו · ${added} חדשים נוספו`);
   } catch(e) {
