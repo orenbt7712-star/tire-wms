@@ -3817,16 +3817,23 @@ function handleExcelImportFile(input){
   toast('⏳ טוען קובץ...');
   function processFile(){
     const reader=new FileReader();
-    reader.onload=e=>{
+    reader.onerror=()=>toast('❌ שגיאה בקריאת הקובץ');
+    reader.onload=async function(e){
+      toast('⏳ מפרסר Excel...');
       try{
-        const wb=XLSX.read(e.target.result,{type:'array'});
-        const ws=wb.Sheets[wb.SheetNames[0]];
-        const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
-        if(!rows||rows.length===0){ toast('❌ הגיליון ריק'); return; }
+        const rows=await new Promise((resolve,reject)=>{
+          const ws=`self.onmessage=function(e){try{importScripts(e.data.u);var wb=XLSX.read(new Uint8Array(e.data.b),{type:'array',dense:true});var ws=wb.Sheets[wb.SheetNames[0]];var rows=XLSX.utils.sheet_to_json(ws,{defval:''});self.postMessage({ok:true,rows:rows});}catch(err){self.postMessage({ok:false,error:err.message});}};`;
+          const url=URL.createObjectURL(new Blob([ws],{type:'text/javascript'}));
+          const w=new Worker(url);
+          w.onmessage=m=>{w.terminate();URL.revokeObjectURL(url);m.data.ok?resolve(m.data.rows):reject(new Error(m.data.error));};
+          w.onerror=err=>{w.terminate();URL.revokeObjectURL(url);reject(err);};
+          w.postMessage({b:e.target.result,u:'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'},[e.target.result]);
+        });
+        if(!rows||rows.length===0){toast('❌ הגיליון ריק');return;}
         document.getElementById('excelStep1').style.display='none';
         step2.style.display='';
-        showColumnMapper(rows, step2);
-      }catch(err){ toast('❌ שגיאה בקריאת הקובץ'); }
+        showColumnMapper(rows,step2);
+      }catch(err){toast('❌ שגיאה בקריאת הקובץ');}
       input.value='';
     };
     reader.readAsArrayBuffer(file);
@@ -3867,13 +3874,20 @@ function importExcel(input){
   toast('⏳ טוען קובץ...');
   function processFile(){
     const reader=new FileReader();
-    reader.onload=e=>{
+    reader.onerror=()=>toast('❌ שגיאה בקריאת הקובץ');
+    reader.onload=async function(e){
+      toast('⏳ מפרסר Excel...');
       try{
-        const wb=XLSX.read(e.target.result,{type:'array'});
-        const ws=wb.Sheets[wb.SheetNames[0]];
-        const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+        const rows=await new Promise((resolve,reject)=>{
+          const ws=`self.onmessage=function(e){try{importScripts(e.data.u);var wb=XLSX.read(new Uint8Array(e.data.b),{type:'array',dense:true});var ws=wb.Sheets[wb.SheetNames[0]];var rows=XLSX.utils.sheet_to_json(ws,{defval:''});self.postMessage({ok:true,rows:rows});}catch(err){self.postMessage({ok:false,error:err.message});}};`;
+          const url=URL.createObjectURL(new Blob([ws],{type:'text/javascript'}));
+          const w=new Worker(url);
+          w.onmessage=m=>{w.terminate();URL.revokeObjectURL(url);m.data.ok?resolve(m.data.rows):reject(new Error(m.data.error));};
+          w.onerror=err=>{w.terminate();URL.revokeObjectURL(url);reject(err);};
+          w.postMessage({b:e.target.result,u:'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'},[e.target.result]);
+        });
         processExcelRows(rows);
-      }catch(err){ toast('❌ שגיאה בקריאת הקובץ'); }
+      }catch(err){toast('❌ שגיאה בקריאת הקובץ');}
       input.value='';
     };
     reader.readAsArrayBuffer(file);
