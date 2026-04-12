@@ -8238,18 +8238,17 @@ const itemsCol = collection(db, 'tires');
 const invCol = collection(db, 'inventory');
 // מלאי מ-Excel — נטען פעם אחת בעת הצורך
 let _invData = null; // map: itemCode → {caesareaQty, itemDescription}
-let _invBrandIdx = null; // 5chars_of_word → [{code, qty, descNorm}]
+let _invBrandIdx = null; // token → [{code, qty, descNorm}]
 function _buildInvBrandIdx(){
   _invBrandIdx={};
   for(const [code,d] of Object.entries(_invData||{})){
     const desc=(d.itemDescription||'').toUpperCase();
-    const words=desc.match(/[A-Z]{3,}/g)||[];
-    const seen=new Set();
-    for(const w of words){
-      const key=w.slice(0,5);
-      if(seen.has(key)) continue; seen.add(key);
-      if(!_invBrandIdx[key]) _invBrandIdx[key]=[];
-      _invBrandIdx[key].push({code,qty:d.caesareaQty,descNorm:desc.replace(/[^A-Z0-9]/g,'')});
+    const descNorm=desc.replace(/[^A-Z0-9]/g,'');
+    // אנדקס כל טוקן (3+ תווים) בתיאור — כולל עברית ומספרים
+    const tokens=[...new Set((desc.match(/\S{3,}/g)||[]).map(t=>t.replace(/[^A-Z0-9א-ת]/g,'')).filter(t=>t.length>=3))];
+    for(const token of tokens){
+      if(!_invBrandIdx[token]) _invBrandIdx[token]=[];
+      _invBrandIdx[token].push({code,qty:d.caesareaQty,descNorm});
     }
   }
 }
@@ -8260,27 +8259,27 @@ async function _loadInvData(){
   _invData = {};
   snap.docs.forEach(d=>{ _invData[d.id]=d.data(); });
   _buildInvBrandIdx();
-  // DEBUG — מה יש במלאי
-  const cnt=snap.docs.length;
-  const sample=snap.docs.slice(0,1).map(d=>{const x=d.data();return `"${x.itemDescription||'(ריק)'}" qty:${x.caesareaQty}`;}).join('');
-  const idxSz=Object.keys(_invBrandIdx||{}).length;
-  toast(`🗄️ מלאי Firestore: ${cnt} | תיאור: ${sample.slice(0,40)} | idx: ${idxSz}`);
   return _invData;
 }
 window._loadInvData=_loadInvData;
 window._getInvQty=function(code,it){
   // 1. exact itemCode
   if(_invData&&code&&_invData[code]) return _invData[code].caesareaQty;
-  // 2. brand+model match from index
+  // 2. token scoring — כל טוקן ממותג+דגם מול תיאורי פריט
   if(!it||!_invBrandIdx) return null;
-  const bKey=(it.brand||'').toUpperCase().replace(/[^A-Z]/g,'').slice(0,5);
-  if(!bKey||bKey.length<3) return null;
-  const candidates=_invBrandIdx[bKey]||[];
-  if(!candidates.length) return null;
-  if(candidates.length===1) return candidates[0].qty;
-  const mKey=(it.model||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,5);
-  if(mKey){const hit=candidates.find(c=>c.descNorm.includes(mKey));if(hit) return hit.qty;}
-  return candidates[0].qty;
+  const tireText=((it.brand||'')+' '+(it.model||'')).toUpperCase().replace(/[^A-Z0-9א-ת\s]/g,' ');
+  const tokens=[...new Set((tireText.match(/\S{3,}/g)||[]))];
+  if(!tokens.length) return null;
+  const scores={};
+  for(const token of tokens){
+    for(const c of (_invBrandIdx[token]||[])){
+      if(!scores[c.code]) scores[c.code]={qty:c.qty,score:0};
+      scores[c.code].score++;
+    }
+  }
+  let best=null,bestScore=0;
+  for(const s of Object.values(scores)){if(s.score>bestScore){bestScore=s.score;best=s;}}
+  return best&&bestScore>=1?best.qty:null;
 };
 // עובדים נשמרים כמסמך מיוחד בתוך אוסף tires (שיש לו הרשאות)
 const WORKERS_DOC_ID = 'workers-config';
@@ -8954,21 +8953,17 @@ async function autoUpdateInventory(input) {
       if (cnt >= 499) { await batch.commit(); batch = writeBatch(db); cnt = 0; }
     }
     if (cnt > 0) await batch.commit();
-    _invData = null; _invBrandIdx = null;
-    await _loadInvData();
-    // DEBUG
-    const invCount=Object.keys(_invData||{}).length;
-    const idxKeys=Object.keys(_invBrandIdx||{}).length;
-    const sampleInv=Object.values(_invData||{}).slice(0,1).map(d=>d.itemDescription||'(ריק)').join('');
-    toast(`📦 מלאי: ${invCount} | index: ${idxKeys} מפתחות | דוגמה: "${sampleInv.slice(0,30)}"`);
-    await new Promise(r=>setTimeout(r,4000));
-    const sampleTire=(window.items||[]).find(t=>t.brand);
-    if(sampleTire){
-      const bKey=(sampleTire.brand||'').toUpperCase().replace(/[^A-Z]/g,'').slice(0,5);
-      const cands=(_invBrandIdx||{})[bKey]||[];
-      toast(`🔍 צמיג דוגמה: "${sampleTire.brand}" → מפתח:"${bKey}" → ${cands.length} מועמדים`);
-      await new Promise(r=>setTimeout(r,4000));
+    // בנה _invData ישירות מהאקסל (לא מ-Firestore) — מבטיח תיאורים נכונים
+    _invData = {};
+    for (const row of rows) {
+      const code = String(row[codeCol]||'').trim();
+      if (!code) continue;
+      const qty = Number(row[caesareaCol]) || 0;
+      const desc = descCol ? String(row[descCol]||'').trim() : '';
+      _invData[code] = {itemCode:code, itemDescription:desc, caesareaQty:qty};
     }
+    _invBrandIdx = null;
+    _buildInvBrandIdx();
     // קישור אוטומטי של itemCode לצמיגים ללא קוד
     const untagged=(window.items||[]).filter(t=>!t.itemCode);
     if(untagged.length&&_invBrandIdx){
