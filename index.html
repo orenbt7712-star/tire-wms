@@ -8885,7 +8885,7 @@ async function autoUpdateInventory(input) {
   const caesareaCol = findCol(['קיסריה 01','caesarea 01','קיסריה','caesarea','יתרה']);
 
   if (!codeCol || !caesareaCol) {
-    toast('❌ לא נמצאו עמודות קוד פריט / קיסריה 01');
+    toast(`❌ לא נמצאו עמודות קוד פריט / קיסריה 01`);
     return;
   }
 
@@ -8916,7 +8916,7 @@ async function autoUpdateInventory(input) {
       if (cnt >= 499) { await batch.commit(); batch = writeBatch(db); cnt = 0; }
     }
     if (cnt > 0) await batch.commit();
-    window._invData = null; // אפס cache וטען מחדש לפני render
+    _invData = null; // אפס cache — חייב להשתמש במשתנה המקומי, לא window
     await _loadInvData();
     renderTable();
     toast(`✅ מלאי עודכן — ${updated} עודכנו · ${added} חדשים נוספו`);
@@ -8953,7 +8953,7 @@ async function clearAllInventory() {
       if (cnt >= 499) { await batch.commit(); batch = writeBatch(db); cnt = 0; }
     }
     if (cnt > 0) await batch.commit();
-    window._invData = null;
+    _invData = null; // אפס cache — חייב להשתמש במשתנה המקומי, לא window
     renderTable();
     toast(`✅ המלאי נמחק — ${snap.docs.length} פריטים`);
   } catch(e) { toast('❌ שגיאה: ' + e.message); }
