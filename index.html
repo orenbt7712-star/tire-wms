@@ -388,6 +388,7 @@ if('serviceWorker' in navigator){
   <button class="btn-locate owner-only" id="pendingBell" onclick="openPendingPanel()" title="ממתינים לאישור" style="position:relative;">🔔<span id="pendingCount" class="pending-badge" style="display:none;position:absolute;top:2px;right:2px;"></span></button>
   <button class="btn-locate owner-only" onclick="document.getElementById('invReportInput').click()" title="עדכון דוח מלאי">📊</button>
   <input type="file" id="invReportInput" accept=".xlsx,.xls" style="display:none;" onchange="autoUpdateInventory(this)"/>
+  <button class="btn-locate owner-only" onclick="clearAllInventory()" title="מחק את כל המלאי">🗑️</button>
   <button class="btn-locate owner-only" onclick="showBackupMenu()" title="גיבוי / ייבוא">💾</button>
   <button class="btn-locate" onclick="locateNearest()" title="מצא פריט קריטי">📍</button>
   <button class="btn-add" onclick="openAddModal()" title="הוסף צמיג">＋</button>
@@ -8928,6 +8929,29 @@ async function autoUpdateInventory(input) {
   }
 }
 window.autoUpdateInventory = autoUpdateInventory;
+
+async function clearAllInventory() {
+  if (!_isOwner) { toast('❌ גישה לבעלים בלבד'); return; }
+  if (!confirm('למחוק את כל נתוני המלאי (קוד פריט + תיאור + קיסריה)?')) return;
+  toast('⏳ מוחק מלאי...');
+  try {
+    await new Promise(resolve => onAuthReady(resolve));
+    const snap = await getDocs(collection(db, 'inventory'));
+    if (!snap.docs.length) { toast('המלאי כבר ריק'); return; }
+    let batch = writeBatch(db);
+    let cnt = 0;
+    for (const d of snap.docs) {
+      batch.delete(d.ref);
+      cnt++;
+      if (cnt >= 499) { await batch.commit(); batch = writeBatch(db); cnt = 0; }
+    }
+    if (cnt > 0) await batch.commit();
+    window._invData = null;
+    renderTable();
+    toast(`✅ המלאי נמחק — ${snap.docs.length} פריטים`);
+  } catch(e) { toast('❌ שגיאה: ' + e.message); }
+}
+window.clearAllInventory = clearAllInventory;
 window.runInventoryImport = runInventoryImport;
 
 
