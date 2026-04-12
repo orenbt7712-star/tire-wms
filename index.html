@@ -8939,7 +8939,10 @@ async function autoUpdateInventory(input) {
         batch.set(ref, {itemCode:code, itemDescription:desc, caesareaQty:qty, createdAt:now, lastUpdated:now});
         added++;
       } else {
-        batch.update(ref, {caesareaQty:qty, lastUpdated:now});
+        const desc = descCol ? String(row[descCol]||'').trim() : '';
+        const upd = {caesareaQty:qty, lastUpdated:now};
+        if(desc) upd.itemDescription = desc;
+        batch.update(ref, upd);
         updated++;
       }
       cnt++;
@@ -8948,6 +8951,19 @@ async function autoUpdateInventory(input) {
     if (cnt > 0) await batch.commit();
     _invData = null; _invBrandIdx = null;
     await _loadInvData();
+    // DEBUG
+    const invCount=Object.keys(_invData||{}).length;
+    const idxKeys=Object.keys(_invBrandIdx||{}).length;
+    const sampleInv=Object.values(_invData||{}).slice(0,1).map(d=>d.itemDescription||'(ריק)').join('');
+    toast(`📦 מלאי: ${invCount} | index: ${idxKeys} מפתחות | דוגמה: "${sampleInv.slice(0,30)}"`);
+    await new Promise(r=>setTimeout(r,4000));
+    const sampleTire=(window.items||[]).find(t=>t.brand);
+    if(sampleTire){
+      const bKey=(sampleTire.brand||'').toUpperCase().replace(/[^A-Z]/g,'').slice(0,5);
+      const cands=(_invBrandIdx||{})[bKey]||[];
+      toast(`🔍 צמיג דוגמה: "${sampleTire.brand}" → מפתח:"${bKey}" → ${cands.length} מועמדים`);
+      await new Promise(r=>setTimeout(r,4000));
+    }
     // קישור אוטומטי של itemCode לצמיגים ללא קוד
     const untagged=(window.items||[]).filter(t=>!t.itemCode);
     if(untagged.length&&_invBrandIdx){
