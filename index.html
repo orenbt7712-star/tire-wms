@@ -8930,13 +8930,20 @@ async function autoUpdateInventory(input) {
 }
 window.autoUpdateInventory = autoUpdateInventory;
 
+let _clearInvPending = false;
 async function clearAllInventory() {
   if (!_isOwner) { toast('❌ גישה לבעלים בלבד'); return; }
-  if (!confirm('למחוק את כל נתוני המלאי (קוד פריט + תיאור + קיסריה)?')) return;
+  if (!_clearInvPending) {
+    _clearInvPending = true;
+    toast('⚠️ לחץ שוב תוך 3 שניות לאישור מחיקת כל המלאי');
+    setTimeout(() => { _clearInvPending = false; }, 3000);
+    return;
+  }
+  _clearInvPending = false;
   toast('⏳ מוחק מלאי...');
   try {
     await new Promise(resolve => onAuthReady(resolve));
-    const snap = await getDocs(collection(db, 'inventory'));
+    const snap = await getDocs(invCol);
     if (!snap.docs.length) { toast('המלאי כבר ריק'); return; }
     let batch = writeBatch(db);
     let cnt = 0;
