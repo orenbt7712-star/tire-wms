@@ -387,6 +387,8 @@ if('serviceWorker' in navigator){
   <button id="langBtn" onclick="toggleLang()" title="שפה / لغة" style="background:var(--card);border:1px solid var(--border);border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex-shrink:0;">🌐</button>
   <button class="btn-locate owner-only" id="pendingBell" onclick="openPendingPanel()" title="ממתינים לאישור" style="position:relative;">🔔<span id="pendingCount" class="pending-badge" style="display:none;position:absolute;top:2px;right:2px;"></span></button>
   <button class="btn-locate owner-only" onclick="openExcelImportPanel()" title="ייבוא מ-Excel">📊</button>
+  <button class="btn-locate" id="btnInvReport" style="display:none;" onclick="document.getElementById('invReportInput').click()" title="עדכון דוח מלאי — קיסריה 01">📋</button>
+  <input type="file" id="invReportInput" accept=".xlsx,.xls" style="display:none;" onchange="autoUpdateInventory(this)"/>
   <button class="btn-locate owner-only" onclick="showBackupMenu()" title="גיבוי / ייבוא">💾</button>
   <button class="btn-locate" onclick="locateNearest()" title="מצא פריט קריטי">📍</button>
   <button class="btn-add" onclick="openAddModal()" title="הוסף צמיג">＋</button>
@@ -8488,6 +8490,10 @@ function enterApp(admin, workerName) {
     document.body.classList.add('is-admin-worker');
   }
 
+  // כפתור דוח מלאי — גלוי למנהל ובעלים בלבד
+  const invBtn = document.getElementById('btnInvReport');
+  if (invBtn) invBtn.style.display = (_isOwner || _isAdmin) ? '' : 'none';
+
   if (!admin) {
     // עובד רגיל — view only
     document.querySelectorAll('.btn-add').forEach(el => el.style.display = 'none');
@@ -8842,6 +8848,89 @@ window.saveEditWorker = saveEditWorker;
 window.deleteWorker = deleteWorker;
 window.openInventoryImport = openInventoryImport;
 window.closeInventoryImport = closeInventoryImport;
+
+// ══ עדכון דוח מלאי אוטומטי (כפתור 📋) ══
+async function autoUpdateInventory(input) {
+  const file = input.files[0];
+  input.value = '';
+  if (!file) return;
+  if (!_isOwner && !_isAdmin) { toast('❌ גישה למנהל ובעלים בלבד'); return; }
+
+  toast('⏳ קורא דוח מלאי...');
+
+  const arrayBuffer = await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = e => resolve(e.target.result);
+    r.onerror = () => reject(new Error('שגיאה בקריאת קובץ'));
+    r.readAsArrayBuffer(file);
+  });
+
+  toast('⏳ מפרסר Excel...');
+  let rows;
+  try {
+    rows = await new Promise((resolve, reject) => {
+      const ws = `self.onmessage=function(e){try{importScripts(e.data.u);var wb=XLSX.read(new Uint8Array(e.data.b),{type:'array',dense:true});var ws=wb.Sheets[wb.SheetNames[0]];var rows=XLSX.utils.sheet_to_json(ws,{defval:''});self.postMessage({ok:true,rows:rows});}catch(err){self.postMessage({ok:false,error:err.message});}};`;
+      const url = URL.createObjectURL(new Blob([ws], {type:'text/javascript'}));
+      const w = new Worker(url);
+      w.onmessage = m => { w.terminate(); URL.revokeObjectURL(url); m.data.ok ? resolve(m.data.rows) : reject(new Error(m.data.error)); };
+      w.onerror = err => { w.terminate(); URL.revokeObjectURL(url); reject(err); };
+      w.postMessage({b: arrayBuffer, u:'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'}, [arrayBuffer]);
+    });
+  } catch(e) { toast('❌ שגיאה בקריאת הקובץ'); return; }
+
+  if (!rows || !rows.length) { toast('❌ הגיליון ריק'); return; }
+
+  // זיהוי אוטומטי של עמודות
+  const headers = Object.keys(rows[0]);
+  const findCol = keys => { const lh = headers.map(h => h.toLowerCase().trim()); for(const k of keys){ const i = lh.findIndex(h => h.includes(k.toLowerCase())); if(i>=0) return headers[i]; } return null; };
+  const codeCol = findCol(['קוד פריט','item code','part number','sku','קוד','מקט']);
+  const descCol = findCol(['תיאור פריט','item description','תאור פריט','description','תיאור','דגם']);
+  const caesareaCol = findCol(['קיסריה 01','caesarea 01','קיסריה','caesarea','יתרה']);
+
+  if (!codeCol || !caesareaCol) {
+    toast('❌ לא נמצאו עמודות קוד פריט / קיסריה 01');
+    return;
+  }
+
+  toast(`⏳ מעדכן ${rows.length} שורות...`);
+  try {
+    await new Promise(resolve => onAuthReady(resolve));
+    const invColRef = collection(db, 'inventory');
+    // טען קודים קיימים
+    const snap = await getDocs(invColRef);
+    const existing = new Set(snap.docs.map(d => d.id));
+    const now = serverTimestamp();
+    let batch = writeBatch(db);
+    let cnt = 0, added = 0, updated = 0;
+    for (const row of rows) {
+      const code = String(row[codeCol]||'').trim();
+      if (!code) continue;
+      const qty = Number(row[caesareaCol]) || 0;
+      const ref = doc(db, 'inventory', code);
+      if (!existing.has(code)) {
+        const desc = descCol ? String(row[descCol]||'').trim() : '';
+        batch.set(ref, {itemCode:code, itemDescription:desc, caesareaQty:qty, createdAt:now, lastUpdated:now});
+        added++;
+      } else {
+        batch.update(ref, {caesareaQty:qty, lastUpdated:now});
+        updated++;
+      }
+      cnt++;
+      if (cnt >= 499) { await batch.commit(); batch = writeBatch(db); cnt = 0; }
+    }
+    if (cnt > 0) await batch.commit();
+    window._invData = null; // אפס cache
+    renderTable();
+    toast(`✅ מלאי עודכן — ${updated} עודכנו · ${added} חדשים נוספו`);
+  } catch(e) {
+    if (e.code==='permission-denied'||String(e.message).includes('Missing or insufficient')) {
+      toast('❌ שגיאת הרשאות — עדכן חוקי Firestore');
+    } else {
+      toast('❌ שגיאה: ' + e.message);
+    }
+  }
+}
+window.autoUpdateInventory = autoUpdateInventory;
 window.runInventoryImport = runInventoryImport;
 
 
