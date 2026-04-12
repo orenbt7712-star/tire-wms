@@ -3920,14 +3920,16 @@ function parseCSV(text){
 
 // מיפוי עמודות Excel נפוצות
 const _excelFieldMap={
-  size:  ['מידה','size','tire size','tyre size','גודל','dimension','מידת צמיג','קוד פריט','item code','part number','part no','partno','sku','code','קוד','מק"ט','מקט'],
+  size:  ['מידה','size','tire size','tyre size','גודל','dimension','מידת צמיג'],
   brand: ['מותג','brand','manufacturer','יצרן','ספק','supplier','פריט','item','item name','שם פריט'],
   model: ['דגם','model','description','תיאור','type','תיאור פריט','item description','תאור פריט','תאור'],
   col:   ['עמודה','col','column','מיקום','location','bin','cage'],
   floor: ['קומה','floor','level','shelf','rack'],
-  qty:   ['כמות','qty','quantity','amount','מספר','יתרה','stock','מלאי'],
+  qty:   ['כמות','qty','quantity','amount','מספר','stock','מלאי'],
   notes: ['הערות','notes','remarks','note','comment'],
   warehouse:['מחסן','warehouse','store','סניף','branch','אתר'],
+  itemCode: ['קוד פריט','item code','part number','part no','partno','sku','code','קוד','מק"ט','מקט'],
+  caesarea: ['קיסריה 01','caesarea 01','caesarea','קיסריה','יתרה','יתרה קיסריה','stock qty','qty caesarea'],
 };
 
 function _excelFindCol(headers, keys){
@@ -3944,12 +3946,13 @@ function processExcelRows(rows, colMap){
   if(!rows||rows.length===0){ toast('❌ לא נמצאו שורות'); return; }
   const headers=Object.keys(rows[0]);
 
-  let sizeCol, brandCol, modelCol, colCol, floorCol, qtyCol, notesCol, warehouseCol;
+  let sizeCol, brandCol, modelCol, colCol, floorCol, qtyCol, notesCol, warehouseCol, itemCodeCol, caesareaCol;
   if(colMap){
     sizeCol=colMap.size||null; brandCol=colMap.brand||null;
     modelCol=colMap.model||null; colCol=colMap.col||null;
     floorCol=colMap.floor||null; qtyCol=colMap.qty||null;
     notesCol=colMap.notes||null; warehouseCol=colMap.warehouse||null;
+    itemCodeCol=colMap.itemCode||null; caesareaCol=colMap.caesarea||null;
   } else {
     sizeCol =_excelFindCol(headers,_excelFieldMap.size);
     brandCol=_excelFindCol(headers,_excelFieldMap.brand);
@@ -3959,6 +3962,8 @@ function processExcelRows(rows, colMap){
     qtyCol  =_excelFindCol(headers,_excelFieldMap.qty);
     notesCol=_excelFindCol(headers,_excelFieldMap.notes);
     warehouseCol=_excelFindCol(headers,_excelFieldMap.warehouse);
+    itemCodeCol=_excelFindCol(headers,_excelFieldMap.itemCode);
+    caesareaCol=_excelFindCol(headers,_excelFieldMap.caesarea);
   }
 
   if(!colMap && !sizeCol && !brandCol){
@@ -4001,6 +4006,36 @@ function processExcelRows(rows, colMap){
     }catch(e){ skipped++; }
   });
 
+  // שמור מלאי קיסריה אם עמודה ממופה
+  if(caesareaCol){
+    (async()=>{
+      try{
+        await new Promise(resolve=>onAuthReady(resolve));
+        const invEntries={};
+        rows.forEach(row=>{
+          const code=itemCodeCol?String(row[itemCodeCol]||'').trim():'';
+          if(!code) return;
+          const desc=modelCol?String(row[modelCol]||'').trim():'';
+          const qty=Number(row[caesareaCol])||0;
+          invEntries[code]={caesareaQty:qty,itemDescription:desc,itemCode:code};
+        });
+        const entries=Object.entries(invEntries);
+        if(!entries.length) return;
+        const now=serverTimestamp();
+        let batch=writeBatch(db);
+        let cnt=0;
+        for(const[code,data]of entries){
+          batch.set(doc(db,'inventory',code),{...data,lastUpdated:now},{merge:true});
+          cnt++;
+          if(cnt>=499){await batch.commit();batch=writeBatch(db);cnt=0;}
+        }
+        if(cnt>0) await batch.commit();
+        window._invData=null;
+        toast(`📦 מלאי קיסריה עודכן — ${entries.length} פריטים`);
+      }catch(e){console.error('inv update error',e);}
+    })();
+  }
+
   closeBackupMenu();
   closeExcelImportPanel();
   const whMsg=warehouseSkipped>0?` · ${warehouseSkipped} ממחסנים אחרים דולגו`:'';
@@ -4020,14 +4055,16 @@ function showColumnMapper(rows, embedIn){
   }
 
   const fields=[
-    {key:'size', label:'📐 מידה (205/55R16)', keys:_excelFieldMap.size},
-    {key:'brand',label:'🏷️ מותג',            keys:_excelFieldMap.brand},
-    {key:'model',label:'🔖 דגם',             keys:_excelFieldMap.model},
-    {key:'qty',  label:'🔢 כמות',            keys:_excelFieldMap.qty},
-    {key:'col',  label:'📍 עמודה / כלוב',   keys:_excelFieldMap.col},
-    {key:'floor',label:'🏢 קומה',            keys:_excelFieldMap.floor},
-    {key:'notes',label:'📝 הערות',           keys:_excelFieldMap.notes},
-    {key:'warehouse',label:'🏭 מחסן (סינון)',keys:_excelFieldMap.warehouse},
+    {key:'size',     label:'📐 מידה (205/55R16)',    keys:_excelFieldMap.size},
+    {key:'brand',    label:'🏷️ מותג',               keys:_excelFieldMap.brand},
+    {key:'model',    label:'🔖 דגם / תיאור פריט',   keys:_excelFieldMap.model},
+    {key:'itemCode', label:'🔑 קוד פריט',            keys:_excelFieldMap.itemCode},
+    {key:'caesarea', label:'📦 קיסריה 01 (מלאי)',   keys:_excelFieldMap.caesarea},
+    {key:'qty',      label:'🔢 כמות (לייבוא)',       keys:_excelFieldMap.qty},
+    {key:'col',      label:'📍 עמודה / כלוב',        keys:_excelFieldMap.col},
+    {key:'floor',    label:'🏢 קומה',               keys:_excelFieldMap.floor},
+    {key:'notes',    label:'📝 הערות',              keys:_excelFieldMap.notes},
+    {key:'warehouse',label:'🏭 מחסן (סינון)',       keys:_excelFieldMap.warehouse},
   ];
 
   const preview=rows.slice(0,3).map(r=>`<tr>${headers.map(h=>`<td style="padding:4px 6px;border:1px solid var(--border);font-size:11px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHTML(String(r[h]||'').slice(0,30))}</td>`).join('')}</tr>`).join('');
@@ -4096,8 +4133,8 @@ function applyColumnMap(rows, container){
     size: getVal('xmap_size'), brand:getVal('xmap_brand'),
     model:getVal('xmap_model'),col:  getVal('xmap_col'),
     floor:getVal('xmap_floor'),qty:  getVal('xmap_qty'),
-    notes:getVal('xmap_notes'),
-    warehouse:getVal('xmap_warehouse'),
+    notes:getVal('xmap_notes'),warehouse:getVal('xmap_warehouse'),
+    itemCode:getVal('xmap_itemCode'),caesarea:getVal('xmap_caesarea'),
   };
   processExcelRows(rows, colMap);
 }
@@ -8475,7 +8512,7 @@ function enterApp(admin, workerName) {
   ub.innerHTML = `
     <span style="font-size:11px;color:${admin ? '#f5a623' : '#7a8299'};font-weight:700;white-space:nowrap;">${roleIcon} ${escHTML(displayName)}</span>
     ${_isOwner ? `<button id="btnWorkerMgmt" onclick="openWorkerMgmt()" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:12px;padding:5px 9px;cursor:pointer;font-family:inherit;white-space:nowrap;">👥 עובדים</button>` : ''}
-    ${(_isOwner||_isAdmin) ? `<button onclick="openInventoryImport()" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:12px;padding:5px 9px;cursor:pointer;font-family:inherit;white-space:nowrap;">📥 ייבא מלאי</button><button onclick="openInventoryView()" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:12px;padding:5px 9px;cursor:pointer;font-family:inherit;white-space:nowrap;">📦 צפה במלאי</button>` : ''}
+    ${(_isOwner||_isAdmin) ? `<button onclick="openInventoryView()" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:12px;padding:5px 9px;cursor:pointer;font-family:inherit;white-space:nowrap;">📦 צפה במלאי</button>` : ''}
     <button id="logoutBtn" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:12px;padding:5px 9px;cursor:pointer;font-family:inherit;white-space:nowrap;">🚪 יציאה</button>
   `;
   document.getElementById('logoutBtn').addEventListener('click', _logout);
