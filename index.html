@@ -8915,7 +8915,8 @@ async function autoUpdateInventory(input) {
       if (cnt >= 499) { await batch.commit(); batch = writeBatch(db); cnt = 0; }
     }
     if (cnt > 0) await batch.commit();
-    window._invData = null; // אפס cache
+    window._invData = null; // אפס cache וטען מחדש לפני render
+    await _loadInvData();
     renderTable();
     toast(`✅ מלאי עודכן — ${updated} עודכנו · ${added} חדשים נוספו`);
   } catch(e) {
