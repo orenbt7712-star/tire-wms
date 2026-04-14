@@ -30,8 +30,8 @@ self.addEventListener('activate', e=>{
 self.addEventListener('fetch', e=>{
   const url = new URL(e.request.url);
 
-  // Firebase — תמיד מהרשת
-  if(url.hostname.includes('firebase')||url.hostname.includes('firestore')||url.hostname.includes('gstatic')){
+  // Firebase + Google APIs — תמיד מהרשת
+  if(url.hostname.includes('firebase')||url.hostname.includes('firestore')||url.hostname.includes('gstatic')||url.hostname.includes('googleapis.com')||url.hostname.includes('accounts.google.com')){
     e.respondWith(fetch(e.request).catch(()=>new Response('',{status:503})));
     return;
   }
@@ -40,7 +40,7 @@ self.addEventListener('fetch', e=>{
   e.respondWith(
     fetch(e.request)
       .then(res=>{
-        if(res.ok){
+        if(res.ok && e.request.method==='GET'){
           const clone=res.clone();
           caches.open(CACHE).then(c=>c.put(e.request,clone));
         }
