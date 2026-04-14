@@ -404,8 +404,9 @@ if('serviceWorker' in navigator){
       <button class="btn btn-ghost" style="justify-content:flex-start;" onclick="document.getElementById('importExcel').click()">📊 ייבוא מ-Excel / SAP</button>
       <input type="file" id="importExcel" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExcel(this)"/>
       <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(this)"/>
+      <button class="btn btn-ghost" style="justify-content:flex-start;" onclick="restoreFromAutoBackup()">🔄 שחזר מגיבוי אוטומטי</button>
       <div style="border-top:1px solid var(--border);padding-top:10px;font-size:11px;color:var(--muted);">
-        ✅ הנתונים נשמרים אוטומטית בדפדפן זה
+        ✅ הנתונים מגובים אוטומטית בדפדפן זה
       </div>
       <button class="btn btn-red" style="justify-content:flex-start;" onclick="clearAllData()">🗑️ מחק את כל הנתונים</button>
     </div>
@@ -3501,6 +3502,26 @@ window._updateItems = function(newItems, newNextId){
   refreshDropdowns();
   renderTable();
   if(typeof _updatePendingBadge==='function') _updatePendingBadge();
+  // גיבוי אוטומטי ל-localStorage
+  if(newItems.length > 0){
+    try{ localStorage.setItem('tirewms_autobk', JSON.stringify({ts:Date.now(),items:newItems})); }catch(e){}
+  }
+  // הצע שחזור אם אין פריטים אך יש גיבוי
+  if(newItems.length === 0 && !window._restoreOffered){
+    window._restoreOffered = true;
+    try{
+      const bk = JSON.parse(localStorage.getItem('tirewms_autobk')||'null');
+      if(bk && bk.items && bk.items.length > 0){
+        const d = new Date(bk.ts).toLocaleString('he-IL');
+        setTimeout(()=>{
+          if(confirm(`🔄 נמצא גיבוי (${bk.items.length} פריטים, ${d}).\nלשחזר?`)){
+            toast('⏳ משחזר...');
+            window._importItems(bk.items).then(()=>toast(`✅ שוחזרו ${bk.items.length} פריטים`)).catch(e=>toast('❌ '+e.message));
+          }
+        }, 1200);
+      }
+    }catch(e){}
+  }
 };
 window.addCage = addCage;
 window.rotateCage = rotateCage;
@@ -9103,13 +9124,75 @@ window._deleteItem = async function(id) {
 };
 
 window._importItems = async function(data) {
-  for (const it of data) { await setDoc(doc(db, 'tires', String(it.id)), it); }
+  await new Promise(resolve => onAuthReady(resolve));
+  const BATCH = 400;
+  for(let i=0;i<data.length;i+=BATCH){
+    let b = writeBatch(db);
+    for(const it of data.slice(i, i+BATCH)) b.set(doc(db,'tires',String(it.id)), it);
+    await b.commit();
+  }
 };
 
-window._clearAllFirestore = async function() {
-  const snap = await getDocs(itemsCol);
-  for (const d of snap.docs) { await deleteDoc(d.ref); }
-};
+function exportJSON(){
+  if(!window.isOwnerMode){toast('❌ גישה לבעלים בלבד');return;}
+  const data = JSON.stringify({v:2,ts:Date.now(),items:window.items||[]},null,2);
+  const a = Object.assign(document.createElement('a'),{
+    href: URL.createObjectURL(new Blob([data],{type:'application/json'})),
+    download: `tirewms_backup_${new Date().toISOString().slice(0,10)}.json`
+  });
+  a.click(); URL.revokeObjectURL(a.href);
+  toast(`✅ גובה ${(window.items||[]).length} פריטים`);
+}
+window.exportJSON = exportJSON;
+
+function importJSON(input){
+  if(!window.isOwnerMode){toast('❌ גישה לבעלים בלבד');return;}
+  const file = input.files[0]; input.value='';
+  if(!file) return;
+  const r = new FileReader();
+  r.onload = async e => {
+    try{
+      const d = JSON.parse(e.target.result);
+      const arr = Array.isArray(d) ? d : (d.items||[]);
+      if(!arr.length){toast('❌ קובץ ריק');return;}
+      if(!confirm(`ייבוא ${arr.length} פריטים? (הוספה בלבד)`)) return;
+      toast('⏳ מייבא...');
+      await window._importItems(arr);
+      toast(`✅ יובאו ${arr.length} פריטים`);
+    }catch(err){toast('❌ '+err.message);}
+  };
+  r.readAsText(file,'UTF-8');
+}
+window.importJSON = importJSON;
+
+async function clearAllData(){
+  if(!window.isOwnerMode){toast('❌ גישה לבעלים בלבד');return;}
+  if(!confirm('⚠️ מחיקת כל הצמיגים לצמיתות?\nפעולה בלתי הפיכה!')) return;
+  if(!confirm('⚠️ אישור שני — בטוח?')) return;
+  toast('⏳ מוחק...');
+  try{
+    await new Promise(r=>onAuthReady(r));
+    const snap = await getDocs(itemsCol);
+    let b=writeBatch(db),cnt=0;
+    for(const d of snap.docs){b.delete(d.ref);cnt++;if(cnt>=499){await b.commit();b=writeBatch(db);cnt=0;}}
+    if(cnt>0) await b.commit();
+    toast(`🗑️ ${snap.docs.length} פריטים נמחקו`);
+  }catch(e){toast('❌ '+e.message);}
+}
+window.clearAllData = clearAllData;
+
+function restoreFromAutoBackup(){
+  if(!window.isOwnerMode){toast('❌ גישה לבעלים בלבד');return;}
+  try{
+    const bk = JSON.parse(localStorage.getItem('tirewms_autobk')||'null');
+    if(!bk||!bk.items?.length){toast('❌ אין גיבוי אוטומטי');return;}
+    const d = new Date(bk.ts).toLocaleString('he-IL');
+    if(!confirm(`שחזר ${bk.items.length} פריטים מגיבוי ${d}?`)) return;
+    toast('⏳ משחזר...');
+    window._importItems(bk.items).then(()=>toast(`✅ שוחזרו ${bk.items.length} פריטים`)).catch(e=>toast('❌ '+e.message));
+  }catch(e){toast('❌ '+e.message);}
+}
+window.restoreFromAutoBackup = restoreFromAutoBackup;
 
 // ── הצג מסך כניסה ──
 try { document.querySelector('.app').style.display = 'none'; } catch(e) {}
