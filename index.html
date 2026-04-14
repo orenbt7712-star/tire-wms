@@ -13,6 +13,7 @@
 <link rel="apple-touch-icon" href="/icon.svg"/>
 <link rel="icon" type="image/svg+xml" href="/icon.svg"/>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;700;900&display=swap" rel="stylesheet"/>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 :root{
   --bg:#0c0e14;--surface:#13161f;--card:#191d28;--card2:#1e2333;
@@ -286,6 +287,10 @@ td{padding:8px 10px;vertical-align:middle;}
 .btn-acc{background:var(--accent);color:#111;}
 .btn-ghost{background:var(--card);color:var(--muted);border:1px solid var(--border);}
 .btn-red{background:var(--red-dim);color:var(--red);border:1px solid rgba(232,93,63,.3);}
+.btn-gd{background:rgba(74,158,255,.1);color:var(--blue,#4a9eff);border:1px solid rgba(74,158,255,.3);}
+.btn-gd:disabled{opacity:.5;cursor:default;}
+#gdStatus.gd-ok{color:#3ecf8e;}
+#gdStatus.gd-err{color:var(--red,#e85d3f);}
 
 /* type buttons */
 .type-btns{display:flex;gap:6px;flex-wrap:wrap;grid-column:1/-1;}
@@ -339,6 +344,24 @@ tr.pending-row{background:rgba(255,160,0,.06)!important;}
 .ib.done-btn{font-size:11px;padding:0 6px;width:auto;gap:3px;}
 .ib.done-btn.active{background:rgba(232,93,63,.15);border-color:var(--red,#e85d3f);color:var(--red,#e85d3f);}
 body:not(.is-owner) .owner-only{display:none!important;}
+/* ══ AUDIT LOG ══ */
+#auditPanel{display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:8500;align-items:flex-end;justify-content:center;font-family:Heebo,sans-serif;direction:rtl;}
+#auditPanel.open{display:flex;}
+.audit-entry{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:12px;display:flex;flex-direction:column;gap:4px;}
+.audit-action-add{border-right:3px solid #3ecf8e;}
+.audit-action-edit{border-right:3px solid var(--blue,#4a9eff);}
+.audit-action-delete{border-right:3px solid var(--red,#e85d3f);}
+.audit-action-move{border-right:3px solid var(--accent,#f5a623);}
+.audit-action-status{border-right:3px solid #a78bfa;}
+/* ══ BULK OPERATIONS ══ */
+.bulk-cb{width:18px;height:18px;cursor:pointer;accent-color:var(--accent,#f5a623);flex-shrink:0;}
+#bulkBar{display:none;position:fixed;bottom:54px;right:0;left:0;z-index:250;background:var(--surface);border-top:2px solid var(--accent,#f5a623);padding:10px 14px;flex-direction:row;align-items:center;gap:8px;}
+#bulkBar.open{display:flex;}
+#bulkBar .bulk-count{font-size:13px;font-weight:700;color:var(--accent,#f5a623);flex:1;}
+.bulk-del-btn{background:rgba(232,93,63,.15);border:1px solid var(--red,#e85d3f);color:var(--red,#e85d3f);border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+.bulk-move-btn{background:rgba(74,158,255,.12);border:1px solid var(--blue,#4a9eff);color:var(--blue,#4a9eff);border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+.bulk-cancel-btn{background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:8px 12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+tr.bulk-checked td{background:rgba(245,166,35,0.07)!important;}
 </style>
 
 <script>
@@ -386,6 +409,7 @@ if('serviceWorker' in navigator){
   <button onclick="openAccessPanel()" title="הגדרות תצוגה" style="background:var(--card);border:1px solid var(--border);border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex-shrink:0;">⚙️</button>
   <button id="langBtn" onclick="toggleLang()" title="שפה / لغة" style="background:var(--card);border:1px solid var(--border);border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex-shrink:0;">🌐</button>
   <button class="btn-locate owner-only" id="pendingBell" onclick="openPendingPanel()" title="ממתינים לאישור" style="position:relative;">🔔<span id="pendingCount" class="pending-badge" style="display:none;position:absolute;top:2px;right:2px;"></span></button>
+  <button class="btn-locate owner-only" onclick="openAuditPanel()" title="יומן שינויים">📜</button>
   <button class="btn-locate owner-only" onclick="document.getElementById('invReportInput').click()" title="עדכון דוח מלאי">📊</button>
   <input type="file" id="invReportInput" accept=".xlsx,.xls" style="display:none;" onchange="autoUpdateInventory(this)"/>
   <button class="btn-locate owner-only" onclick="clearAllInventory()" title="מחק את כל המלאי">🗑️</button>
@@ -396,7 +420,7 @@ if('serviceWorker' in navigator){
 
 <!-- BACKUP MENU -->
 <div class="conf-ov" id="backupMenu" style="display:none;">
-  <div class="conf-box" style="max-width:340px;text-align:right;">
+  <div class="conf-box" style="max-width:360px;text-align:right;">
     <h4 style="margin-bottom:14px;">💾 גיבוי ונתונים</h4>
     <div style="display:flex;flex-direction:column;gap:10px;">
       <button class="btn btn-ghost" style="justify-content:flex-start;" onclick="exportJSON()">📤 ייצוא לקובץ JSON</button>
@@ -405,6 +429,23 @@ if('serviceWorker' in navigator){
       <input type="file" id="importExcel" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExcel(this)"/>
       <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(this)"/>
       <button class="btn btn-ghost" style="justify-content:flex-start;" onclick="restoreFromAutoBackup()">🔄 שחזר מגיבוי אוטומטי</button>
+
+      <!-- Google Drive section -->
+      <div style="border-top:1px solid var(--border);padding-top:10px;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:700;">☁️ Google Drive</div>
+        <div id="gdClientIdWrap" style="display:none;margin-bottom:8px;">
+          <input id="gdClientIdInput" type="text" placeholder="הדבק Client ID מ-Google Cloud..."
+            style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:8px;
+                   color:var(--text);font-family:Heebo,sans-serif;font-size:12px;padding:8px 10px;
+                   outline:none;box-sizing:border-box;direction:ltr;text-align:left;"/>
+          <button class="btn btn-acc" style="width:100%;margin-top:6px;justify-content:center;" onclick="_gdSaveClientId()">שמור Client ID</button>
+        </div>
+        <button id="gdBackupBtn" class="btn btn-gd" style="justify-content:flex-start;width:100%;" onclick="backupToGDrive()">📤 גבה ל-Google Drive</button>
+        <button class="btn btn-gd" style="justify-content:flex-start;width:100%;margin-top:6px;" onclick="restoreFromGDrive()">📥 שחזר מ-Google Drive</button>
+        <button class="btn btn-ghost" style="justify-content:flex-start;width:100%;margin-top:6px;font-size:12px;" onclick="_gdConfigure()">⚙️ הגדרות Drive</button>
+        <div id="gdStatus" style="font-size:11px;color:var(--muted);margin-top:6px;min-height:16px;"></div>
+      </div>
+
       <div style="border-top:1px solid var(--border);padding-top:10px;font-size:11px;color:var(--muted);">
         ✅ הנתונים מגובים אוטומטית בדפדפן זה
       </div>
@@ -413,6 +454,17 @@ if('serviceWorker' in navigator){
     <div style="margin-top:14px;display:flex;justify-content:flex-end;">
       <button class="btn btn-ghost" onclick="closeBackupMenu()">סגור</button>
     </div>
+  </div>
+</div>
+
+<!-- GDRIVE RESTORE PANEL -->
+<div id="gdRestorePanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:8500;align-items:flex-end;justify-content:center;font-family:Heebo,sans-serif;direction:rtl;" onclick="if(event.target===this)this.style.display='none'">
+  <div onclick="event.stopPropagation()" style="background:var(--surface,#141720);border-radius:18px 18px 0 0;width:100%;max-width:520px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--border,#252b3b);flex-shrink:0;">
+      <div style="font-size:15px;font-weight:900;color:var(--text,#eef0f6);">☁️ שחזור מ-Google Drive</div>
+      <button onclick="document.getElementById('gdRestorePanel').style.display='none'" style="background:var(--card,#191d28);border:1px solid var(--border,#252b3b);border-radius:7px;width:32px;height:32px;cursor:pointer;color:var(--muted,#7a8299);font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+    <div id="gdRestoreList" style="flex:1;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:10px;"></div>
   </div>
 </div>
 
@@ -840,6 +892,20 @@ if('serviceWorker' in navigator){
   </div>
 </div>
 
+<!-- AUDIT LOG PANEL -->
+<div id="auditPanel">
+  <div onclick="event.stopPropagation()" style="background:var(--surface,#141720);border-radius:18px 18px 0 0;width:100%;max-width:520px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--border,#252b3b);flex-shrink:0;">
+      <div style="font-size:15px;font-weight:900;color:var(--text,#eef0f6);">📜 יומן שינויים</div>
+      <button onclick="closeAuditPanel()" style="background:var(--card,#191d28);border:1px solid var(--border,#252b3b);border-radius:7px;width:32px;height:32px;cursor:pointer;color:var(--muted,#7a8299);font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+    <div id="auditList" style="flex:1;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:8px;"></div>
+    <div style="padding:10px 18px;border-top:1px solid var(--border,#252b3b);flex-shrink:0;display:flex;justify-content:center;">
+      <button id="auditLoadMore" onclick="loadMoreAudit()" style="background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:13px;padding:8px 20px;cursor:pointer;font-family:inherit;display:none;">טען עוד</button>
+    </div>
+  </div>
+</div>
+
 <div class="conf-ov" id="confOv">
   <div class="conf-box">
     <h4>🗑️ מחיקת פריט</h4>
@@ -927,6 +993,36 @@ if('serviceWorker' in navigator){
 
 <div id="toast"></div>
 
+<!-- BULK OPERATIONS BAR -->
+<div id="bulkBar">
+  <span class="bulk-count" id="bulkCount">0 נבחרו</span>
+  <button class="bulk-move-btn" onclick="openBulkMove()">📍 העבר</button>
+  <button class="bulk-del-btn owner-only" onclick="bulkDeleteSelected()">🗑️ מחק</button>
+  <button class="bulk-cancel-btn" onclick="clearBulkSelection()">✕ בטל</button>
+</div>
+
+<!-- BULK MOVE OVERLAY -->
+<div class="conf-ov" id="bulkMoveOv">
+  <div class="conf-box" style="max-width:320px;text-align:right;direction:rtl;">
+    <h4>📍 העברת פריטים נבחרים</h4>
+    <p id="bulkMoveMsg" style="font-size:12px;color:var(--muted);margin-bottom:14px;"></p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+      <div class="fi">
+        <label>עמודה חדשה</label>
+        <input id="bulkMoveCol" type="text" placeholder="השאר ריק לשמור" class="ie" style="width:100%;font-size:14px;padding:9px;border-radius:8px;box-sizing:border-box;"/>
+      </div>
+      <div class="fi">
+        <label>קומה חדשה</label>
+        <input id="bulkMoveFloor" type="text" placeholder="השאר ריק לשמור" class="ie" style="width:100%;font-size:14px;padding:9px;border-radius:8px;box-sizing:border-box;"/>
+      </div>
+    </div>
+    <div class="conf-acts">
+      <button class="btn btn-ghost" onclick="closeBulkMove()">ביטול</button>
+      <button class="btn btn-green" onclick="doBulkMove()">💾 העבר</button>
+    </div>
+  </div>
+</div>
+
 <script>
 let items=[],nextId=1,editingId=null,pendingDel=null,currentFloor='1';
 let currentPage=0;
@@ -937,6 +1033,24 @@ const TC={קיץ:'ts',חורף:'tw','ארבע עונות':'ta',שטח:'to',מש�
 const TE={קיץ:'☀️',חורף:'❄️','ארבע עונות':'🍂',שטח:'🏔️',משאית:'🚛'};
 const TYPES=['קיץ','חורף','ארבע עונות','שטח','משאית'];
 const sz=it=>it.p?`${it.w}/${it.p}R${it.d}`:`${it.w}R${it.d}`;
+// ── Bulk selection state ──
+let selectedIds=new Set();
+let bulkMode=false;
+// ── Audit log helpers ──
+function _auditLabel(it){
+  if(!it) return '?';
+  const size=it.w?(it.p?`${it.w}/${it.p}R${it.d}`:`${it.w}R${it.d}`):'';
+  return [it.brand,size,it.model,it.col?'עמ׳ '+it.col:'',it.floor?'קומה '+it.floor:''].filter(Boolean).join(' ');
+}
+function _auditSnapshot(it){
+  if(!it) return null;
+  return {col:it.col||'',floor:it.floor||'1',brand:it.brand||'',model:it.model||'',status:it.status||'',p1:it.p1||'',p2:it.p2||'',pn1:it.pn1||'',pn2:it.pn2||''};
+}
+function logAdd(it){ if(window._logAudit) window._logAudit({action:'add',itemId:it.id,itemLabel:_auditLabel(it),before:null,after:_auditSnapshot(it)}); }
+function logEdit(beforeSnap,it){ if(window._logAudit) window._logAudit({action:'edit',itemId:it.id,itemLabel:_auditLabel(it),before:beforeSnap,after:_auditSnapshot(it)}); }
+function logDelete(it){ if(window._logAudit) window._logAudit({action:'delete',itemId:it.id,itemLabel:_auditLabel(it),before:_auditSnapshot(it),after:null}); }
+function logMove(before,it){ if(window._logAudit) window._logAudit({action:'move',itemId:it.id,itemLabel:_auditLabel(it),before:{col:before.col,floor:before.floor},after:{col:it.col,floor:it.floor}}); }
+function logStatus(it){ if(window._logAudit) window._logAudit({action:'status',itemId:it.id,itemLabel:_auditLabel(it),before:null,after:{status:it.status||'',pendingBy:it.pendingBy||''}}); }
 
 
 
@@ -1030,6 +1144,8 @@ window.escHTML = escHTML;
 
 /* VIEWS */
 function switchView(n,el){
+  // נקה בחירה מרוכזת בעת מעבר תצוגה
+  if(typeof clearBulkSelection==='function') clearBulkSelection();
   // בדוק הרשאות לפני כל שינוי ב-UI
   if(n==='mapEditor' && !window.isAdminMode){
     toast(currentLang==='ar'?'❌ للمدير فقط':'❌ למנהל בלבד');
@@ -1178,8 +1294,10 @@ function renderTable(){
   const hasSearch=!!(document.getElementById('mainSearch')?.value.trim()||document.getElementById('fBrand')?.value||document.getElementById('fSize')?.value);
   const locationSummary = hasSearch && data.length ? _buildLocationSummary(data) : '';
   const sa=c=>sortCol===c?(sortDir===1?'↑':'↓'):'';
+  const canBulk=window.isOwnerMode||window.isAdminMode;
   let html=`<div class="twrap"><table>
     <thead><tr>
+      ${canBulk?`<th style="width:32px;padding:6px 4px;"><input type="checkbox" class="bulk-cb" id="checkAll" onchange="toggleSelectAll(this)" title="בחר הכל בדף"></th>`:''}
       <th onclick="sortBy('id')" class="${sortCol==='id'?'sorted':''}"># ${sa('id')}</th>
       <th onclick="sortBy('itemCode')" class="${sortCol==='itemCode'?'sorted':''}">קוד פריט ${sa('itemCode')}</th>
       <th onclick="sortBy('brand')" class="${sortCol==='brand'?'sorted':''}">מותג ${sa('brand')}</th>
@@ -1208,11 +1326,24 @@ function renderTable(){
   }
 
   area.innerHTML=locationSummary+html;
+  // שחזר סימוני צ'קבוקס לאחר רינדור מחדש
+  if(selectedIds.size>0){
+    document.querySelectorAll('.bulk-cb.row-cb').forEach(cb=>{
+      const id=Number(cb.dataset.id);
+      if(selectedIds.has(id)){ cb.checked=true; cb.closest('tr')?.classList.add('bulk-checked'); }
+    });
+    const allCb=document.getElementById('checkAll');
+    if(allCb) allCb.checked=pageData.length>0&&pageData.every(it=>selectedIds.has(it.id));
+  }
+  _updateBulkBar();
 }
 
 function viewRow(it){
   const isPending=it.status==='pending_done';
-  return `<tr id="tr-${it.id}" class="tr-anim${isPending?' pending-row':''}" onclick="showItemLocation(${it.id})" style="cursor:pointer;">
+  const canBulk=window.isOwnerMode||window.isAdminMode;
+  const cbCell=canBulk?`<td style="padding:6px 4px;" onclick="event.stopPropagation()"><input type="checkbox" class="bulk-cb row-cb" data-id="${it.id}" onchange="toggleBulkRow(this,${it.id})"${selectedIds.has(it.id)?' checked':''}></td>`:'';
+  return `<tr id="tr-${it.id}" class="tr-anim${isPending?' pending-row':''}${selectedIds.has(it.id)?' bulk-checked':''}" onclick="showItemLocation(${it.id})" style="cursor:pointer;">
+    ${cbCell}
     <td style="color:var(--muted);font-size:10px;">#${it.id}</td>
     <td><span style="font-family:monospace;font-size:12px;color:var(--muted);">${escHTML(it.itemCode||'')}</span></td>
     <td><span style="font-weight:700;">${escHTML(it.brand)}</span>${it.model?`<br><span style="font-size:10px;color:var(--muted)">${escHTML(it.model)}</span>`:''}</td>
@@ -1241,7 +1372,9 @@ function viewRow(it){
 }
 
 function editRow(it){
+  const canBulk=window.isOwnerMode||window.isAdminMode;
   return `<tr id="tr-${it.id}" class="erow">
+    ${canBulk?'<td></td>':''}
     <td style="color:var(--accent);font-size:10px;">#${it.id}</td>
     <td><input class="ie" id="esz" type="text" value="${escHTML(sz(it))}" oninput="formatSize(this)" style="width:90px;font-family:monospace;font-weight:800;text-align:center;letter-spacing:.5px;"/></td>
     <td><div style="display:flex;flex-direction:column;gap:3px;">
@@ -1375,9 +1508,11 @@ function saveEdit(id){
   const agr=document.getElementById('eagr') ? document.getElementById('eagr').value.trim() : (items.find(x=>x.id===id)||{}).agr||'';
   if(!b){toast('❌ מלא שדות חובה');return;}
   const it=items.find(x=>x.id===id);
+  const beforeSnap=_auditSnapshot(it);
   Object.assign(it,{w,p,d,brand:b,model:m,col:co,floor:fl,p1,p2,pn1,pn2,agr});
   if(window._saveItem){
     window._saveItem(it);
+    logEdit(beforeSnap,it);
   } else {
     refreshDropdowns();renderTable();
   }
@@ -1416,10 +1551,11 @@ function addItem(){
   const p1=document.getElementById('aP1').value.trim(),p2=document.getElementById('aP2').value.trim();
   const pn1=document.getElementById('aPn1').value.trim(),pn2=document.getElementById('aPn2').value.trim();
   const agr=document.getElementById('aAgr').value.trim();
-  if(!b){toast('❌ נא להזין מותג');return;}
-  if(!co.trim()){toast('❌ נא להזין עמודה (מיקום במחסן)');return;}
-  if(!fl){toast('❌ נא לבחור קומה');return;}
   const rahava=document.getElementById('aRahava')?document.getElementById('aRahava').value:'';
+  if(!b){toast('❌ נא להזין מותג');return;}
+  if(!co.trim()&&!agr&&!rahava){toast('❌ נא להזין עמודה (מיקום במחסן)');return;}
+  if(!fl){toast('❌ נא לבחור קומה');return;}
+
   const newItem={id:nextId++,w,p,d,brand:b,model:m,itemCode,barcode,col:co,floor:fl,p1,p2,pn1,pn2,agr,rahava};
 
   // בדוק כפילות מיקום — כל צמיג באותו כלוב+קומה
@@ -1431,7 +1567,7 @@ function addItem(){
       // כלוב צמיגים בודדים — הוסף ישירות ללא אזהרה
       if(dup.shareMode==='singles'){
         newItem.shareMode='singles';
-        if(window._saveItem){ window._saveItem(newItem); closeAddModal(); toast('🔲 נוסף לכלוב צמיגים בודדים'); }
+        if(window._saveItem){ window._saveItem(newItem); logAdd(newItem); closeAddModal(); toast('🔲 נוסף לכלוב צמיגים בודדים'); }
         else { items.push(newItem); refreshDropdowns(); renderTable(); closeAddModal(); toast('🔲 נוסף (לא מחובר לענן)'); }
         return;
       }
@@ -1440,7 +1576,7 @@ function addItem(){
         const countAtLoc=items.filter(x=>String(x.col).trim()===trimCo&&String(x.floor||'1')===normFl&&x.status!=='pending_done').length;
         if(countAtLoc<2){
           newItem.shareMode='half';
-          if(window._saveItem){ window._saveItem(newItem); closeAddModal(); toast('½ נוסף לכלוב חצי/חצי'); }
+          if(window._saveItem){ window._saveItem(newItem); logAdd(newItem); closeAddModal(); toast('½ נוסף לכלוב חצי/חצי'); }
           else { items.push(newItem); refreshDropdowns(); renderTable(); closeAddModal(); toast('½ נוסף (לא מחובר לענן)'); }
           return;
         }
@@ -1461,6 +1597,7 @@ function addItem(){
   }
   if(window._saveItem){
     window._saveItem(newItem);
+    logAdd(newItem);
     closeAddModal();toast('✅ הצמיג נוסף!');
   } else {
     // fallback אם Firebase לא מחובר
@@ -1490,7 +1627,7 @@ function markAsDone(id){
   it.status='pending_done';
   it.pendingBy=window.currentWorkerName||'עובד';
   it.pendingAt=new Date().toISOString();
-  if(window._saveItem) window._saveItem(it);
+  if(window._saveItem){ window._saveItem(it); logStatus(it); }
   toast('✅ הפריט סומן — ממתין לאישור בעלים');
 }
 
@@ -1502,7 +1639,7 @@ function reportByWorker(id){
   it.pendingBy=window.currentWorkerName||'עובד';
   it.pendingAt=new Date().toISOString();
   it.workerReport=true;
-  if(window._saveItem) window._saveItem(it);
+  if(window._saveItem){ window._saveItem(it); logStatus(it); }
   renderTable();
   toast('📢 הדיווח נשלח למנהל — תודה!');
 }
@@ -1638,6 +1775,7 @@ function saveLocEdit(){
   if((!window.isAdminMode&&!window.isOwnerMode)||!_locEditId) return;
   const it=items.find(x=>x.id===_locEditId);
   if(!it) return;
+  const locBefore={col:it.col,floor:it.floor};
   it.pn1=document.getElementById('lePn1').value;
   it.p1=document.getElementById('leP1').value.trim();
   it.col=document.getElementById('leCol').value.trim();
@@ -1646,7 +1784,7 @@ function saveLocEdit(){
   it.p2=document.getElementById('leP2').value.trim();
   it.agr=document.getElementById('leAgr').value.trim();
   it.rahava=document.getElementById('leRahava').value;
-  if(window._saveItem) window._saveItem(it);
+  if(window._saveItem){ window._saveItem(it); logMove(locBefore,it); }
   closeLocEdit();
   toast('✅ מיקום עודכן');
 }
@@ -1699,8 +1837,9 @@ function pickLocation(name,floor){
   if(!_locEditId) return;
   const it=items.find(x=>x.id===_locEditId);
   if(!it) return;
+  const locBefore={col:it.col,floor:it.floor};
   it.col=name; it.floor=floor;
-  if(window._saveItem) window._saveItem(it);
+  if(window._saveItem){ window._saveItem(it); logMove(locBefore,it); }
   closeLocPicker();
   toast(`📍 מיקום עודכן: ${name} קומה ${floor}`);
 }
@@ -1767,7 +1906,9 @@ function dupSingles(){
   closeDupConflict(); closeAddModal();
 }
 function doDelete(){
-  if(!items.find(x=>x.id===pendingDel)){toast('❌ פריט לא נמצא');closeConf();return;}
+  const delIt=items.find(x=>x.id===pendingDel);
+  if(!delIt){toast('❌ פריט לא נמצא');closeConf();return;}
+  logDelete(delIt);
   if(window._deleteItem){
     window._deleteItem(pendingDel);
   } else {
@@ -1776,6 +1917,98 @@ function doDelete(){
     refreshDropdowns();renderTable();
   }
   closeConf();toast('🗑️ נמחק');
+}
+
+// ══ BULK OPERATIONS ══
+function toggleBulkRow(cb,id){
+  if(cb.checked){ selectedIds.add(id); document.getElementById('tr-'+id)?.classList.add('bulk-checked'); }
+  else { selectedIds.delete(id); document.getElementById('tr-'+id)?.classList.remove('bulk-checked'); }
+  _updateBulkBar();
+  const allCb=document.getElementById('checkAll');
+  if(allCb){
+    const data=getFiltered();
+    const pageData=data.slice(currentPage*PAGE_SIZE,(currentPage+1)*PAGE_SIZE);
+    allCb.checked=pageData.length>0&&pageData.every(it=>selectedIds.has(it.id));
+    allCb.indeterminate=!allCb.checked&&pageData.some(it=>selectedIds.has(it.id));
+  }
+}
+function toggleSelectAll(cb){
+  const data=getFiltered();
+  const pageData=data.slice(currentPage*PAGE_SIZE,(currentPage+1)*PAGE_SIZE);
+  pageData.forEach(it=>{
+    if(cb.checked){ selectedIds.add(it.id); document.getElementById('tr-'+it.id)?.classList.add('bulk-checked'); }
+    else { selectedIds.delete(it.id); document.getElementById('tr-'+it.id)?.classList.remove('bulk-checked'); }
+  });
+  document.querySelectorAll('.bulk-cb.row-cb').forEach(el=>{ el.checked=cb.checked; });
+  _updateBulkBar();
+}
+function _updateBulkBar(){
+  const bar=document.getElementById('bulkBar');
+  const cnt=document.getElementById('bulkCount');
+  if(!bar) return;
+  if(selectedIds.size>0){ bar.classList.add('open'); if(cnt) cnt.textContent=`${selectedIds.size} נבחרו`; bulkMode=true; }
+  else { bar.classList.remove('open'); bulkMode=false; }
+}
+function clearBulkSelection(){
+  selectedIds.clear();
+  document.querySelectorAll('.bulk-cb').forEach(cb=>{ cb.checked=false; cb.indeterminate=false; });
+  document.querySelectorAll('.bulk-checked').forEach(tr=>tr.classList.remove('bulk-checked'));
+  _updateBulkBar();
+}
+function bulkDeleteSelected(){
+  if(!window.isOwnerMode){toast('❌ גישה לבעלים בלבד');return;}
+  if(selectedIds.size===0){toast('❌ לא נבחרו פריטים');return;}
+  const ids=[...selectedIds];
+  const names=ids.slice(0,3).map(id=>{const it=items.find(x=>x.id===id);return it?`${it.brand} ${sz(it)}`:'#'+id;}).join(', ');
+  const more=ids.length>3?` ועוד ${ids.length-3}`:'';
+  if(!confirm(`מחק ${ids.length} פריטים?\n${names}${more}\n\nפעולה בלתי הפיכה!`)) return;
+  ids.forEach(id=>{
+    const it=items.find(x=>x.id===id);
+    if(it) logDelete(it);
+    if(window._deleteItem) window._deleteItem(id);
+    else items=items.filter(x=>x.id!==id);
+  });
+  clearBulkSelection();
+  if(!window._deleteItem){refreshDropdowns();renderTable();}
+  toast(`🗑️ ${ids.length} פריטים נמחקו`);
+}
+function openBulkMove(){
+  if(!window.isOwnerMode&&!window.isAdminMode){toast('❌ אין הרשאה');return;}
+  if(selectedIds.size===0){toast('❌ לא נבחרו פריטים');return;}
+  const msg=document.getElementById('bulkMoveMsg');
+  if(msg) msg.textContent=`${selectedIds.size} פריטים נבחרו. מלא עמודה ו/או קומה חדשה:`;
+  document.getElementById('bulkMoveCol').value='';
+  document.getElementById('bulkMoveFloor').value='';
+  document.getElementById('bulkMoveOv').classList.add('open');
+}
+function closeBulkMove(){ document.getElementById('bulkMoveOv').classList.remove('open'); }
+function doBulkMove(){
+  if(!window.isOwnerMode&&!window.isAdminMode){toast('❌ אין הרשאה');return;}
+  const newCol=document.getElementById('bulkMoveCol').value.trim();
+  const newFloor=document.getElementById('bulkMoveFloor').value.trim();
+  if(!newCol&&!newFloor){toast('❌ מלא לפחות עמודה או קומה');return;}
+  const ids=[...selectedIds];
+  let moved=0,skipped=0;
+  ids.forEach(id=>{
+    const it=items.find(x=>x.id===id);
+    if(!it) return;
+    const targetCol=newCol||it.col;
+    const targetFloor=newFloor||it.floor;
+    const conflict=items.find(x=>x.id!==id&&String(x.col).trim()===String(targetCol).trim()&&String(x.floor||'1')===String(targetFloor||'1')&&x.status!=='pending_done'&&x.shareMode!=='singles');
+    if(conflict){skipped++;return;}
+    const before={col:it.col,floor:it.floor};
+    if(newCol) it.col=targetCol;
+    if(newFloor) it.floor=targetFloor;
+    logMove(before,it);
+    if(window._saveItem) window._saveItem(it);
+    moved++;
+  });
+  closeBulkMove();
+  clearBulkSelection();
+  if(!window._saveItem){refreshDropdowns();renderTable();}
+  let msg=`📍 ${moved} פריטים הועברו`;
+  if(skipped>0) msg+=` · ${skipped} דולגו (קונפליקט מיקום)`;
+  toast(msg);
 }
 
 /* SORT / FILTER */
@@ -4269,10 +4502,14 @@ window.resetTurnButtons=resetTurnButtons;
 
 function showBackupMenu(){
   if(!window.isOwnerMode){toast('❌ גישה לבעלים בלבד');return;}
-  document.getElementById('backupMenu').style.display='flex';
+  const m=document.getElementById('backupMenu');
+  m.style.display='flex';
+  m.classList.add('open');
 }
 function closeBackupMenu(){
-  document.getElementById('backupMenu').style.display='none';
+  const m=document.getElementById('backupMenu');
+  m.classList.remove('open');
+  m.style.display='none';
 }
 
 function clearSearch(){
@@ -8236,11 +8473,249 @@ if(typeof toggleVibration!=="undefined") window.toggleVibration=toggleVibration;
 if(typeof switchView!=="undefined") window.switchView=switchView;
 if(typeof undoMap!=="undefined") window.undoMap=undoMap;
 // Firebase יאתחל ויקרא ל-startSync
+
+// ══ GOOGLE DRIVE BACKUP ══════════════════════════════════════════
+const GD_SCOPE       = 'https://www.googleapis.com/auth/drive.file';
+const GD_UPLOAD_URL  = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+const GD_FILES_URL   = 'https://www.googleapis.com/drive/v3/files';
+const GD_FOLDER_NAME = 'TireWMS Backups';
+const GD_KEEP_LAST   = 10;
+
+let _gdTokenClient  = null;
+let _gdAccessToken  = null;
+let _gdTokenExpiry  = 0;
+let _gdFolderId     = null;
+let _gdAutoInterval = null;
+
+function _gdInit() {
+  return new Promise((resolve, reject) => {
+    if (_gdTokenClient) { resolve(); return; }
+    const clientId = localStorage.getItem('tirewms_gdrive_client_id');
+    if (!clientId) { reject(new Error('NO_CLIENT_ID')); return; }
+    const check = () => {
+      if (typeof google === 'undefined' || !google.accounts?.oauth2) { setTimeout(check, 200); return; }
+      _gdTokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: GD_SCOPE,
+        callback: ''
+      });
+      _gdFolderId = localStorage.getItem('tirewms_gdrive_folder') || null;
+      resolve();
+    };
+    check();
+  });
+}
+
+function _gdGetToken(cb) {
+  if (_gdAccessToken && Date.now() < _gdTokenExpiry - 60000) { cb(null, _gdAccessToken); return; }
+  if (!_gdTokenClient) { cb(new Error('GIS not initialised')); return; }
+  _gdTokenClient.callback = resp => {
+    if (resp.error) { _gdAccessToken = null; _gdTokenExpiry = 0; cb(new Error('Google auth: ' + resp.error)); return; }
+    _gdAccessToken = resp.access_token;
+    _gdTokenExpiry = Date.now() + (resp.expires_in || 3600) * 1000;
+    cb(null, _gdAccessToken);
+  };
+  _gdTokenClient.requestAccessToken({ prompt: '' });
+}
+
+async function _gdCreateFolder(token) {
+  const q = encodeURIComponent(`name='${GD_FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  const res = await fetch(`${GD_FILES_URL}?q=${q}&fields=files(id)`, { headers: { Authorization: 'Bearer ' + token } });
+  if (!res.ok) throw new Error('Drive folder search: ' + res.status);
+  const data = await res.json();
+  if (data.files?.length) {
+    const fid = data.files[0].id;
+    _gdFolderId = fid; localStorage.setItem('tirewms_gdrive_folder', fid); return fid;
+  }
+  const cr = await fetch(GD_FILES_URL, {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: GD_FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' })
+  });
+  if (!cr.ok) throw new Error('Drive folder create: ' + cr.status);
+  const fd = await cr.json();
+  _gdFolderId = fd.id; localStorage.setItem('tirewms_gdrive_folder', fd.id); return fd.id;
+}
+
+function _gdSetStatus(msg, cls) {
+  const el = document.getElementById('gdStatus');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = cls || '';
+}
+
+async function _gdPruneOld(token, folderId) {
+  try {
+    const q = encodeURIComponent(`'${folderId}' in parents and name contains 'tirewms_backup_' and trashed=false`);
+    const res = await fetch(`${GD_FILES_URL}?q=${q}&orderBy=createdTime desc&fields=files(id)&pageSize=50`, { headers: { Authorization: 'Bearer ' + token } });
+    if (!res.ok) return;
+    const files = (await res.json()).files || [];
+    for (const f of files.slice(GD_KEEP_LAST)) {
+      await fetch(`${GD_FILES_URL}/${f.id}`, { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } });
+    }
+  } catch(e) { console.warn('GDrive prune:', e); }
+}
+
+async function _gdListBackups(token, folderId) {
+  const q = encodeURIComponent(`'${folderId}' in parents and name contains 'tirewms_backup_' and trashed=false`);
+  const res = await fetch(`${GD_FILES_URL}?q=${q}&orderBy=createdTime desc&fields=files(id,name,createdTime,size)&pageSize=20`, { headers: { Authorization: 'Bearer ' + token } });
+  if (!res.ok) throw new Error('רשימת גיבויים: ' + res.status);
+  return (await res.json()).files || [];
+}
+
+async function backupToGDrive() {
+  if (!window.isOwnerMode) { toast('❌ גישה לבעלים בלבד'); return; }
+  const btn = document.getElementById('gdBackupBtn');
+  if (btn) btn.disabled = true;
+  _gdSetStatus('⏳ מגבה...', '');
+  try {
+    await _gdInit();
+    const token = await new Promise((res, rej) => _gdGetToken((e, t) => e ? rej(e) : res(t)));
+    const folderId = _gdFolderId || await _gdCreateFolder(token);
+    const now = new Date();
+    const filename = `tirewms_backup_${now.toISOString().slice(0,19).replace(/:/g,'-')}.json`;
+    const payload = JSON.stringify({
+      v: 3, ts: now.getTime(), appId: 'tirewms',
+      items: window.items || [],
+      map: localStorage.getItem('tirewms_map2') || null,
+      workers: window._workers || []
+    });
+    const metadata = JSON.stringify({ name: filename, parents: [folderId] });
+    const boundary = 'tirewms_gd_' + Date.now();
+    const body = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${payload}\r\n--${boundary}--`;
+    const upRes = await fetch(GD_UPLOAD_URL, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': `multipart/related; boundary=${boundary}` },
+      body
+    });
+    if (!upRes.ok) throw new Error('Upload ' + upRes.status + ': ' + (await upRes.text()).slice(0,80));
+    await _gdPruneOld(token, folderId);
+    _gdSetStatus(`✅ גובה: ${now.toLocaleTimeString('he-IL')}`, 'gd-ok');
+    toast(`✅ גובה ${(window.items||[]).length} פריטים ל-Drive`);
+  } catch(e) {
+    console.error('GDrive backup:', e);
+    if (e.message === 'NO_CLIENT_ID') { _gdSetStatus('❌ נדרש Client ID', 'gd-err'); _gdShowClientIdInput(); }
+    else if (!navigator.onLine) { _gdSetStatus('❌ אין אינטרנט', 'gd-err'); toast('❌ אין חיבור לאינטרנט'); }
+    else { _gdSetStatus('❌ שגיאת גיבוי', 'gd-err'); toast('❌ ' + e.message.slice(0,60)); }
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+window.backupToGDrive = backupToGDrive;
+
+async function restoreFromGDrive() {
+  if (!window.isOwnerMode) { toast('❌ גישה לבעלים בלבד'); return; }
+  const panel = document.getElementById('gdRestorePanel');
+  const list  = document.getElementById('gdRestoreList');
+  panel.style.display = 'flex';
+  list.innerHTML = '<div style="color:var(--muted);text-align:center;padding:30px;">⏳ טוען רשימה...</div>';
+  try {
+    await _gdInit();
+    const token = await new Promise((res, rej) => _gdGetToken((e, t) => e ? rej(e) : res(t)));
+    const folderId = _gdFolderId || await _gdCreateFolder(token);
+    const files = await _gdListBackups(token, folderId);
+    if (!files.length) { list.innerHTML = '<div style="color:var(--muted);text-align:center;padding:30px;">אין גיבויים ב-Drive עדיין</div>'; return; }
+    list.innerHTML = files.map(f => {
+      const dt = f.createdTime ? new Date(f.createdTime).toLocaleString('he-IL') : f.name;
+      const kb = f.size ? Math.round(f.size/1024) + ' KB' : '';
+      return `<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
+        <div>
+          <div style="font-size:13px;font-weight:700;">${escHTML(dt)}</div>
+          <div style="font-size:11px;color:var(--muted);">${escHTML(f.name)}${kb?' · '+kb:''}</div>
+        </div>
+        <button class="btn btn-acc" style="padding:8px 14px;font-size:13px;flex-shrink:0;" onclick="_gdRestoreFile('${escHTML(f.id)}')">שחזר</button>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    console.error('GDrive list:', e);
+    list.innerHTML = `<div style="color:var(--red,#e85d3f);text-align:center;padding:30px;">❌ ${escHTML(e.message)}</div>`;
+    if (e.message === 'NO_CLIENT_ID') _gdShowClientIdInput();
+  }
+}
+window.restoreFromGDrive = restoreFromGDrive;
+
+async function _gdRestoreFile(fileId) {
+  try {
+    const token = await new Promise((res, rej) => _gdGetToken((e, t) => e ? rej(e) : res(t)));
+    const res = await fetch(`${GD_FILES_URL}/${fileId}?alt=media`, { headers: { Authorization: 'Bearer ' + token } });
+    if (!res.ok) throw new Error('הורדה: ' + res.status);
+    const d = await res.json();
+    if (d.appId !== 'tirewms') throw new Error('קובץ לא תואם');
+    const its = Array.isArray(d.items) ? d.items : [];
+    const wks = Array.isArray(d.workers) ? d.workers : null;
+    const mapData = d.map || null;
+    const dateStr = new Date(d.ts).toLocaleString('he-IL');
+    let msg = `שחזר ${its.length} פריטים מגיבוי ${dateStr}?`;
+    if (wks) msg += `\n(כולל ${wks.length} עובדים)`;
+    if (!confirm(msg)) return;
+    document.getElementById('gdRestorePanel').style.display = 'none';
+    toast('⏳ משחזר...');
+    if (its.length) await window._importItems(its);
+    if (mapData) { localStorage.setItem('tirewms_map2', mapData); if(typeof renderWarehouse==='function') renderWarehouse(); }
+    if (wks?.length && confirm(`גם לשחזר ${wks.length} עובדים?`)) {
+      window._workers = wks;
+      if (window._saveWorkersDoc) await window._saveWorkersDoc();
+    }
+    toast(`✅ שוחזרו ${its.length} פריטים מ-Drive`);
+  } catch(e) {
+    console.error('GDrive restore:', e);
+    toast('❌ ' + e.message.slice(0,60));
+  }
+}
+window._gdRestoreFile = _gdRestoreFile;
+
+function _gdSaveClientId() {
+  const val = (document.getElementById('gdClientIdInput')||{}).value||'';
+  if (!val.trim()) { toast('❌ הזן Client ID'); return; }
+  localStorage.setItem('tirewms_gdrive_client_id', val.trim());
+  _gdTokenClient = null;
+  document.getElementById('gdClientIdWrap').style.display = 'none';
+  toast('✅ Client ID נשמר');
+}
+window._gdSaveClientId = _gdSaveClientId;
+
+function _gdShowClientIdInput() {
+  const wrap = document.getElementById('gdClientIdWrap');
+  if (!wrap) return;
+  wrap.style.display = 'block';
+  const saved = localStorage.getItem('tirewms_gdrive_client_id');
+  if (saved) document.getElementById('gdClientIdInput').value = saved;
+}
+
+function _gdConfigure() {
+  _gdShowClientIdInput();
+  _gdAccessToken = null; _gdTokenExpiry = 0; _gdTokenClient = null;
+}
+window._gdConfigure = _gdConfigure;
+
+function _gdStartAutoBackup() {
+  if (_gdAutoInterval) return;
+  if (!localStorage.getItem('tirewms_gdrive_client_id')) return;
+  _gdAutoInterval = setInterval(() => {
+    if (!window.isOwnerMode) return;
+    backupToGDrive().catch(e => console.warn('GDrive auto-backup:', e));
+  }, 60 * 60 * 1000);
+}
+window._gdStartAutoBackup = _gdStartAutoBackup;
+
+// הצג שדה Client ID אם לא הוגדר
+(function _gdInitUI() {
+  if (typeof document === 'undefined') return;
+  const run = () => {
+    if (!localStorage.getItem('tirewms_gdrive_client_id')) {
+      const wrap = document.getElementById('gdClientIdWrap');
+      if (wrap) wrap.style.display = 'block';
+    }
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
+  else run();
+})();
+// ══ END GOOGLE DRIVE BACKUP ══════════════════════════════════════
 </script>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDocs, updateDoc, addDoc, serverTimestamp, getDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDocs, updateDoc, addDoc, serverTimestamp, getDoc, writeBatch, query, orderBy, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -8317,6 +8792,7 @@ async function _saveWorkersDoc() {
   await new Promise(resolve => onAuthReady(resolve));
   await setDoc(workersDocRef, { _type: 'workers', list: _workers });
 }
+window._saveWorkersDoc = _saveWorkersDoc;
 
 function loadWorkers() {
   onAuthReady(() => {
@@ -8561,6 +9037,8 @@ function enterApp(admin, workerName) {
 
   // טען עובדים לפאנל הניהול
   loadWorkers();
+  // הפעל גיבוי אוטומטי ל-Drive בכניסת בעלים
+  if (_isOwner && typeof _gdStartAutoBackup === 'function') _gdStartAutoBackup();
 
   let ub = document.getElementById('userBar');
   if (!ub) {
@@ -9122,6 +9600,104 @@ window._deleteItem = async function(id) {
     window._toast && window._toast('⚠️ מחיקה נכשלה — תסונכרן כשיחזור חיבור');
   }
 };
+
+// ══ AUDIT LOG — Firestore ══
+const auditCol = collection(db, 'audit_log');
+let _auditLastDoc = null;
+let _auditLoading = false;
+const AUDIT_PAGE = 50;
+
+window._logAudit = async function(payload) {
+  // best-effort: skip silently if offline
+  if (!navigator.onLine) return;
+  try {
+    await new Promise(resolve => onAuthReady(resolve));
+    await addDoc(auditCol, {
+      ...payload,
+      ts: serverTimestamp(),
+      tsLocal: new Date().toISOString(),
+      workerName: _currentWorkerName || 'לא מזוהה',
+      workerId: _currentWorkerId || null,
+      isOwner: _isOwner,
+    });
+  } catch(e) {
+    console.warn('audit log failed:', e);
+  }
+};
+
+window.openAuditPanel = async function() {
+  if (!_isOwner) { window._toast && window._toast('❌ גישה לבעלים בלבד'); return; }
+  const panel = document.getElementById('auditPanel');
+  const list  = document.getElementById('auditList');
+  panel.classList.add('open');
+  panel.onclick = e => { if (e.target === panel) window.closeAuditPanel(); };
+  list.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px;">⏳ טוען...</div>';
+  _auditLastDoc = null;
+  await window._loadAuditPage(true);
+};
+
+window.closeAuditPanel = function() {
+  document.getElementById('auditPanel').classList.remove('open');
+};
+
+window.loadMoreAudit = async function() {
+  await window._loadAuditPage(false);
+};
+
+window._loadAuditPage = async function(reset) {
+  if (_auditLoading) return;
+  _auditLoading = true;
+  const list = document.getElementById('auditList');
+  const moreBtn = document.getElementById('auditLoadMore');
+  try {
+    await new Promise(resolve => onAuthReady(resolve));
+    let q;
+    if (reset || !_auditLastDoc) {
+      q = query(auditCol, orderBy('ts', 'desc'), limit(AUDIT_PAGE));
+    } else {
+      q = query(auditCol, orderBy('ts', 'desc'), startAfter(_auditLastDoc), limit(AUDIT_PAGE));
+    }
+    const snap = await getDocs(q);
+    if (snap.docs.length) _auditLastDoc = snap.docs[snap.docs.length - 1];
+    if (reset) list.innerHTML = '';
+    if (snap.empty && reset) {
+      list.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px;">אין רשומות עדיין</div>';
+      if (moreBtn) moreBtn.style.display = 'none';
+      return;
+    }
+    snap.docs.forEach(d => {
+      list.insertAdjacentHTML('beforeend', _renderAuditEntry(d.data()));
+    });
+    if (moreBtn) moreBtn.style.display = snap.docs.length >= AUDIT_PAGE ? 'block' : 'none';
+  } catch(err) {
+    list.innerHTML = '<div style="color:var(--red,#e85d3f);text-align:center;padding:20px;">❌ שגיאה בטעינה</div>';
+    console.error('audit load error:', err);
+  } finally {
+    _auditLoading = false;
+  }
+};
+
+function _renderAuditEntry(e) {
+  const LABELS = {add:'הוספה', edit:'עריכה', delete:'מחיקה', move:'העברה', status:'סטטוס'};
+  const ICONS  = {add:'✅', edit:'✏️', delete:'🗑️', move:'📍', status:'⏳'};
+  const dt = e.ts?.toDate ? e.ts.toDate().toLocaleString('he-IL') : (e.tsLocal||'').slice(0,16).replace('T',' ') || '—';
+  let detail = '';
+  if (e.action === 'move' && e.before && e.after)
+    detail = `<span style="color:var(--muted);">עמ׳ ${escHTML(String(e.before.col||''))} קומה ${escHTML(String(e.before.floor||''))} ← עמ׳ ${escHTML(String(e.after.col||''))} קומה ${escHTML(String(e.after.floor||''))}</span>`;
+  else if (e.action === 'edit' && e.before && e.after) {
+    const diffs = Object.keys(e.after).filter(k => e.before[k] !== e.after[k]);
+    if (diffs.length) detail = `<span style="color:var(--muted);">שונו: ${diffs.map(escHTML).join(', ')}</span>`;
+  }
+  const who = e.isOwner ? '👑 בעלים' : `👤 ${escHTML(e.workerName||'?')}`;
+  return `<div class="audit-entry audit-action-${escHTML(e.action||'')}">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+      <span style="font-weight:700;">${ICONS[e.action]||''} ${LABELS[e.action]||escHTML(e.action)} — ${escHTML(e.itemLabel||'')} (#${e.itemId})</span>
+      <span style="color:var(--muted);font-size:10px;flex-shrink:0;">${who}</span>
+    </div>
+    ${detail?'<div>'+detail+'</div>':''}
+    <div style="color:var(--muted);font-size:10px;">${dt}</div>
+  </div>`;
+}
 
 window._importItems = async function(data) {
   await new Promise(resolve => onAuthReady(resolve));
