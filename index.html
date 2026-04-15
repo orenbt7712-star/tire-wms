@@ -511,9 +511,8 @@ if('serviceWorker' in navigator){
 
 <!-- FILTERS ROW -->
 <div class="filters-row">
-  <input class="qsel" id="fBrand" list="fBrandList" placeholder="🏷️ מותג" autocomplete="off"
+  <input class="qsel" id="fBrand" type="text" placeholder="🏷️ חיפוש מותג..." autocomplete="off"
     oninput="applyFilters()" style="flex:1;min-width:80px;cursor:text;"/>
-  <datalist id="fBrandList"></datalist>
   <select class="qsel" id="fSize" onchange="applyFilters()">
     <option value="">📐 מידה</option>
   </select>
@@ -2019,8 +2018,7 @@ function clearFilters(){
 
 /* DROPDOWNS */
 function refreshDropdowns(){
-  const dl=document.getElementById('fBrandList');
-  if(dl) dl.innerHTML=[...new Set(items.map(i=>i.brand).filter(Boolean))].sort().map(b=>`<option value="${escHTML(b)}">`).join('');
+  // brand filter is now a free-text input — no dropdown to populate
 
 
   const ss=document.getElementById('fSize'),sv=ss.value;
