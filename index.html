@@ -1298,9 +1298,9 @@ function renderTable(){
   let html=`<div class="twrap"><table>
     <thead><tr>
       ${canBulk?`<th style="width:32px;padding:6px 4px;"><input type="checkbox" class="bulk-cb" id="checkAll" onchange="toggleSelectAll(this)" title="בחר הכל בדף"></th>`:''}
-      <th onclick="sortBy('itemCode')" class="${sortCol==='itemCode'?'sorted':''}">קוד פריט ${sa('itemCode')}</th>
-      <th onclick="sortBy('brand')" class="${sortCol==='brand'?'sorted':''}">תיאור פריט ${sa('brand')}</th>
-      <th>📦 קיסריה 01</th>
+      <th style="text-align:center;" onclick="sortBy('itemCode')" class="${sortCol==='itemCode'?'sorted':''}">קוד פריט ${sa('itemCode')}</th>
+      <th style="text-align:center;" onclick="sortBy('brand')" class="${sortCol==='brand'?'sorted':''}">תיאור פריט ${sa('brand')}</th>
+      <th style="text-align:center;">📦 קיסריה 01</th>
       <th onclick="sortBy('row')" class="${sortCol==='row'?'sorted':''}">מיקום ${sa('row')}</th>
       <th>${editingId?'↵·Esc':'פעולות'}</th>
     </tr></thead><tbody>`;
@@ -1343,7 +1343,7 @@ function viewRow(it){
   const cbCell=canBulk?`<td style="padding:6px 4px;" onclick="event.stopPropagation()"><input type="checkbox" class="bulk-cb row-cb" data-id="${it.id}" onchange="toggleBulkRow(this,${it.id})"${selectedIds.has(it.id)?' checked':''}></td>`:'';
   return `<tr id="tr-${it.id}" class="tr-anim${isPending?' pending-row':''}${selectedIds.has(it.id)?' bulk-checked':''}" onclick="showItemLocation(${it.id})" style="cursor:pointer;">
     ${cbCell}
-    <td><span style="font-family:monospace;font-size:12px;color:var(--muted);">${escHTML(it.itemCode||'')}</span></td>
+    <td style="text-align:center;"><span style="font-family:monospace;font-size:12px;color:var(--muted);">${escHTML(it.itemCode||'')}</span></td>
     <td style="text-align:center;"><span style="font-weight:700;">${escHTML(it.brand)}</span>${it.model?`<br><span style="font-size:10px;color:var(--muted)">${escHTML(it.model)}</span>`:''}</td>
     <td style="text-align:center;">${(()=>{const q=window._getInvQty?window._getInvQty(it.itemCode||'',it):null;return q!=null?`<span style="font-weight:700;color:${q===0?'var(--muted)':q>=100?'var(--green,#4caf50)':'var(--text)'}">${q}</span>`:``;})()}</td>
     <td><div class="locbadge">
