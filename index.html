@@ -4223,35 +4223,62 @@ function processExcelRows(rows, colMap){
   }
 
   // ── זיהוי אוטומטי של פורמט SAP ──
-  // אם הקובץ מכיל קוד פריט + תיאור פריט + קיסריה 01 — עדכן מלאי בלבד, ללא יצירת פריטים
+  // אם הקובץ מכיל קוד פריט + תיאור פריט + קיסריה 01 — עדכן מלאי + הוסף פריטים חדשים בלבד
   const _isSAP = !!(itemCodeCol && modelCol && caesareaCol);
   if(_isSAP){
-    toast('⏳ מעדכן מלאי מ-SAP...');
+    toast('⏳ מייבא מ-SAP...');
     (async()=>{
       try{
         await new Promise(resolve=>onAuthReady(resolve));
+        // קודים קיימים במערכת
+        const existingCodes=new Set((window.items||[]).map(i=>String(i.itemCode||'').trim()).filter(Boolean));
+
         const invEntries={};
+        const newItems=[];
         rows.forEach(row=>{
           const code=String(row[itemCodeCol]||'').trim();
           if(!code) return;
           const desc=String(row[modelCol]||'').trim();
-          const qty=Number(row[caesareaCol])||0;
-          invEntries[code]={caesareaQty:qty,itemDescription:desc,itemCode:code};
+          const caesQty=Number(row[caesareaCol])||0;
+
+          // עדכון מלאי קיסריה לכולם
+          invEntries[code]={caesareaQty:caesQty,itemDescription:desc,itemCode:code};
+
+          // הוספת פריט חדש רק אם לא קיים
+          if(!existingCodes.has(code)){
+            existingCodes.add(code); // מניעת כפילויות מתוך הקובץ עצמו
+            const sizeToken=(desc||'').trim().split(/\s+/)[0]||'';
+            const parsed=sizeToken&&/[\d\/\-\.R]/i.test(sizeToken)?parseSize(sizeToken.replace(/\s/g,'').toUpperCase()):null;
+            // חלץ מותג — המילה האחרונה שאינה מספר/קידומת
+            const words=(desc||'').trim().split(/\s+/);
+            const brand=words.slice(-1)[0]||'';
+            newItems.push({
+              id:nextId++,
+              w:parsed?parsed.w:0,p:parsed?parsed.p:0,d:parsed?parsed.d:0,
+              brand, model:desc, itemCode:code,
+              notes:'',col:'',floor:'1',p1:'',p2:'',pn1:'',pn2:'',agr:''
+            });
+          }
         });
+
+        // שמור מלאי קיסריה
         const entries=Object.entries(invEntries);
-        if(!entries.length){ toast('❌ לא נמצאו שורות'); return; }
-        const now=serverTimestamp();
-        let batch=writeBatch(db);
-        let cnt=0;
-        for(const[code,data]of entries){
-          batch.set(doc(db,'inventory',code),{...data,lastUpdated:now},{merge:true});
-          cnt++;
-          if(cnt>=499){await batch.commit();batch=writeBatch(db);cnt=0;}
+        if(entries.length){
+          const now=serverTimestamp();
+          let batch=writeBatch(db); let cnt=0;
+          for(const[code,data]of entries){
+            batch.set(doc(db,'inventory',code),{...data,lastUpdated:now},{merge:true});
+            if(++cnt>=499){await batch.commit();batch=writeBatch(db);cnt=0;}
+          }
+          if(cnt>0) await batch.commit();
+          _invData=null; _invBrandIdx=null;
         }
-        if(cnt>0) await batch.commit();
-        _invData=null; _invBrandIdx=null;
+
+        // שמור פריטים חדשים
+        if(newItems.length && window._importItems) await window._importItems(newItems);
+
         closeBackupMenu(); closeExcelImportPanel();
-        toast(`✅ מלאי קיסריה עודכן — ${entries.length} פריטים`);
+        toast(`✅ מלאי עודכן — ${entries.length} פריטים${newItems.length?` · ${newItems.length} חדשים נוספו`:' · אין חדשים'}`);
       }catch(e){ console.error('SAP import error',e); toast('❌ שגיאת ייבוא SAP: '+e.message); }
     })();
     return;
