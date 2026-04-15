@@ -4278,6 +4278,9 @@ function processExcelRows(rows, colMap){
         if(newItems.length && window._importItems) await window._importItems(newItems);
 
         closeBackupMenu(); closeExcelImportPanel();
+        // טען מחדש את המלאי ורענן טבלה
+        if(window._loadInvData) await window._loadInvData().catch(()=>{});
+        if(typeof renderTable==='function') renderTable();
         toast(`✅ מלאי עודכן — ${entries.length} פריטים${newItems.length?` · ${newItems.length} חדשים נוספו`:' · אין חדשים'}`);
       }catch(e){ console.error('SAP import error',e); toast('❌ שגיאת ייבוא SAP: '+e.message); }
     })();
