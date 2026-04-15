@@ -511,9 +511,11 @@ if('serviceWorker' in navigator){
 
 <!-- FILTERS ROW -->
 <div class="filters-row">
-  <select class="qsel" id="fBrand" onchange="applyFilters()">
-    <option value="">🏷️ מותג</option>
-  </select>
+  <div style="position:relative;flex:1;">
+    <input class="qsel" id="fBrand" list="fBrandList" placeholder="🏷️ מותג" autocomplete="off"
+      oninput="applyFilters()" style="width:100%;padding-right:10px;"/>
+    <datalist id="fBrandList"></datalist>
+  </div>
   <select class="qsel" id="fSize" onchange="applyFilters()">
     <option value="">📐 מידה</option>
   </select>
@@ -1230,7 +1232,7 @@ function getFiltered(){
     qFormatted = digits.slice(0,3)+'/'+digits.slice(3,5)+'R'+digits.slice(5,7);
   }
   return items.filter(it=>{
-    if(fb&&it.brand!==fb)return false;
+    if(fb&&!(it.brand||'').toLowerCase().includes(fb.toLowerCase()))return false;
     if(fs&&sz(it)!==fs)return false;
     if(q&&!(
       it.brand.toLowerCase().includes(q)||
@@ -2019,8 +2021,8 @@ function clearFilters(){
 
 /* DROPDOWNS */
 function refreshDropdowns(){
-  const bs=document.getElementById('fBrand'),bc=bs.value;
-  bs.innerHTML='<option value="">🏷️ מותג</option>'+[...new Set(items.map(i=>i.brand))].sort().map(b=>`<option value="${escHTML(b)}" ${b===bc?'selected':''}>${escHTML(b)}</option>`).join('');
+  const dl=document.getElementById('fBrandList');
+  if(dl) dl.innerHTML=[...new Set(items.map(i=>i.brand).filter(Boolean))].sort().map(b=>`<option value="${escHTML(b)}">`).join('');
 
 
   const ss=document.getElementById('fSize'),sv=ss.value;
