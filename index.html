@@ -4222,6 +4222,41 @@ function processExcelRows(rows, colMap){
     caesareaCol=_excelFindCol(headers,_excelFieldMap.caesarea);
   }
 
+  // ── זיהוי אוטומטי של פורמט SAP ──
+  // אם הקובץ מכיל קוד פריט + תיאור פריט + קיסריה 01 — עדכן מלאי בלבד, ללא יצירת פריטים
+  const _isSAP = !!(itemCodeCol && modelCol && caesareaCol);
+  if(_isSAP){
+    toast('⏳ מעדכן מלאי מ-SAP...');
+    (async()=>{
+      try{
+        await new Promise(resolve=>onAuthReady(resolve));
+        const invEntries={};
+        rows.forEach(row=>{
+          const code=String(row[itemCodeCol]||'').trim();
+          if(!code) return;
+          const desc=String(row[modelCol]||'').trim();
+          const qty=Number(row[caesareaCol])||0;
+          invEntries[code]={caesareaQty:qty,itemDescription:desc,itemCode:code};
+        });
+        const entries=Object.entries(invEntries);
+        if(!entries.length){ toast('❌ לא נמצאו שורות'); return; }
+        const now=serverTimestamp();
+        let batch=writeBatch(db);
+        let cnt=0;
+        for(const[code,data]of entries){
+          batch.set(doc(db,'inventory',code),{...data,lastUpdated:now},{merge:true});
+          cnt++;
+          if(cnt>=499){await batch.commit();batch=writeBatch(db);cnt=0;}
+        }
+        if(cnt>0) await batch.commit();
+        _invData=null; _invBrandIdx=null;
+        closeBackupMenu(); closeExcelImportPanel();
+        toast(`✅ מלאי קיסריה עודכן — ${entries.length} פריטים`);
+      }catch(e){ console.error('SAP import error',e); toast('❌ שגיאת ייבוא SAP: '+e.message); }
+    })();
+    return;
+  }
+
   if(!colMap && !sizeCol && !brandCol){
     showColumnMapper(rows);
     return;
@@ -4230,7 +4265,7 @@ function processExcelRows(rows, colMap){
   // סינון לפי מחסן — אם יש עמודת מחסן, ייבא רק שורות של מחסן 01
   const _warehouseFilter = warehouseCol ? true : false;
 
-  // חילוץ מידה מתוך תיאור פריט (SAP) — למשל "10.0/75-15.3 10PR IMB162 ..." → "10.0/75-15.3"
+  // חילוץ מידה מתוך תיאור פריט — למשל "10.0/75-15.3 10PR IMB162 ..." → "10.0/75-15.3"
   const _sizeFromDesc = !sizeCol && modelCol
     ? (desc) => { const t=(desc||'').trim().split(/\s+/)[0]; return t&&/[\d\/\-\.R]/.test(t)?t:''; }
     : null;
@@ -4239,7 +4274,6 @@ function processExcelRows(rows, colMap){
   const _batchItems=[];
   rows.forEach((row,idx)=>{
     try{
-      // סנן לפי מחסן 01 אם קיימת עמודת מחסן
       if(_warehouseFilter){
         const wh=String(row[warehouseCol]||'').trim();
         if(wh!=='01'&&wh!=='1'&&!wh.includes('מחסן 01')&&!wh.includes('מחסן 1')&&wh.toLowerCase()!=='main'){
@@ -4252,14 +4286,12 @@ function processExcelRows(rows, colMap){
       if(!rawSize&&!brandVal){ skipped++; return; }
       const parsed=rawSize?parseSize(rawSize.replace(/\s/g,'').toUpperCase()):null;
       const qty=Math.max(1, parseInt(qtyCol?String(row[qtyCol]||'1'):1,10)||1);
-      // הגבלה ל-50 פריטים לשורה למניעת נפיחות
       const actualQty=Math.min(qty,50);
       for(let q=0;q<actualQty;q++){
         const newItem={
           id:nextId++,
           w:parsed?parsed.w:0,p:parsed?parsed.p:0,d:parsed?parsed.d:0,
-          brand:brandVal,
-          model:descVal,
+          brand:brandVal, model:descVal,
           itemCode:itemCodeCol?String(row[itemCodeCol]||'').trim():'',
           notes:notesCol?String(row[notesCol]||'').trim():'',
           col:colCol?String(row[colCol]||'').trim():'',
@@ -4271,7 +4303,7 @@ function processExcelRows(rows, colMap){
       }
     }catch(e){ skipped++; }
   });
-  // שמירה מרוכזת — Firestore batch (400 בכל batch) במקום _saveItem לכל שורה
+
   if(_batchItems.length && window._importItems){
     toast(`⏳ מייבא ${_batchItems.length} פריטים...`);
     window._importItems(_batchItems).then(()=>{
@@ -4279,41 +4311,7 @@ function processExcelRows(rows, colMap){
       const whMsg=warehouseSkipped>0?` · ${warehouseSkipped} ממחסנים אחרים דולגו`:'';
       toast(`✅ יובאו ${added} פריטים${skipped>0?' · '+skipped+' דולגו':''}${whMsg}`);
     }).catch(e=>toast('❌ שגיאת ייבוא: '+e.message));
-    // caesarea ממשיך למטה
-  }
-
-  // שמור מלאי קיסריה אם עמודה ממופה
-  if(caesareaCol){
-    (async()=>{
-      try{
-        await new Promise(resolve=>onAuthReady(resolve));
-        const invEntries={};
-        rows.forEach(row=>{
-          const code=itemCodeCol?String(row[itemCodeCol]||'').trim():'';
-          if(!code) return;
-          const desc=modelCol?String(row[modelCol]||'').trim():'';
-          const qty=Number(row[caesareaCol])||0;
-          invEntries[code]={caesareaQty:qty,itemDescription:desc,itemCode:code};
-        });
-        const entries=Object.entries(invEntries);
-        if(!entries.length) return;
-        const now=serverTimestamp();
-        let batch=writeBatch(db);
-        let cnt=0;
-        for(const[code,data]of entries){
-          batch.set(doc(db,'inventory',code),{...data,lastUpdated:now},{merge:true});
-          cnt++;
-          if(cnt>=499){await batch.commit();batch=writeBatch(db);cnt=0;}
-        }
-        if(cnt>0) await batch.commit();
-        _invData=null; _invBrandIdx=null;
-        toast(`📦 מלאי קיסריה עודכן — ${entries.length} פריטים`);
-      }catch(e){console.error('inv update error',e);}
-    })();
-  }
-
-  // אם אין _importItems (fallback ישן) — סגור מיד
-  if(!_batchItems.length || !window._importItems){
+  } else {
     closeBackupMenu(); closeExcelImportPanel();
     const whMsg=warehouseSkipped>0?` · ${warehouseSkipped} ממחסנים אחרים דולגו`:'';
     setTimeout(()=>toast(`✅ יובאו ${added} פריטים${skipped>0?' · '+skipped+' דולגו':''}${whMsg}`),400);
