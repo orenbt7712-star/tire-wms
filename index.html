@@ -511,11 +511,9 @@ if('serviceWorker' in navigator){
 
 <!-- FILTERS ROW -->
 <div class="filters-row">
-  <div style="position:relative;flex:1;">
-    <input class="qsel" id="fBrand" list="fBrandList" placeholder="🏷️ מותג" autocomplete="off"
-      oninput="applyFilters()" style="width:100%;padding-right:10px;"/>
-    <datalist id="fBrandList"></datalist>
-  </div>
+  <input class="qsel" id="fBrand" list="fBrandList" placeholder="🏷️ מותג" autocomplete="off"
+    oninput="applyFilters()" style="flex:1;min-width:80px;cursor:text;"/>
+  <datalist id="fBrandList"></datalist>
   <select class="qsel" id="fSize" onchange="applyFilters()">
     <option value="">📐 מידה</option>
   </select>
