@@ -512,7 +512,7 @@ if('serviceWorker' in navigator){
 <!-- FILTERS ROW -->
 <div class="filters-row">
   <select class="qsel" id="fBrand" onchange="applyFilters()">
-    <option value="">🏷️ מותג</option>
+    <option value="">📋 תיאור פריט</option>
   </select>
   <select class="qsel" id="fSize" onchange="applyFilters()">
     <option value="">📐 מידה</option>
@@ -1230,7 +1230,7 @@ function getFiltered(){
     qFormatted = digits.slice(0,3)+'/'+digits.slice(3,5)+'R'+digits.slice(5,7);
   }
   return items.filter(it=>{
-    if(fb&&it.brand!==fb)return false;
+    if(fb&&it.model!==fb)return false;
     if(fs&&sz(it)!==fs)return false;
     if(q&&!(
       it.brand.toLowerCase().includes(q)||
@@ -2023,7 +2023,7 @@ function clearFilters(){
 /* DROPDOWNS */
 function refreshDropdowns(){
   const bs=document.getElementById('fBrand'),bc=bs.value;
-  bs.innerHTML='<option value="">🏷️ מותג</option>'+[...new Set(items.map(i=>i.brand))].sort().map(b=>`<option value="${escHTML(b)}" ${b===bc?'selected':''}>${escHTML(b)}</option>`).join('');
+  bs.innerHTML='<option value="">📋 תיאור פריט</option>'+[...new Set(items.map(i=>i.model).filter(Boolean))].sort().map(b=>`<option value="${escHTML(b)}" ${b===bc?'selected':''}>${escHTML(b)}</option>`).join('');
 
 
   const ss=document.getElementById('fSize'),sv=ss.value;
