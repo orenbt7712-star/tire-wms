@@ -4180,11 +4180,11 @@ function parseCSV(text){
 // מיפוי עמודות Excel נפוצות
 const _excelFieldMap={
   size:  ['מידה','size','tire size','tyre size','גודל','dimension','מידת צמיג'],
-  brand: ['מותג','brand','manufacturer','יצרן','ספק','supplier','פריט','item','item name','שם פריט'],
+  brand: ['מותג','brand','manufacturer','יצרן','שם יצרן','ספק','supplier','פריט','item','item name','שם פריט'],
   model: ['דגם','model','description','תיאור','type','תיאור פריט','item description','תאור פריט','תאור'],
   col:   ['עמודה','col','column','מיקום','location','bin','cage'],
   floor: ['קומה','floor','level','shelf','rack'],
-  qty:   ['כמות','qty','quantity','amount','מספר','stock','מלאי'],
+  qty:   ['כמות','qty','quantity','amount','מספר','stock','מלאי','סהכ מלאי זמין','סה"כ מלאי','יתרה מלאי','כמות זמינה'],
   notes: ['הערות','notes','remarks','note','comment'],
   warehouse:['מחסן','warehouse','store','סניף','branch','אתר'],
   itemCode: ['קוד פריט','item code','part number','part no','partno','sku','code','קוד','מק"ט','מקט'],
@@ -4233,7 +4233,13 @@ function processExcelRows(rows, colMap){
   // סינון לפי מחסן — אם יש עמודת מחסן, ייבא רק שורות של מחסן 01
   const _warehouseFilter = warehouseCol ? true : false;
 
+  // חילוץ מידה מתוך תיאור פריט (SAP) — למשל "10.0/75-15.3 10PR IMB162 ..." → "10.0/75-15.3"
+  const _sizeFromDesc = !sizeCol && modelCol
+    ? (desc) => { const t=(desc||'').trim().split(/\s+/)[0]; return t&&/[\d\/\-\.R]/.test(t)?t:''; }
+    : null;
+
   let added=0, skipped=0, warehouseSkipped=0;
+  const _batchItems=[];
   rows.forEach((row,idx)=>{
     try{
       // סנן לפי מחסן 01 אם קיימת עמודת מחסן
@@ -4243,28 +4249,41 @@ function processExcelRows(rows, colMap){
           warehouseSkipped++; return;
         }
       }
-      const sizeVal=sizeCol?String(row[sizeCol]||'').trim():'';
+      const descVal=modelCol?String(row[modelCol]||'').trim():'';
+      const rawSize=sizeCol?String(row[sizeCol]||'').trim():(_sizeFromDesc?_sizeFromDesc(descVal):'');
       const brandVal=brandCol?String(row[brandCol]||'').trim():'';
-      if(!sizeVal&&!brandVal){ skipped++; return; }
-      const parsed=sizeVal?parseSize(sizeVal.replace(/\s/g,'').toUpperCase()):null;
+      if(!rawSize&&!brandVal){ skipped++; return; }
+      const parsed=rawSize?parseSize(rawSize.replace(/\s/g,'').toUpperCase()):null;
       const qty=Math.max(1, parseInt(qtyCol?String(row[qtyCol]||'1'):1,10)||1);
-      for(let q=0;q<qty;q++){
+      // הגבלה ל-50 פריטים לשורה למניעת נפיחות
+      const actualQty=Math.min(qty,50);
+      for(let q=0;q<actualQty;q++){
         const newItem={
           id:nextId++,
           w:parsed?parsed.w:0,p:parsed?parsed.p:0,d:parsed?parsed.d:0,
           brand:brandVal,
-          model:modelCol?String(row[modelCol]||'').trim():'',
+          model:descVal,
           itemCode:itemCodeCol?String(row[itemCodeCol]||'').trim():'',
           notes:notesCol?String(row[notesCol]||'').trim():'',
           col:colCol?String(row[colCol]||'').trim():'',
           floor:floorCol?String(row[floorCol]||'1').trim():'1',
           p1:'',p2:'',pn1:'',pn2:'',agr:''
         };
-        if(window._saveItem) window._saveItem(newItem);
+        _batchItems.push(newItem);
         added++;
       }
     }catch(e){ skipped++; }
   });
+  // שמירה מרוכזת — Firestore batch (400 בכל batch) במקום _saveItem לכל שורה
+  if(_batchItems.length && window._importItems){
+    toast(`⏳ מייבא ${_batchItems.length} פריטים...`);
+    window._importItems(_batchItems).then(()=>{
+      closeBackupMenu(); closeExcelImportPanel();
+      const whMsg=warehouseSkipped>0?` · ${warehouseSkipped} ממחסנים אחרים דולגו`:'';
+      toast(`✅ יובאו ${added} פריטים${skipped>0?' · '+skipped+' דולגו':''}${whMsg}`);
+    }).catch(e=>toast('❌ שגיאת ייבוא: '+e.message));
+    // caesarea ממשיך למטה
+  }
 
   // שמור מלאי קיסריה אם עמודה ממופה
   if(caesareaCol){
@@ -4296,10 +4315,12 @@ function processExcelRows(rows, colMap){
     })();
   }
 
-  closeBackupMenu();
-  closeExcelImportPanel();
-  const whMsg=warehouseSkipped>0?` · ${warehouseSkipped} ממחסנים אחרים דולגו`:'';
-  setTimeout(()=>toast(`✅ יובאו ${added} פריטים${skipped>0?' · '+skipped+' דולגו':''}${whMsg}`),400);
+  // אם אין _importItems (fallback ישן) — סגור מיד
+  if(!_batchItems.length || !window._importItems){
+    closeBackupMenu(); closeExcelImportPanel();
+    const whMsg=warehouseSkipped>0?` · ${warehouseSkipped} ממחסנים אחרים דולגו`:'';
+    setTimeout(()=>toast(`✅ יובאו ${added} פריטים${skipped>0?' · '+skipped+' דולגו':''}${whMsg}`),400);
+  }
 }
 
 function showColumnMapper(rows, embedIn){
