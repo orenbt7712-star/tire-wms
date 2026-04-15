@@ -4230,11 +4230,15 @@ function processExcelRows(rows, colMap){
     (async()=>{
       try{
         await new Promise(resolve=>onAuthReady(resolve));
-        // קודים קיימים במערכת
+        // קודים קיימים לפי itemCode
         const existingCodes=new Set((window.items||[]).map(i=>String(i.itemCode||'').trim()).filter(Boolean));
+        // פריטים ללא קוד פריט — מיפוי לפי תיאור (model) לעדכון בדיעבד
+        const noCodeByDesc={};
+        (window.items||[]).forEach(i=>{ if(!i.itemCode&&i.model) noCodeByDesc[i.model.trim()]=i.id; });
 
         const invEntries={};
         const newItems=[];
+        const codeUpdates={}; // id → itemCode לעדכון פריטים קיימים
         rows.forEach(row=>{
           const code=String(row[itemCodeCol]||'').trim();
           if(!code) return;
@@ -4244,22 +4248,40 @@ function processExcelRows(rows, colMap){
           // עדכון מלאי קיסריה לכולם
           invEntries[code]={caesareaQty:caesQty,itemDescription:desc,itemCode:code};
 
-          // הוספת פריט חדש רק אם לא קיים
-          if(!existingCodes.has(code)){
-            existingCodes.add(code); // מניעת כפילויות מתוך הקובץ עצמו
-            const sizeToken=(desc||'').trim().split(/\s+/)[0]||'';
-            const parsed=sizeToken&&/[\d\/\-\.R]/i.test(sizeToken)?parseSize(sizeToken.replace(/\s/g,'').toUpperCase()):null;
-            // חלץ מותג — המילה האחרונה שאינה מספר/קידומת
-            const words=(desc||'').trim().split(/\s+/);
-            const brand=words.slice(-1)[0]||'';
-            newItems.push({
-              id:nextId++,
-              w:parsed?parsed.w:0,p:parsed?parsed.p:0,d:parsed?parsed.d:0,
-              brand, model:desc, itemCode:code,
-              notes:'',col:'',floor:'1',p1:'',p2:'',pn1:'',pn2:'',agr:''
-            });
+          if(existingCodes.has(code)) return; // קיים עם קוד — דלג
+
+          // בדוק אם קיים פריט עם אותו תיאור אך ללא קוד — עדכן קוד
+          if(noCodeByDesc[desc]){
+            codeUpdates[noCodeByDesc[desc]]=code;
+            existingCodes.add(code);
+            return;
           }
+
+          // פריט חדש לחלוטין
+          existingCodes.add(code);
+          const sizeToken=(desc||'').trim().split(/\s+/)[0]||'';
+          const parsed=sizeToken&&/[\d\/\-\.R]/i.test(sizeToken)?parseSize(sizeToken.replace(/\s/g,'').toUpperCase()):null;
+          const brand=(desc||'').trim().split(/\s+/).slice(-1)[0]||'';
+          newItems.push({
+            id:nextId++,
+            w:parsed?parsed.w:0,p:parsed?parsed.p:0,d:parsed?parsed.d:0,
+            brand, model:desc, itemCode:code,
+            notes:'',col:'',floor:'1',p1:'',p2:'',pn1:'',pn2:'',agr:''
+          });
         });
+
+        // עדכן קוד פריט לפריטים קיימים שהיו חסרים
+        const updateIds=Object.entries(codeUpdates);
+        if(updateIds.length){
+          let batch=writeBatch(db); let cnt=0;
+          for(const[id,code]of updateIds){
+            batch.update(doc(db,'tires',String(id)),{itemCode:code});
+            if(++cnt>=499){await batch.commit();batch=writeBatch(db);cnt=0;}
+          }
+          if(cnt>0) await batch.commit();
+          // עדכן גם ב-window.items
+          updateIds.forEach(([id,code])=>{ const it=(window.items||[]).find(i=>i.id==id); if(it) it.itemCode=code; });
+        }
 
         // שמור מלאי קיסריה
         const entries=Object.entries(invEntries);
@@ -4278,10 +4300,10 @@ function processExcelRows(rows, colMap){
         if(newItems.length && window._importItems) await window._importItems(newItems);
 
         closeBackupMenu(); closeExcelImportPanel();
-        // טען מחדש את המלאי ורענן טבלה
         if(window._loadInvData) await window._loadInvData().catch(()=>{});
         if(typeof renderTable==='function') renderTable();
-        toast(`✅ מלאי עודכן — ${entries.length} פריטים${newItems.length?` · ${newItems.length} חדשים נוספו`:' · אין חדשים'}`);
+        const updMsg=updateIds.length?` · ${updateIds.length} קודים עודכנו`:'';
+        toast(`✅ מלאי עודכן — ${entries.length} פריטים${newItems.length?` · ${newItems.length} חדשים נוספו`:''}${updMsg}`);
       }catch(e){ console.error('SAP import error',e); toast('❌ שגיאת ייבוא SAP: '+e.message); }
     })();
     return;
