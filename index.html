@@ -3893,45 +3893,50 @@ window._updateItems = function(newItems, newNextId){
 window.addCage = addCage;
 window.rotateCage = rotateCage;
 function generateWarehouseLayout(){
-  if(!confirm('פעולה זו תמחק את המפה הנוכחית ותייצר מפת מחסן חדשה. להמשיך?')) return;
+  if(!confirm('פעולה זו תמחק את המפה הנוכחית ותייצר מפת מחסן חדשה לפי נתוני המחסן. להמשיך?')) return;
   pushMapHistory();
   cages=[]; walls=[]; nextCageId=1;
+  let col=1;
 
-  // Helper: add rectangular block — each (x,y) position gets 3 floor cages
-  function addBlock(x0, y0, cols, rows, nameFunc){
-    for(let r=0; r<rows; r++){
-      for(let c=0; c<cols; c++){
-        const name = nameFunc(r+1, c+1);
-        for(let fl=1; fl<=3; fl++){
-          cages.push({id:nextCageId++, name, floor:String(fl), x:x0+c, y:y0+r, rot:false});
-        }
+  // כל מיקום מקבל 3 כלובים (קומה 1/2/3)
+  const addBlock=(x0,y0,cols,rows)=>{
+    for(let r=0;r<rows;r++){
+      for(let c=0;c<cols;c++){
+        const name=String(col++);
+        for(let fl=1;fl<=3;fl++)
+          cages.push({id:nextCageId++,name,floor:String(fl),x:x0+c,y:y0+r,rot:false});
       }
     }
-  }
+  };
 
-  // ══ אזור 1: מחסן (אנכי) — x=0..17, y=0..39 ══
-  // ימין: 10 עמודות × 40 שורות
-  addBlock(0,  0, 10, 40, (r,c) => 'מי.'+r+'.'+c);
-  // שמאל: 7 עמודות × 40 שורות  (רווח 1 בין הצדדים)
-  addBlock(11, 0,  7, 40, (r,c) => 'מש.'+r+'.'+c);
+  // 1. אזור רחבה — 7×7 (ליד הכניסה)                עמודות 1–49
+  addBlock(26, 25, 7, 7);
 
-  // ══ אזור 2: פניה ראשונה שמאלה (אופקי) — x=0..19 ══
-  // שמאל: 20 עמודות × 7 שורות עומק
-  addBlock(0, 0, 20, 7, (r,c) => 'פ1ש.'+r+'.'+c);
-  // ימין: 20 עמודות × 6 שורות עומק  (רווח 1 בין הצדדים)
-  addBlock(0, 8, 20, 6, (r,c) => 'פ1י.'+r+'.'+c);
+  // 2. שמאל שביל ראשי — 5×6 (לפני פניה ראשונה)      עמודות 50–79
+  addBlock(23, 13, 5, 6);
 
-  // ══ אזור 3: פניה שניה שמאל (אופקי) — x=0..19 ══
-  // ימין: 20 עמודות × 7 שורות עומק
-  addBlock(0, 0, 20, 7, (r,c) => 'פ2י.'+r+'.'+c);
-  // שמאל: 20 עמודות × 5 שורות עומק  (רווח 1 בין הצדדים)
-  addBlock(0, 8, 20, 5, (r,c) => 'פ2ש.'+r+'.'+c);
+  // 3. ימין שביל ראשי — 8×16                         עמודות 80–207
+  addBlock(32,  7, 8, 16);
+
+  // 4. בין הפניות (צפון הפניה הראשונה) — 9×10         עמודות 208–297
+  addBlock(14,  2, 9, 10);
+
+  // 5. פניה ראשונה - צד שמאל (דרום) — 8×14           עמודות 298–409
+  addBlock(14, 14, 8, 14);
+
+  // 6. המשך אחרי הפניה הראשונה (מערב) — 4×5           עמודות 410–429
+  addBlock(10, 14, 4,  5);
+
+  // 7. פניה שניה - צד ימין — 7×14                    עמודות 430–527
+  addBlock( 0, 14, 7, 14);
+
+  // 8. קצה המחסן — 2×3                               עמודות 528–533
+  addBlock( 0, 28, 2,  3);
 
   selectedCageId=null; selectedCages=[];
   _scheduleAutoSave();
-  centerMap();
-  drawMap();
-  alert('מפת המחסן נוצרה בהצלחה! ' + (cages.length) + ' כלובים.');
+  setTimeout(()=>{centerMap();drawMap();},50);
+  toast('✅ מפת מחסן נוצרה! '+(col-1)+' עמודות · '+(cages.length)+' כלובים');
 }
 window.generateWarehouseLayout = generateWarehouseLayout;
 
