@@ -511,8 +511,13 @@ if('serviceWorker' in navigator){
 
 <!-- FILTERS ROW -->
 <div class="filters-row">
-  <input class="qsel" id="fBrand" type="text" placeholder="🏷️ חיפוש מותג..." autocomplete="off"
-    oninput="applyFilters()" style="flex:1;min-width:80px;cursor:text;"/>
+  <div style="position:relative;flex:1;min-width:80px;">
+    <input class="qsel" id="fBrand" type="text" placeholder="🏷️ חיפוש מותג..." autocomplete="off"
+      oninput="_brandInputHandler(this)" onfocus="_brandInputHandler(this)"
+      onblur="setTimeout(()=>{const d=document.getElementById('brandDrop');if(d)d.style.display='none';},150)"
+      style="width:100%;cursor:text;box-sizing:border-box;"/>
+    <div id="brandDrop" style="display:none;position:absolute;top:100%;right:0;left:0;background:var(--card);border:1px solid var(--accent);border-radius:0 0 8px 8px;max-height:220px;overflow-y:auto;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.4);"></div>
+  </div>
   <select class="qsel" id="fSize" onchange="applyFilters()">
     <option value="">📐 מידה</option>
   </select>
@@ -2010,6 +2015,23 @@ function doBulkMove(){
 /* SORT / FILTER */
 function sortBy(c){sortCol===c?sortDir*=-1:(sortCol=c,sortDir=1);renderTable();}
 function applyFilters(){ currentPage=0;renderTable();}
+function _brandInputHandler(inp){
+  applyFilters();
+  const q=(inp.value||'').toLowerCase().trim();
+  const drop=document.getElementById('brandDrop');
+  if(!drop) return;
+  const brands=[...new Set((window.items||[]).map(i=>i.brand).filter(Boolean))].sort();
+  const filtered=q?brands.filter(b=>b.toLowerCase().includes(q)):brands;
+  if(!filtered.length){drop.style.display='none';return;}
+  drop.innerHTML=filtered.map(b=>
+    `<div onclick="document.getElementById('fBrand').value='${b.replace(/'/g,"\\'")}';applyFilters();document.getElementById('brandDrop').style.display='none';"
+      style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);"
+      onmouseenter="this.style.background='var(--border)'" onmouseleave="this.style.background=''">${escHTML(b)}</div>`
+  ).join('');
+  drop.style.display='block';
+}
+window._brandInputHandler=_brandInputHandler;
+
 function clearFilters(){
   ['fBrand','fSize'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('mainSearch').value='';
