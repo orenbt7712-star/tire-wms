@@ -931,6 +931,20 @@ if('serviceWorker' in navigator){
   </div>
 </div>
 
+<!-- מודל כלוב ריק -->
+<div class="conf-ov" id="emptyCageOv">
+  <div class="conf-box" style="direction:rtl;text-align:right;">
+    <h4>📭 עמודה <span id="emptyCageColName"></span> ריקה</h4>
+    <p style="color:var(--muted);font-size:13px;">איזה מידה תרצה להכניס? (אופציונלי)</p>
+    <input id="emptyCageSizeInput" type="text" placeholder="לדוגמה: 315/80R22.5"
+      style="width:100%;margin:8px 0;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--card2);color:var(--text);font-size:14px;box-sizing:border-box;"/>
+    <div class="conf-acts">
+      <button class="btn btn-ghost" onclick="skipEmptyCage()">השאר ריק</button>
+      <button class="btn" style="background:var(--accent);color:#111;" onclick="confirmEmptyCage()">📌 שמור הזמנה</button>
+    </div>
+  </div>
+</div>
+
 <!-- מודל עדכון מיקום — עובד מנהל -->
 <div class="conf-ov" id="locEditOv">
   <div class="conf-box" style="max-width:420px;text-align:right;direction:rtl;max-height:92vh;overflow-y:auto;padding:18px;">
@@ -1935,6 +1949,7 @@ function dupSingles(){
 function doDelete(){
   const delIt=items.find(x=>x.id===pendingDel);
   if(!delIt){toast('❌ פריט לא נמצא');closeConf();return;}
+  const delCol=delIt.col;
   logDelete(delIt);
   if(window._deleteItem){
     window._deleteItem(pendingDel);
@@ -1944,7 +1959,41 @@ function doDelete(){
     refreshDropdowns();renderTable();
   }
   closeConf();toast('🗑️ נמחק');
+  _onItemsChanged(delCol);
 }
+
+let _emptyCageCol='';
+function _onItemsChanged(col){
+  // סינכרון מפה אם פתוחה
+  if(document.getElementById('viewWarehouse')?.classList.contains('active')) renderWarehouse();
+  // בדוק אם העמודה ריקה
+  if(col&&items.filter(it=>String(it.col)===String(col)).length===0){
+    _emptyCageCol=String(col);
+    document.getElementById('emptyCageColName').textContent=col;
+    document.getElementById('emptyCageSizeInput').value='';
+    document.getElementById('emptyCageOv').classList.add('open');
+  }
+}
+function confirmEmptyCage(){
+  const size=(document.getElementById('emptyCageSizeInput').value||'').trim();
+  if(size){
+    const r=JSON.parse(localStorage.getItem('tirewms_reservations')||'{}');
+    r[_emptyCageCol]=size;
+    localStorage.setItem('tirewms_reservations',JSON.stringify(r));
+    toast(`📌 עמודה ${_emptyCageCol} שמורה למידה: ${size}`);
+    if(document.getElementById('viewWarehouse')?.classList.contains('active')) renderWarehouse();
+  }
+  document.getElementById('emptyCageOv').classList.remove('open');
+}
+function skipEmptyCage(){
+  // נקה הזמנה קיימת אם יש
+  const r=JSON.parse(localStorage.getItem('tirewms_reservations')||'{}');
+  delete r[_emptyCageCol];
+  localStorage.setItem('tirewms_reservations',JSON.stringify(r));
+  document.getElementById('emptyCageOv').classList.remove('open');
+}
+window.confirmEmptyCage=confirmEmptyCage;
+window.skipEmptyCage=skipEmptyCage;
 
 // ══ BULK OPERATIONS ══
 function toggleBulkRow(cb,id){
@@ -8591,6 +8640,18 @@ function renderWarehouse(){
     ctx.fillText(g.name||'?',px+pw/2,py+ph/2-(g.floor&&pw>25?6:0));
     if(g.floor&&pw>25){ ctx.fillStyle='rgba(255,255,255,0.35)'; ctx.font='7px Heebo'; ctx.fillText('קו׳'+g.floor,px+pw/2,py+ph/2+6); }
     if(has){ ctx.fillStyle=g.floor==='1'?'#4a9eff':g.floor==='2'?'#3ecf8e':'#f5a623'; ctx.beginPath(); ctx.arc(px+pw-5,py+5,7,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#0a0c12'; ctx.font='bold 8px Heebo'; ctx.fillText(ci.length,px+pw-5,py+5); }
+    // הזמנה לכלוב ריק
+    if(!has&&g.floor==='1'){
+      const _res=JSON.parse(localStorage.getItem('tirewms_reservations')||'{}');
+      const _rsz=_res[String(g.name)];
+      if(_rsz&&pw>20){
+        ctx.fillStyle='rgba(74,158,255,0.18)';
+        const rr=4;
+        ctx.beginPath();ctx.moveTo(px+rr,py);ctx.lineTo(px+pw-rr,py);ctx.quadraticCurveTo(px+pw,py,px+pw,py+rr);ctx.lineTo(px+pw,py+ph-rr);ctx.quadraticCurveTo(px+pw,py+ph,px+pw-rr,py+ph);ctx.lineTo(px+rr,py+ph);ctx.quadraticCurveTo(px,py+ph,px,py+ph-rr);ctx.lineTo(px,py+rr);ctx.quadraticCurveTo(px,py,px+rr,py);ctx.closePath();ctx.fill();
+        ctx.fillStyle='#4a9eff';ctx.font=`bold ${Math.min(9,pw/3.5)}px Heebo`;ctx.textAlign='center';ctx.textBaseline='bottom';
+        ctx.fillText(_rsz,px+pw/2,py+ph-3);
+      }
+    }
     ctx.globalAlpha=1;
   });
 
