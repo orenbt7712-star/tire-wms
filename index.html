@@ -799,7 +799,7 @@ if('serviceWorker' in navigator){
             <input id="aP1" type="text" placeholder=""/>
           </div>
           <div class="fi"><label>עמודה</label>
-            <input id="aCo" type="text" placeholder="1"/>
+            <input id="aCo" type="text" placeholder="1" oninput="renderMiniMap()" onblur="setTimeout(hideMiniMap,300)"/>
           </div>
           <div class="fi"><label>פניה 2</label>
             <input id="aPn2" type="hidden" value=""/>
@@ -809,7 +809,10 @@ if('serviceWorker' in navigator){
             <input id="aP2" type="text" placeholder=""/>
           </div>
           <div class="fi"><label>קומה</label>
-            <input id="aFl" type="text" placeholder="1"/>
+            <input id="aFl" type="text" placeholder="1" oninput="renderMiniMap()" onblur="setTimeout(hideMiniMap,300)"/>
+          </div>
+          <div class="fi full" id="miniMapWrap" style="display:none;">
+            <canvas id="miniMapCanvas" style="width:100%;height:160px;border-radius:10px;border:1px solid var(--accent);display:block;"></canvas>
           </div>
           <div class="fi full"><label>🌾 מחסן חקלאות</label>
             <input id="aAgr" type="hidden" value=""/>
@@ -2015,6 +2018,65 @@ function doBulkMove(){
 /* SORT / FILTER */
 function sortBy(c){sortCol===c?sortDir*=-1:(sortCol=c,sortDir=1);renderTable();}
 function applyFilters(){ currentPage=0;renderTable();}
+function hideMiniMap(){
+  const w=document.getElementById('miniMapWrap');
+  if(w) w.style.display='none';
+}
+function renderMiniMap(){
+  const col=(document.getElementById('aCo')||{}).value||'';
+  const fl=(document.getElementById('aFl')||{}).value||'';
+  const wrap=document.getElementById('miniMapWrap');
+  const cv=document.getElementById('miniMapCanvas');
+  if(!wrap||!cv||!cages.length) return;
+  if(!col){wrap.style.display='none';return;}
+  wrap.style.display='';
+  const W=cv.offsetWidth||300, H=160;
+  cv.width=W; cv.height=H;
+  const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#0a0c12'; ctx.fillRect(0,0,W,H);
+
+  // מצא את הכלוב המבוקש
+  const target=cages.find(g=>String(g.name)===String(col)&&(!fl||String(g.floor)===String(fl)))
+              || cages.find(g=>String(g.name)===String(col));
+
+  // חשב scale כדי שכל הכלובים יכנסו
+  const xs=cages.map(g=>g.x), ys=cages.map(g=>g.y);
+  const minX=Math.min(...xs), maxX=Math.max(...xs)+1;
+  const minY=Math.min(...ys), maxY=Math.max(...ys)+1;
+  const pad=20;
+  const sc=Math.min((W-pad*2)/((maxX-minX)*1)||1,(H-pad*2)/((maxY-minY)*1)||1,40);
+
+  const offX=pad-minX*sc+(W-pad*2-(maxX-minX)*sc)/2;
+  const offY=pad-minY*sc+(H-pad*2-(maxY-minY)*sc)/2;
+
+  cages.forEach(g=>{
+    const px=offX+g.x*sc, py=offY+g.y*sc;
+    const isTarget=target&&g.id===target.id;
+    ctx.fillStyle=isTarget?'rgba(255,200,0,0.35)':'#191d28';
+    ctx.strokeStyle=isTarget?'#ffd700':( g.floor==='1'?'#4a9eff':g.floor==='2'?'#3ecf8e':'#f5a623');
+    ctx.lineWidth=isTarget?3:1;
+    ctx.beginPath();
+    const r=3;
+    ctx.moveTo(px+r,py); ctx.lineTo(px+sc-r,py);
+    ctx.quadraticCurveTo(px+sc,py,px+sc,py+r);
+    ctx.lineTo(px+sc,py+sc-r);
+    ctx.quadraticCurveTo(px+sc,py+sc,px+sc-r,py+sc);
+    ctx.lineTo(px+r,py+sc);
+    ctx.quadraticCurveTo(px,py+sc,px,py+sc-r);
+    ctx.lineTo(px,py+r);
+    ctx.quadraticCurveTo(px,py,px+r,py);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    if(sc>18){
+      ctx.fillStyle=isTarget?'#ffd700':'#7a8299';
+      ctx.font=`bold ${Math.min(10,sc/2.5)}px Heebo`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(g.name||'?',px+sc/2,py+sc/2);
+    }
+  });
+}
+window.renderMiniMap=renderMiniMap;
+window.hideMiniMap=hideMiniMap;
 function showBrandDrop(inp){
   const q=(inp.value||'').toUpperCase().trim();
   const fromItems=[...new Set(items.map(i=>i.brand).filter(Boolean))];
