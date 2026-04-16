@@ -774,7 +774,10 @@ if('serviceWorker' in navigator){
       <span style="color:var(--text);font-weight:600;">זוהה: </span><span id="voiceText"></span>
     </div>
     <div class="fg">
-      <div class="fi full"><label>🏷️ מותג *</label><input id="aBr" type="text" placeholder="שם מותג" list="brandList" autocomplete="off" oninput="updateAutoComplete()"/><datalist id="brandList"></datalist></div>
+      <div class="fi full"><label>🏷️ מותג *</label><input id="aBr" type="text" placeholder="שם מותג" autocomplete="off"
+        onfocus="showBrandDrop(this)" oninput="showBrandDrop(this);updateAutoComplete()"
+        onblur="setTimeout(()=>{const d=document.getElementById('brandDrop');if(d)d.style.display='none'},200)"/>
+      </div>
       <div class="fi full"><label>🔖 תיאור פריט</label><input id="aMo" type="text" placeholder="בחר תיאור מהרשימה או הקלד" autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false" lang="en" list="modelList" oninput="onDescInput(this)"/><datalist id="modelList"></datalist></div>
       <div class="fi full" style="display:flex;gap:8px;align-items:flex-end;">
         <div style="flex:1;">
@@ -2078,6 +2081,7 @@ function renderMiniMap(){
 window.renderMiniMap=renderMiniMap;
 window.hideMiniMap=hideMiniMap;
 function showBrandDrop(inp){
+  const id=inp.id;
   const q=(inp.value||'').toUpperCase().trim();
   const fromItems=[...new Set(items.map(i=>i.brand).filter(Boolean))];
   const all=[...new Set([...fromItems,...KNOWN_BRANDS])].sort();
@@ -2088,8 +2092,9 @@ function showBrandDrop(inp){
   drop.style.left=rect.left+'px';
   drop.style.top=rect.bottom+'px';
   drop.style.width=rect.width+'px';
+  const extra=id==='fBrand'?';applyFilters()':'';
   drop.innerHTML=filtered.length
-    ? filtered.map(b=>`<div onmousedown="document.getElementById('fBrand').value='${b.replace(/'/g,"\\'")}';applyFilters();document.getElementById('brandDrop').style.display='none'"
+    ? filtered.map(b=>`<div onmousedown="document.getElementById('${id}').value='${b.replace(/'/g,"\\'")}';document.getElementById('brandDrop').style.display='none'${extra};if(typeof updateAutoComplete==='function')updateAutoComplete()"
         style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border)"
         onmouseenter="this.style.background='var(--border2)'" onmouseleave="this.style.background=''">${b}</div>`).join('')
     : '<div style="padding:8px 12px;color:var(--muted);font-size:13px">אין תוצאות</div>';
