@@ -523,6 +523,7 @@ if('serviceWorker' in navigator){
   <button class="btn-clear" onclick="clearFilters()">✕ נקה</button>
 </div>
 <div id="brandDrop" style="display:none;position:fixed;z-index:9999;background:var(--card);border:1px solid var(--accent);border-radius:0 0 8px 8px;max-height:220px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.5);"></div>
+<div id="descDrop" style="display:none;position:fixed;z-index:9999;background:var(--card);border:1px solid var(--accent);border-radius:0 0 8px 8px;max-height:260px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.5);"></div>
 
 <!-- SEARCH BAR -->
 <div style="padding:10px 12px;background:var(--bg);border-bottom:1px solid var(--border);">
@@ -778,7 +779,10 @@ if('serviceWorker' in navigator){
         onfocus="showBrandDrop(this)" oninput="showBrandDrop(this);updateAutoComplete()"
         onblur="setTimeout(()=>{const d=document.getElementById('brandDrop');if(d)d.style.display='none'},200)"/>
       </div>
-      <div class="fi full"><label>🔖 תיאור פריט</label><input id="aMo" type="text" placeholder="בחר תיאור מהרשימה או הקלד" autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false" lang="en" list="modelList" oninput="onDescInput(this)"/><datalist id="modelList"></datalist></div>
+      <div class="fi full"><label>🔖 תיאור פריט</label><input id="aMo" type="text" placeholder="בחר תיאור מהרשימה או הקלד" autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false" lang="en"
+        onfocus="showDescDrop(this)" oninput="showDescDrop(this);onDescInput(this)"
+        onblur="setTimeout(()=>{const d=document.getElementById('descDrop');if(d)d.style.display='none'},200)"/>
+      </div>
       <div class="fi full" style="display:flex;gap:8px;align-items:flex-end;">
         <div style="flex:1;">
           <label>🔢 קוד פריט <span style="color:var(--muted);font-size:10px;font-weight:400;">(מתמלא אוטומטי)</span></label>
@@ -2101,6 +2105,28 @@ function showBrandDrop(inp){
   drop.style.display='block';
 }
 window.showBrandDrop=showBrandDrop;
+function showDescDrop(inp){
+  const q=(inp.value||'').trim().toUpperCase();
+  const sb=(document.getElementById('aBr')||{}).value.trim().toUpperCase();
+  let pairs;
+  if(sb && KNOWN_ITEMS_BY_BRAND[sb]) pairs=KNOWN_ITEMS_BY_BRAND[sb];
+  else if(sb) pairs=Object.entries(KNOWN_ITEMS_BY_BRAND).filter(([b])=>b.includes(sb)||sb.includes(b.slice(0,4))).flatMap(([,v])=>v);
+  else pairs=_getAllDescPairs();
+  const filtered=q ? pairs.filter(([d])=>d.toUpperCase().includes(q)).slice(0,60) : pairs.slice(0,60);
+  const drop=document.getElementById('descDrop');
+  if(!drop)return;
+  const rect=inp.getBoundingClientRect();
+  drop.style.left=rect.left+'px';
+  drop.style.top=rect.bottom+'px';
+  drop.style.width=rect.width+'px';
+  drop.innerHTML=filtered.length
+    ? filtered.map(([d])=>`<div onmousedown="document.getElementById('aMo').value='${d.replace(/'/g,"\\'").replace(/"/g,'&quot;')}';document.getElementById('descDrop').style.display='none';onDescInput(document.getElementById('aMo'))"
+        style="padding:8px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--border);font-family:monospace"
+        onmouseenter="this.style.background='var(--border2)'" onmouseleave="this.style.background=''">${d}</div>`).join('')
+    : '<div style="padding:8px 12px;color:var(--muted);font-size:13px">אין תוצאות</div>';
+  drop.style.display='block';
+}
+window.showDescDrop=showDescDrop;
 function _brandFilter(inp){
   applyFilters();
   const q=(inp.value||'').trim().toUpperCase();
