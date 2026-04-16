@@ -1187,6 +1187,21 @@ function switchView(n,el){
     // כפתור חזרה
     showBackBtn(n);
     if(n==='warehouse'){
+      // הבהוב לפי חיפוש פעיל
+      const _q=(document.getElementById('mainSearch')?.value||'').trim().toLowerCase();
+      const _fb=(document.getElementById('fBrand')?.value||'').trim().toLowerCase();
+      const _fs=(document.getElementById('fSize')?.value||'').trim();
+      if(_q||_fb||_fs){
+        whBlinkCols=new Set(items.filter(it=>{
+          if(_fb&&!(it.brand||'').toLowerCase().startsWith(_fb))return false;
+          if(_fs&&sz(it)!==_fs)return false;
+          if(_q){const t=[it.brand,sz(it),it.model,it.col].filter(Boolean).join(' ').toLowerCase();if(!t.includes(_q))return false;}
+          return true;
+        }).map(it=>String(it.col)));
+        if(whBlinkCols.size>0) startWhBlink();
+      } else {
+        stopWhBlink();
+      }
       // טען מפה שמורה אם cages ריק
       if(cages.length===0){
         const saved=localStorage.getItem('tirewms_map2');
@@ -1196,6 +1211,7 @@ function switchView(n,el){
     }
     if(n==='mapEditor'){ setTimeout(initMapEditor, 50); }
   } else {
+    stopWhBlink();
     // מלאי / דשבורד — הצג הכל
     document.querySelector('.topbar').style.display='';
     document.querySelector('.filters-row').style.display='';
@@ -2780,6 +2796,16 @@ function hebrewToNum(str){
 
 /* ══ MAP EDITOR ══ */
 let cages=[], walls=[], mapHistory=[];
+let whBlinkCols=new Set(), _whBlinkRAF=null;
+function startWhBlink(){
+  if(_whBlinkRAF) return;
+  function loop(){ drawMap(); _whBlinkRAF=requestAnimationFrame(loop); }
+  _whBlinkRAF=requestAnimationFrame(loop);
+}
+function stopWhBlink(){
+  if(_whBlinkRAF){cancelAnimationFrame(_whBlinkRAF);_whBlinkRAF=null;}
+  whBlinkCols=new Set();
+}
 let selectedCageId=null, nextCageId=1;
 let mapTool='wall';
 let isDrawing=false, drawStart=null, drawCurrent=null;
@@ -3400,6 +3426,8 @@ function drawMap(){
     const pw=mapScale,ph=mapScale;
     const isSel=g.id===selectedCageId;
     const hasItems=items.some(it=>String(it.col)===String(g.name)&&it.floor===g.floor);
+    const isBlink=whBlinkCols.size>0&&whBlinkCols.has(String(g.name));
+    const blinkOn=isBlink&&Math.floor(Date.now()/350)%2===0;
     const cnt=hasItems?items.filter(it=>String(it.col)===String(g.name)&&it.floor===g.floor).length:0;
 
     // צל
@@ -3433,6 +3461,26 @@ function drawMap(){
     ctx.quadraticCurveTo(cx,cy,cx+r,cy);
     ctx.closePath();ctx.fill();ctx.stroke();
     ctx.shadowBlur=0;
+
+    // הבהוב כלוב מחיפוש
+    if(isBlink){
+      ctx.globalAlpha=blinkOn?0.7:0.15;
+      ctx.fillStyle='#ffd700';
+      ctx.shadowColor='#ffd700'; ctx.shadowBlur=blinkOn?24:0;
+      const rb=6;
+      ctx.beginPath();
+      ctx.moveTo(cx+rb,cy);ctx.lineTo(cx+pw-rb,cy);
+      ctx.quadraticCurveTo(cx+pw,cy,cx+pw,cy+rb);
+      ctx.lineTo(cx+pw,cy+ph-rb);
+      ctx.quadraticCurveTo(cx+pw,cy+ph,cx+pw-rb,cy+ph);
+      ctx.lineTo(cx+rb,cy+ph);
+      ctx.quadraticCurveTo(cx,cy+ph,cx,cy+ph-rb);
+      ctx.lineTo(cx,cy+rb);
+      ctx.quadraticCurveTo(cx,cy,cx+rb,cy);
+      ctx.closePath();ctx.fill();
+      ctx.shadowBlur=0;
+      ctx.globalAlpha=1;
+    }
 
     // שם עמודה
     const isMultiSel=selectedCages.includes(g.id)&&g.id!==selectedCageId;
