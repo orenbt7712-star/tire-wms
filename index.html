@@ -2019,7 +2019,7 @@ function showBrandDrop(inp){
   const q=(inp.value||'').toUpperCase().trim();
   const fromItems=[...new Set(items.map(i=>i.brand).filter(Boolean))];
   const all=[...new Set([...fromItems,...KNOWN_BRANDS])].sort();
-  const filtered=q?all.filter(b=>b.toUpperCase().includes(q)):all;
+  const filtered=q?all.filter(b=>b.toUpperCase().startsWith(q)):all;
   const drop=document.getElementById('brandDrop');
   if(!drop)return;
   const rect=inp.getBoundingClientRect();
