@@ -1216,13 +1216,14 @@ function switchView(n,el){
       } else {
         stopWhBlink();
       }
-      // טען מפה שמורה אם cages ריק
+      // טען מפה שמורה — אם גרסה ישנה, ייצר מחדש
+      const _MAP_VER='layout-2026-v3';
       if(cages.length===0){
         const saved=localStorage.getItem('tirewms_map2');
         if(saved){ try{ const d=JSON.parse(saved); cages=d.cages||[]; walls=d.walls||[]; nextCageId=d.nextId||1; }catch(e){} }
-        // אם המפה ישנה (ללא p1/p2) — ייצר מחדש אוטומטית
-        const isOldFormat=cages.length>0 && !cages.some(g=>g.p1!==undefined||g.p2!==undefined);
-        if(cages.length===0||isOldFormat){ generateWarehouseLayout(true); return; }
+        if(cages.length===0||localStorage.getItem('tirewms_map_ver')!==_MAP_VER){
+          generateWarehouseLayout(true); return;
+        }
       }
       setTimeout(()=>{renderWarehouse();if(cages.length>0)whCenter();},50);
     }
@@ -4120,8 +4121,9 @@ function generateWarehouseLayout(silent){
   };
 
   selectedCageId=null; selectedCages=[];
-  // שמירה מיידית לא דחויה
+  // שמירה מיידית לא דחויה + סימון גרסה
   localStorage.setItem('tirewms_map2',JSON.stringify({cages,walls,nextId:nextCageId}));
+  localStorage.setItem('tirewms_map_ver','layout-2026-v3');
   if(silent){
     setTimeout(()=>{if(typeof renderWarehouse==='function'){renderWarehouse();whCenter();}},50);
   } else {
