@@ -1220,6 +1220,7 @@ function switchView(n,el){
       if(cages.length===0){
         const saved=localStorage.getItem('tirewms_map2');
         if(saved){ try{ const d=JSON.parse(saved); cages=d.cages||[]; walls=d.walls||[]; nextCageId=d.nextId||1; }catch(e){} }
+        if(cages.length===0){ generateWarehouseLayout(true); return; }
       }
       setTimeout(()=>{renderWarehouse();if(cages.length>0)whCenter();},50);
     }
@@ -4013,9 +4014,9 @@ window._updateItems = function(newItems, newNextId){
 };
 window.addCage = addCage;
 window.rotateCage = rotateCage;
-function generateWarehouseLayout(){
-  if(!confirm('פעולה זו תמחק את המפה הנוכחית ותייצר מפת מחסן חדשה לפי נתוני המחסן. להמשיך?')) return;
-  pushMapHistory();
+function generateWarehouseLayout(silent){
+  if(!silent && !confirm('פעולה זו תמחק את המפה הנוכחית ותייצר מפת מחסן חדשה לפי נתוני המחסן. להמשיך?')) return;
+  if(!silent) pushMapHistory();
   cages=[]; walls=[]; nextCageId=1;
   let col=1;
 
@@ -4108,8 +4109,12 @@ function generateWarehouseLayout(){
 
   selectedCageId=null; selectedCages=[];
   _scheduleAutoSave();
-  setTimeout(()=>{centerMap();drawMap();},50);
-  toast('✅ מפת מחסן נוצרה! '+(cages.length/3|0)+' מיקומים · '+(cages.length)+' כלובים');
+  if(silent){
+    setTimeout(()=>{if(typeof renderWarehouse==='function'){renderWarehouse();whCenter();}},50);
+  } else {
+    setTimeout(()=>{centerMap();drawMap();},50);
+    toast('✅ מפת מחסן נוצרה! '+(cages.length/3|0)+' מיקומים · '+(cages.length)+' כלובים');
+  }
 }
 window.generateWarehouseLayout = generateWarehouseLayout;
 
