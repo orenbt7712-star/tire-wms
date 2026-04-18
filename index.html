@@ -3032,10 +3032,18 @@ function zoomOut(){ mapScale=Math.max(10,mapScale*0.8); drawMap(); }
 function centerMap(){
   if(cages.length===0){ mapOffX=50; mapOffY=50; mapScale=40; drawMap(); return; }
   const xs=cages.map(g=>g.x), ys=cages.map(g=>g.y);
-  const minX=Math.min(...xs), minY=Math.min(...ys);
+  const minX=Math.min(...xs), maxX=Math.max(...xs);
+  const minY=Math.min(...ys), maxY=Math.max(...ys);
   const cv=document.getElementById('mapCanvas');
-  mapOffX = cv ? cv.width/2 - minX*mapScale : 14;
-  mapOffY = cv ? cv.height/2 - minY*mapScale : 14;
+  if(!cv){ drawMap(); return; }
+  const pad=40;
+  const scaleX=(cv.width -pad*2)/((maxX-minX+1)*mapScale);
+  const scaleY=(cv.height-pad*2)/((maxY-minY+1)*mapScale);
+  const fit=Math.min(scaleX,scaleY,1);
+  mapScale=Math.max(8,Math.min(60,mapScale*fit));
+  const midX=(minX+maxX)/2, midY=(minY+maxY)/2;
+  mapOffX=cv.width/2  - midX*mapScale;
+  mapOffY=cv.height/2 - midY*mapScale;
   drawMap();
 }
 
@@ -8645,8 +8653,18 @@ function whZoomOut(){ whScale=Math.max(8,whScale*0.8); renderWarehouse(); }
 function whCenter(){
   const cv=document.getElementById('whCanvas');
   if(!cv) return;
-  if(cages.length===0){ whOffX=14; whOffY=14; whScale=20; }
-  else { const xs=cages.map(g=>g.x),ys=cages.map(g=>g.y); whOffX=cv.width/2-Math.min(...xs)*whScale; whOffY=cv.height/2-Math.min(...ys)*whScale; }
+  if(cages.length===0){ whOffX=14; whOffY=14; whScale=20; renderWarehouse(); return; }
+  const xs=cages.map(g=>g.x), ys=cages.map(g=>g.y);
+  const minX=Math.min(...xs), maxX=Math.max(...xs);
+  const minY=Math.min(...ys), maxY=Math.max(...ys);
+  const pad=32;
+  const scaleX=(cv.width -pad*2)/((maxX-minX+1)*whScale);
+  const scaleY=(cv.height-pad*2)/((maxY-minY+1)*whScale);
+  const fit=Math.min(scaleX,scaleY);
+  whScale=Math.max(8,Math.min(60,whScale*fit));
+  const midX=(minX+maxX)/2, midY=(minY+maxY)/2;
+  whOffX=cv.width/2  - midX*whScale;
+  whOffY=cv.height/2 - midY*whScale;
   renderWarehouse();
 }
 
