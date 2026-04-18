@@ -1220,7 +1220,9 @@ function switchView(n,el){
       if(cages.length===0){
         const saved=localStorage.getItem('tirewms_map2');
         if(saved){ try{ const d=JSON.parse(saved); cages=d.cages||[]; walls=d.walls||[]; nextCageId=d.nextId||1; }catch(e){} }
-        if(cages.length===0){ generateWarehouseLayout(true); return; }
+        // אם המפה ישנה (ללא p1/p2) — ייצר מחדש אוטומטית
+        const isOldFormat=cages.length>0 && !cages.some(g=>g.p1!==undefined||g.p2!==undefined);
+        if(cages.length===0||isOldFormat){ generateWarehouseLayout(true); return; }
       }
       setTimeout(()=>{renderWarehouse();if(cages.length>0)whCenter();},50);
     }
@@ -4118,7 +4120,8 @@ function generateWarehouseLayout(silent){
   };
 
   selectedCageId=null; selectedCages=[];
-  _scheduleAutoSave();
+  // שמירה מיידית לא דחויה
+  localStorage.setItem('tirewms_map2',JSON.stringify({cages,walls,nextId:nextCageId}));
   if(silent){
     setTimeout(()=>{if(typeof renderWarehouse==='function'){renderWarehouse();whCenter();}},50);
   } else {
