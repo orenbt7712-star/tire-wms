@@ -1217,7 +1217,7 @@ function switchView(n,el){
         stopWhBlink();
       }
       // טען מפה שמורה — אם גרסה ישנה, ייצר מחדש
-      const _MAP_VER='layout-2026-v3';
+      const _MAP_VER='layout-2026-v4';
       if(cages.length===0){
         const saved=localStorage.getItem('tirewms_map2');
         if(saved){ try{ const d=JSON.parse(saved); cages=d.cages||[]; walls=d.walls||[]; nextCageId=d.nextId||1; }catch(e){} }
@@ -4034,7 +4034,7 @@ function generateWarehouseLayout(silent){
   // Helper: מוסיף שורות עם p1 (ימין) או p2 (שמאל)
   // rowNums = מערך מספרי שורות, cols = כמות עמודות, side = 'right'|'left'
   // x0,y0 = נקודת התחלה על הקנבס, pn1val/pn2val = 'כן'|''
-  function addRows(x0, y0, rowNums, cols, side, pn1val, pn2val){
+  function addRows(x0, y0, rowNums, cols, side, pn1val, pn2val, sec){
     rowNums.forEach((rowNum, ri) => {
       for(let c=0; c<cols; c++){
         const xPos = side==='right' ? x0+c : x0+(cols-1-c);
@@ -4050,6 +4050,7 @@ function generateWarehouseLayout(silent){
             p2:  side==='left'  ? String(rowNum) : '',
             pn1: pn1val||'',
             pn2: pn2val||'',
+            section: sec||'',
           });
         }
       }
@@ -4073,12 +4074,12 @@ function generateWarehouseLayout(silent){
   // ימין: שורות 62,64,...,80 — 10 שורות × 9 עמודות
   addRows(8, 16,
     [62,64,66,68,70,72,74,76,78,80],
-    9, 'right', '', '');
+    9, 'right', '', '', 'between');
 
   // שמאל: שורות 43,45,...,61 — 10 שורות × 9 עמודות
   addRows(0, 16,
     [43,45,47,49,51,53,55,57,59,61],
-    9, 'left', '', '');
+    9, 'left', '', '', 'between');
 
   // ══ פניה א' ══  (y=28..)
   // ימין: שורות 34,36,...,60 — 14 שורות × 8 עמודות
@@ -4123,7 +4124,7 @@ function generateWarehouseLayout(silent){
   selectedCageId=null; selectedCages=[];
   // שמירה מיידית לא דחויה + סימון גרסה
   localStorage.setItem('tirewms_map2',JSON.stringify({cages,walls,nextId:nextCageId}));
-  localStorage.setItem('tirewms_map_ver','layout-2026-v3');
+  localStorage.setItem('tirewms_map_ver','layout-2026-v4');
   if(silent){
     setTimeout(()=>{if(typeof renderWarehouse==='function'){renderWarehouse();whCenter();}},50);
   } else {
@@ -8708,12 +8709,12 @@ function renderWarehouse(){
   // ═══ כותרות אזורים (מחושב לפני הכלובים) ═══
   const _secBuckets={};
   cages.filter(g=>g.floor==='1').forEach(g=>{
-    const k=g.section==='rahava'?'rahava':g.pn2==='כן'?'turn2':g.pn1==='כן'?'turn1':'main';
+    const k=g.section==='rahava'?'rahava':g.section==='between'?'between':g.pn2==='כן'?'turn2':g.pn1==='כן'?'turn1':'main';
     if(!_secBuckets[k]){_secBuckets[k]={minX:g.x,maxX:g.x,minY:g.y,maxY:g.y};}
     else{_secBuckets[k].minX=Math.min(_secBuckets[k].minX,g.x);_secBuckets[k].maxX=Math.max(_secBuckets[k].maxX,g.x);_secBuckets[k].minY=Math.min(_secBuckets[k].minY,g.y);_secBuckets[k].maxY=Math.max(_secBuckets[k].maxY,g.y);}
   });
-  const _secLbl={main:'🏭 מחסן ראשי',turn1:'↩ פניה א׳',turn2:'↩ פניה ב׳',rahava:'📦 רחבה'};
-  const _secClr={main:'#4a9eff',turn1:'#3ecf8e',turn2:'#f5a623',rahava:'#a068f0'};
+  const _secLbl={main:'🏭 מחסן ראשי',between:'↔ מעבר',turn1:'↩ פניה א׳',turn2:'↩ פניה ב׳',rahava:'📦 רחבה'};
+  const _secClr={main:'#4a9eff',between:'#4a9eff',turn1:'#3ecf8e',turn2:'#f5a623',rahava:'#a068f0'};
   Object.entries(_secBuckets).forEach(([k,s])=>{
     const cx=whOffX+((s.minX+s.maxX)/2+0.5)*whScale;
     const cy=whOffY+s.minY*whScale-10;
@@ -8728,8 +8729,8 @@ function renderWarehouse(){
   });
 
   // ═══ כלובים ═══
-  const _secFill={main:'#111928',turn1:'#0e1f16',turn2:'#1c1408',rahava:'#1a1030'};
-  const _secStroke={main:'#1e3060',turn1:'#1e4030',turn2:'#50301a',rahava:'#402060'};
+  const _secFill={main:'#111928',between:'#0e1520',turn1:'#0e1f16',turn2:'#1c1408',rahava:'#1a1030'};
+  const _secStroke={main:'#1e3060',between:'#1a2850',turn1:'#1e4030',turn2:'#50301a',rahava:'#402060'};
   const _flrClr={'1':'#4a9eff','2':'#3ecf8e','3':'#f5a623'};
   const vis=whFloorFilter===0?cages:cages.filter(g=>String(g.floor)===String(whFloorFilter));
   vis.forEach(g=>{
@@ -8748,7 +8749,7 @@ function renderWarehouse(){
     const has=ci.length>0;
     const fm=whFloorFilter===0||String(g.floor)===String(whFloorFilter);
     ctx.globalAlpha=fm?1:0.12;
-    const secKey=g.section==='rahava'?'rahava':g.pn2==='כן'?'turn2':g.pn1==='כן'?'turn1':'main';
+    const secKey=g.section==='rahava'?'rahava':g.section==='between'?'between':g.pn2==='כן'?'turn2':g.pn1==='כן'?'turn1':'main';
     const flrC=_flrClr[g.floor]||'#4a9eff';
     ctx.fillStyle=has?`${flrC}33`:_secFill[secKey];
     ctx.strokeStyle=has?flrC:_secStroke[secKey];
