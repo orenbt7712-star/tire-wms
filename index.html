@@ -8652,17 +8652,21 @@ function whZoomIn(){ whScale=Math.min(80,whScale*1.25); renderWarehouse(); }
 function whZoomOut(){ whScale=Math.max(8,whScale*0.8); renderWarehouse(); }
 function whCenter(){
   const cv=document.getElementById('whCanvas');
+  const wrap=document.getElementById('whMapWrap');
   if(!cv) return;
-  if(cages.length===0){ whOffX=14; whOffY=14; whScale=20; renderWarehouse(); return; }
+  // resize first so dimensions are correct
+  if(wrap){ cv.width=wrap.clientWidth||window.innerWidth; cv.height=wrap.clientHeight||(window.innerHeight-180); }
+  if(cages.length===0){ whOffX=14; whOffY=14; whScale=16; renderWarehouse(); return; }
   const xs=cages.map(g=>g.x), ys=cages.map(g=>g.y);
   const minX=Math.min(...xs), maxX=Math.max(...xs);
   const minY=Math.min(...ys), maxY=Math.max(...ys);
-  const pad=32;
-  const scaleX=(cv.width -pad*2)/((maxX-minX+1)*whScale);
-  const scaleY=(cv.height-pad*2)/((maxY-minY+1)*whScale);
-  const fit=Math.min(scaleX,scaleY);
-  whScale=Math.max(8,Math.min(60,whScale*fit));
-  const midX=(minX+maxX)/2, midY=(minY+maxY)/2;
+  const pad=48;
+  // חישוב scale אבסולוטי — fit-to-screen
+  whScale=Math.max(6,Math.min(40,Math.min(
+    (cv.width -pad*2)/(maxX-minX+2),
+    (cv.height-pad*2)/(maxY-minY+2)
+  )));
+  const midX=(minX+maxX+1)/2, midY=(minY+maxY+1)/2;
   whOffX=cv.width/2  - midX*whScale;
   whOffY=cv.height/2 - midY*whScale;
   renderWarehouse();
@@ -8691,32 +8695,40 @@ function renderWarehouse(){
   ctx.clearRect(0,0,cv.width,cv.height);
   ctx.fillStyle='#0a0c12'; ctx.fillRect(0,0,cv.width,cv.height);
 
-  const CW=1.2*whScale, CH=0.6*whScale, SH=CH/3;
-  const sc=Math.floor(-whOffX/CW)-1, sr=Math.floor(-whOffY/CH)-1;
-  const ec=sc+Math.ceil(cv.width/CW)+2, er=sr+Math.ceil(cv.height/CH)+2;
+  // ═══ רקע ═══
+  ctx.fillStyle='#0d1117'; ctx.fillRect(0,0,cv.width,cv.height);
 
-  for(let row=sr;row<=er;row++){
-    for(let col=sc;col<=ec;col++){
-      const px=whOffX+col*CW, py=whOffY+row*CH;
-      ctx.fillStyle='#0e1018'; ctx.fillRect(px+1,py+1,CW-2,CH-2);
-      const fc=['rgba(74,158,255,0.08)','rgba(62,207,142,0.08)','rgba(245,166,35,0.08)'];
-      const fb=['rgba(74,158,255,0.3)','rgba(62,207,142,0.3)','rgba(245,166,35,0.3)'];
-      for(let f=0;f<3;f++){
-        const fy=py+f*SH;
-        ctx.fillStyle=fc[f]; ctx.fillRect(px+1,fy+0.5,CW-2,SH-1);
-        if(f>0){ ctx.strokeStyle=fb[f]; ctx.lineWidth=0.5; ctx.beginPath(); ctx.moveTo(px+3,fy); ctx.lineTo(px+CW-3,fy); ctx.stroke(); }
-      }
-      ctx.strokeStyle='rgba(245,166,35,0.25)'; ctx.lineWidth=1;
-      ctx.strokeRect(px+0.5,py+0.5,CW-1,CH-1);
-      if(CW>30&&col>=0&&row>=0){ ctx.fillStyle='rgba(245,166,35,0.35)'; ctx.font='8px Heebo'; ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillText(col+1,px+CW/2,py+1); }
-    }
-  }
+  // ═══ כותרות אזורים (מחושב לפני הכלובים) ═══
+  const _secBuckets={};
+  cages.filter(g=>g.floor==='1').forEach(g=>{
+    const k=g.section==='rahava'?'rahava':g.pn2==='כן'?'turn2':g.pn1==='כן'?'turn1':'main';
+    if(!_secBuckets[k]){_secBuckets[k]={minX:g.x,maxX:g.x,minY:g.y,maxY:g.y};}
+    else{_secBuckets[k].minX=Math.min(_secBuckets[k].minX,g.x);_secBuckets[k].maxX=Math.max(_secBuckets[k].maxX,g.x);_secBuckets[k].minY=Math.min(_secBuckets[k].minY,g.y);_secBuckets[k].maxY=Math.max(_secBuckets[k].maxY,g.y);}
+  });
+  const _secLbl={main:'🏭 מחסן ראשי',turn1:'↩ פניה א׳',turn2:'↩ פניה ב׳',rahava:'📦 רחבה'};
+  const _secClr={main:'#4a9eff',turn1:'#3ecf8e',turn2:'#f5a623',rahava:'#a068f0'};
+  Object.entries(_secBuckets).forEach(([k,s])=>{
+    const cx=whOffX+((s.minX+s.maxX)/2+0.5)*whScale;
+    const cy=whOffY+s.minY*whScale-10;
+    if(cy<-30||cy>cv.height+30) return;
+    const fs=Math.max(9,Math.min(15,whScale*0.75));
+    ctx.save();
+    ctx.font=`bold ${fs}px Heebo`; ctx.textAlign='center'; ctx.textBaseline='bottom';
+    ctx.shadowColor='#000'; ctx.shadowBlur=5;
+    ctx.fillStyle=_secClr[k]||'#ccc';
+    ctx.fillText(_secLbl[k]||k, cx, cy);
+    ctx.restore();
+  });
 
-  // כלובים
+  // ═══ כלובים ═══
+  const _secFill={main:'#111928',turn1:'#0e1f16',turn2:'#1c1408',rahava:'#1a1030'};
+  const _secStroke={main:'#1e3060',turn1:'#1e4030',turn2:'#50301a',rahava:'#402060'};
+  const _flrClr={'1':'#4a9eff','2':'#3ecf8e','3':'#f5a623'};
   const vis=whFloorFilter===0?cages:cages.filter(g=>String(g.floor)===String(whFloorFilter));
   vis.forEach(g=>{
     const px=whOffX+g.x*whScale, py=whOffY+g.y*whScale;
     const pw=whScale, ph=whScale;
+    if(px+pw<-2||px>cv.width+2||py+ph<-2||py>cv.height+2) return; // clip
     const ci=items.filter(it=>{
       if(String(it.col)!==String(g.name)) return false;
       if(String(it.floor||'1')!==String(g.floor)) return false;
@@ -8728,27 +8740,43 @@ function renderWarehouse(){
     });
     const has=ci.length>0;
     const fm=whFloorFilter===0||String(g.floor)===String(whFloorFilter);
-    ctx.globalAlpha=fm?1:0.2;
-    const fc2={'1':'rgba(74,158,255,0.2)','2':'rgba(62,207,142,0.2)','3':'rgba(245,166,35,0.2)'};
-    ctx.fillStyle=has?(fc2[String(g.floor)]||'rgba(62,207,142,0.2)'):'#191d28';
-    ctx.strokeStyle=has?(g.floor==='1'?'#4a9eff':g.floor==='2'?'#3ecf8e':'#f5a623'):'#2a3045';
-    ctx.lineWidth=has?2:1;
-    const r=4;
+    ctx.globalAlpha=fm?1:0.12;
+    const secKey=g.section==='rahava'?'rahava':g.pn2==='כן'?'turn2':g.pn1==='כן'?'turn1':'main';
+    const flrC=_flrClr[g.floor]||'#4a9eff';
+    ctx.fillStyle=has?`${flrC}33`:_secFill[secKey];
+    ctx.strokeStyle=has?flrC:_secStroke[secKey];
+    ctx.lineWidth=has?1.5:0.8;
+    const r=Math.min(3,pw*0.18);
     ctx.beginPath();
     ctx.moveTo(px+r,py); ctx.lineTo(px+pw-r,py);
-    ctx.quadraticCurveTo(px+pw,py,px+pw,py+r);
+    ctx.arcTo(px+pw,py,px+pw,py+r,r);
     ctx.lineTo(px+pw,py+ph-r);
-    ctx.quadraticCurveTo(px+pw,py+ph,px+pw-r,py+ph);
+    ctx.arcTo(px+pw,py+ph,px+pw-r,py+ph,r);
     ctx.lineTo(px+r,py+ph);
-    ctx.quadraticCurveTo(px,py+ph,px,py+ph-r);
+    ctx.arcTo(px,py+ph,px,py+ph-r,r);
     ctx.lineTo(px,py+r);
-    ctx.quadraticCurveTo(px,py,px+r,py);
+    ctx.arcTo(px,py,px+r,py,r);
     ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.fillStyle=has?(g.floor==='1'?'#4a9eff':g.floor==='2'?'#3ecf8e':'#f5a623'):'#7a8299';
-    ctx.font=`bold ${Math.min(12,pw/2.5)}px Heebo`; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText(g.name||'?',px+pw/2,py+ph/2-(g.floor&&pw>25?6:0));
-    if(g.floor&&pw>25){ ctx.fillStyle='rgba(255,255,255,0.35)'; ctx.font='7px Heebo'; ctx.fillText('קו׳'+g.floor,px+pw/2,py+ph/2+6); }
-    if(has){ ctx.fillStyle=g.floor==='1'?'#4a9eff':g.floor==='2'?'#3ecf8e':'#f5a623'; ctx.beginPath(); ctx.arc(px+pw-5,py+5,7,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#0a0c12'; ctx.font='bold 8px Heebo'; ctx.fillText(ci.length,px+pw-5,py+5); }
+    // תווית
+    if(pw>=10){
+      const rowN=g.p1||g.p2||(g.section==='rahava'&&g.rahavaRow?'ר'+g.rahavaRow:'');
+      const colN=g.name||'?';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      if(pw>=20&&rowN){
+        // שורה גדולה — שורה+עמ׳
+        ctx.fillStyle=has?flrC:'rgba(255,255,255,0.55)';
+        ctx.font=`bold ${Math.min(10,pw*0.45)}px Heebo`;
+        ctx.fillText(rowN,px+pw/2,py+ph/2-pw*0.13);
+        ctx.fillStyle='rgba(255,255,255,0.25)';
+        ctx.font=`${Math.min(8,pw*0.34)}px Heebo`;
+        ctx.fillText('עמ׳'+colN,px+pw/2,py+ph/2+pw*0.16);
+      } else {
+        ctx.fillStyle=has?flrC:'rgba(255,255,255,0.4)';
+        ctx.font=`bold ${Math.min(10,pw*0.5)}px Heebo`;
+        ctx.fillText(colN,px+pw/2,py+ph/2);
+      }
+    }
+    if(has){ const _bs=Math.max(5,Math.min(8,pw*0.35)); ctx.fillStyle=flrC; ctx.beginPath(); ctx.arc(px+pw-_bs,py+_bs,_bs,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#0d1117'; ctx.font=`bold ${_bs*0.9|0}px Heebo`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(ci.length,px+pw-_bs,py+_bs); }
     // הזמנה לכלוב ריק
     if(!has&&g.floor==='1'){
       const _res=JSON.parse(localStorage.getItem('tirewms_reservations')||'{}');
