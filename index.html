@@ -3302,21 +3302,21 @@ function handleMove(cx,cy){
       mapOffY=_axisZoom.startCY-wy*mapScale;
     }
     autoExpandCages();
-    drawMap(); return;
+    drawMapThrottled(); return;
   }
   // Space-bar panning
   if(isPanning){
     mapOffX=panOffStartX+(cx-panStartX);
     mapOffY=panOffStartY+(cy-panStartY);
-    drawMap(); return;
+    drawMapThrottled(); return;
   }
   const[wx,wy]=c2w(cx,cy);
   if(mapTool==='wall'&&isDrawing){
     drawCurrent=[wx,wy];
-    drawMap();
+    drawMapThrottled();
   } else if(mapTool==='move'&&isRubberBand){
     rubberCurrent=[wx,wy];
-    drawMap();
+    drawMapThrottled();
   } else if(mapTool==='move'&&dragCageId){
     const g=cages.find(c=>c.id===dragCageId);
     if(g){
@@ -3328,7 +3328,7 @@ function handleMove(cx,cy){
         const c=cages.find(x=>x.id===o.id);
         if(c){ c.x=Math.max(0,fnx+o.ox); c.y=Math.max(0,fny+o.oy); }
       });
-      drawMap();
+      drawMapThrottled();
     }
   }
 }
@@ -3376,63 +3376,110 @@ function handleUp(){
 }
 
 // ── Draw ──
+// throttle drawMap
+let _dmRafId=null;
+function drawMapThrottled(){
+  if(_dmRafId) return;
+  _dmRafId=requestAnimationFrame(()=>{ _dmRafId=null; drawMap(); });
+}
+window.drawMapThrottled=drawMapThrottled;
+
+// cache פריטים לפי col+floor — מתעדכן רק כשהנתונים משתנים
+let _dmItemKeyCount=null;
+function _dmBuildItemCache(){
+  _dmItemKeyCount=new Map();
+  (window.items||[]).forEach(it=>{
+    const k=`${it.col}__${it.floor||'1'}`;
+    _dmItemKeyCount.set(k,(_dmItemKeyCount.get(k)||0)+1);
+  });
+}
+function _dmInvalidate(){ _dmItemKeyCount=null; }
+window._dmInvalidate=_dmInvalidate;
+
 function drawMap(){
   const cv=document.getElementById('mapCanvas');
   if(!cv) return;
   const ctx=cv.getContext('2d');
-  ctx.clearRect(0,0,cv.width,cv.height);
-
-  // רקע
+  // רקע (fillRect גם מנקה + צובע במכה אחת — לא צריך clearRect)
   ctx.fillStyle='#0a0c12';
   ctx.fillRect(0,0,cv.width,cv.height);
 
-  // ── גריד ריבועי — כל תא = כלוב אחד (1 יחידה) ──
-  const CELL = mapScale;
+  if(!_dmItemKeyCount) _dmBuildItemCache();
+  const iCount=_dmItemKeyCount;
 
-  const startCol = Math.floor(-mapOffX / CELL) - 1;
-  const startRow = Math.floor(-mapOffY / CELL) - 1;
+  // ── גריד ריבועי — כל תא = כלוב אחד ──
+  const CELL = mapScale;
+  const DETAIL = CELL >= 22; // רק בזום גבוה — רמת פירוט מלאה
+  const SHOW_FLOOR_LABELS = CELL >= 34;
+
+  const startCol = Math.max(0, Math.floor(-mapOffX / CELL) - 1);
+  const startRow = Math.max(0, Math.floor(-mapOffY / CELL) - 1);
   const endCol   = startCol + Math.ceil(cv.width  / CELL) + 2;
   const endRow   = startRow + Math.ceil(cv.height / CELL) + 2;
 
-  for(let row = startRow; row <= endRow; row++){
-    for(let col = startCol; col <= endCol; col++){
-      if(col < 0 || row < 0) continue;
-      const px = mapOffX + col * CELL;
-      const py = mapOffY + row * CELL;
-
-      // רקע תא
-      ctx.fillStyle = '#0e1018';
-      ctx.fillRect(px + 1, py + 1, CELL - 2, CELL - 2);
-
-      // 3 פסי קומות בתוך התא
-      const SLOT = CELL / 3;
-      const floorColors  = ['rgba(74,158,255,0.07)','rgba(62,207,142,0.07)','rgba(245,166,35,0.07)'];
-      const floorBorders = ['rgba(74,158,255,0.25)','rgba(62,207,142,0.25)','rgba(245,166,35,0.25)'];
-      for(let f = 0; f < 3; f++){
-        const fy = py + f * SLOT;
-        ctx.fillStyle = floorColors[f];
-        ctx.fillRect(px + 1, fy + 0.5, CELL - 2, SLOT - 1);
-        if(f > 0){
-          ctx.strokeStyle = floorBorders[f];
-          ctx.lineWidth = 0.5;
-          ctx.beginPath();
-          ctx.moveTo(px + 4, fy); ctx.lineTo(px + CELL - 4, fy);
-          ctx.stroke();
-        }
-        if(SLOT > 10){
-          ctx.fillStyle = ['rgba(74,158,255,0.4)','rgba(62,207,142,0.4)','rgba(245,166,35,0.4)'][f];
-          ctx.font = `${Math.min(8, SLOT * 0.45)}px Heebo`;
-          ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-          ctx.fillText(f + 1, px + CELL - 3, fy + SLOT / 2);
-        }
-      }
-
-      // מסגרת תא
-      ctx.strokeStyle = 'rgba(245,166,35,0.22)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(px + 0.5, py + 0.5, CELL - 1, CELL - 1);
+  // רקע תאים — pass יחיד
+  ctx.fillStyle='#0e1018';
+  for(let row=startRow; row<=endRow; row++){
+    for(let col=startCol; col<=endCol; col++){
+      const px=mapOffX+col*CELL, py=mapOffY+row*CELL;
+      ctx.fillRect(px+1,py+1,CELL-2,CELL-2);
     }
   }
+
+  // 3 פסי קומות — רק אם מספיק מזווח
+  if(DETAIL){
+    const SLOT=CELL/3;
+    const floorColors=['rgba(74,158,255,0.07)','rgba(62,207,142,0.07)','rgba(245,166,35,0.07)'];
+    const floorBorders=['rgba(74,158,255,0.25)','rgba(62,207,142,0.25)','rgba(245,166,35,0.25)'];
+    const floorLabels=['rgba(74,158,255,0.4)','rgba(62,207,142,0.4)','rgba(245,166,35,0.4)'];
+    // מלא כל צבע בנפרד
+    for(let f=0; f<3; f++){
+      ctx.fillStyle=floorColors[f];
+      for(let row=startRow; row<=endRow; row++){
+        for(let col=startCol; col<=endCol; col++){
+          const px=mapOffX+col*CELL, py=mapOffY+row*CELL+f*SLOT;
+          ctx.fillRect(px+1,py+0.5,CELL-2,SLOT-1);
+        }
+      }
+    }
+    // קווי חלוקה
+    for(let f=1; f<3; f++){
+      ctx.strokeStyle=floorBorders[f]; ctx.lineWidth=0.5;
+      ctx.beginPath();
+      for(let row=startRow; row<=endRow; row++){
+        for(let col=startCol; col<=endCol; col++){
+          const px=mapOffX+col*CELL, py=mapOffY+row*CELL+f*SLOT;
+          ctx.moveTo(px+4,py); ctx.lineTo(px+CELL-4,py);
+        }
+      }
+      ctx.stroke();
+    }
+    // תוויות קומה — רק בזום גבוה מאוד
+    if(SHOW_FLOOR_LABELS){
+      ctx.textAlign='right'; ctx.textBaseline='middle';
+      ctx.font=`${Math.min(8,SLOT*0.45)}px Heebo`;
+      for(let f=0; f<3; f++){
+        ctx.fillStyle=floorLabels[f];
+        for(let row=startRow; row<=endRow; row++){
+          for(let col=startCol; col<=endCol; col++){
+            const px=mapOffX+col*CELL, py=mapOffY+row*CELL+f*SLOT;
+            ctx.fillText(f+1,px+CELL-3,py+SLOT/2);
+          }
+        }
+      }
+    }
+  }
+
+  // מסגרות תאים — pass יחיד (beginPath + stroke אחד)
+  ctx.strokeStyle='rgba(245,166,35,0.22)'; ctx.lineWidth=1;
+  ctx.beginPath();
+  for(let row=startRow; row<=endRow; row++){
+    for(let col=startCol; col<=endCol; col++){
+      const px=mapOffX+col*CELL, py=mapOffY+row*CELL;
+      ctx.rect(px+0.5,py+0.5,CELL-1,CELL-1);
+    }
+  }
+  ctx.stroke();
 
   // קירות שמורים
   walls.forEach(w=>{
@@ -3509,11 +3556,13 @@ function drawMap(){
   visibleCages.forEach(g=>{
     const[cx,cy]=w2c(g.x,g.y);
     const pw=mapScale,ph=mapScale;
+    // clip — אל תצייר כלובים מחוץ לוויאפורט
+    if(cx+pw<0||cx>cv.width||cy+ph<0||cy>cv.height) return;
     const isSel=g.id===selectedCageId;
-    const hasItems=items.some(it=>String(it.col)===String(g.name)&&it.floor===g.floor);
+    const cnt=iCount.get(`${g.name}__${g.floor}`)||0;
+    const hasItems=cnt>0;
     const isBlink=whBlinkCols.size>0&&whBlinkCols.has(String(g.name));
     const blinkOn=isBlink&&Math.floor(Date.now()/350)%2===0;
-    const cnt=hasItems?items.filter(it=>String(it.col)===String(g.name)&&it.floor===g.floor).length:0;
 
     // צל
     const isMultiSel2=selectedCages.includes(g.id)&&g.id!==selectedCageId;
@@ -3630,7 +3679,7 @@ function drawMap(){
       const mw=Math.max(mmS,2),mh=Math.max(mmS,2);
       const mx=g.x*mmS+mmOX,my=g.y*mmS+mmOY;
       const iS=g.id===selectedCageId||selectedCages.includes(g.id);
-      const hI=items.some(it=>String(it.col)===String(g.name)&&it.floor===g.floor);
+      const hI=(iCount.get(`${g.name}__${g.floor}`)||0)>0;
       ctx.fillStyle=iS?'#f5a623':hI?'#3ecf8e':'#2a4070';
       ctx.fillRect(mx,my,mw,mh);
     });
@@ -3999,7 +4048,8 @@ window.renderTable = renderTable;
 window._updateItems = function(newItems, newNextId){
   items = newItems;
   nextId = newNextId;
-  if(typeof _whInvalidate==='function') _whInvalidate(); // בטל cache מפה
+  if(typeof _whInvalidate==='function') _whInvalidate(); // בטל cache מפה (view)
+  if(typeof _dmInvalidate==='function') _dmInvalidate(); // בטל cache עורך מפה
   refreshDropdowns();
   renderTable();
   if(typeof _updatePendingBadge==='function') _updatePendingBadge();
