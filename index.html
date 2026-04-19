@@ -1217,7 +1217,7 @@ function switchView(n,el){
         stopWhBlink();
       }
       // טען מפה שמורה — אם גרסה ישנה, ייצר מחדש
-      const _MAP_VER='layout-2026-v4';
+      const _MAP_VER='layout-2026-v5';
       if(cages.length===0){
         const saved=localStorage.getItem('tirewms_map2');
         if(saved){ try{ const d=JSON.parse(saved); cages=d.cages||[]; walls=d.walls||[]; nextCageId=d.nextId||1; }catch(e){} }
@@ -4032,9 +4032,9 @@ function generateWarehouseLayout(silent){
   cages=[]; walls=[]; nextCageId=1;
   let col=1;
 
-  // Helper: מוסיף שורות עם p1 (ימין) או p2 (שמאל)
-  // rowNums = מערך מספרי שורות, cols = כמות עמודות, side = 'right'|'left'
-  // x0,y0 = נקודת התחלה על הקנבס, pn1val/pn2val = 'כן'|''
+  // Helper A: שורות רצות בכיוון Y (אוריינטציה רגילה)
+  // side='right': עמודות → +x, שורות → +y
+  // side='left' : עמודות הפוכות (col1 פנימי), שורות → +y
   function addRows(x0, y0, rowNums, cols, side, pn1val, pn2val, sec){
     rowNums.forEach((rowNum, ri) => {
       for(let c=0; c<cols; c++){
@@ -4044,14 +4044,33 @@ function generateWarehouseLayout(silent){
             id: nextCageId++,
             name: String(c+1),
             floor: String(fl),
-            x: xPos,
-            y: y0+ri,
-            rot: false,
-            p1:  side==='right' ? String(rowNum) : '',
-            p2:  side==='left'  ? String(rowNum) : '',
-            pn1: pn1val||'',
-            pn2: pn2val||'',
-            section: sec||'',
+            x: xPos, y: y0+ri, rot: false,
+            p1: side==='right' ? String(rowNum) : '',
+            p2: side==='left'  ? String(rowNum) : '',
+            pn1: pn1val||'', pn2: pn2val||'', section: sec||'',
+          });
+        }
+      }
+    });
+  }
+
+  // Helper B: שורות רצות בכיוון X — סיבוב 90° שמאלה
+  // side='right': שורות → +x מ-x0, עמודות → +y מ-y0
+  // side='left' : שורות → -x מ-x0(=6), עמודות → +y מ-y0
+  function addRowsRot(x0, y0, rowNums, cols, side, pn1val, pn2val, sec){
+    rowNums.forEach((rowNum, ri) => {
+      for(let c=0; c<cols; c++){
+        const xPos = side==='right' ? x0+ri : x0-ri;
+        const yPos = y0+c;
+        for(let fl=1; fl<=3; fl++){
+          cages.push({
+            id: nextCageId++,
+            name: String(c+1),
+            floor: String(fl),
+            x: xPos, y: yPos, rot: true,
+            p1: side==='right' ? String(rowNum) : '',
+            p2: side==='left'  ? String(rowNum) : '',
+            pn1: pn1val||'', pn2: pn2val||'', section: sec||'',
           });
         }
       }
@@ -4060,51 +4079,39 @@ function generateWarehouseLayout(silent){
 
   // סדר מלמעלה למטה: פניה ב → בין הפניות → פניה א → מחסן ראשי → רחבה
 
-  // ══ פניה ב' ══  (y=0..)
-  // ימין: שורות 82,84,...,108 — 14 שורות × 7 עמודות
-  addRows(8, 0,
+  // ══ פניה ב' ══  y=0 — מסובב 90° שמאלה
+  // ימין: 14 שורות רצות +x מ-8, 7 עמודות רצות +y → בלוק x=8..21, y=0..6
+  addRowsRot(8, 0,
     [82,84,86,88,90,92,94,96,98,100,102,104,106,108],
     7, 'right', '', 'כן');
-
-  // שמאל: שורות 23,25,27 — 3 שורות × 2 עמודות
-  addRows(0, 0,
+  // שמאל: 3 שורות רצות -x מ-6, 2 עמודות → בלוק x=4..6, y=0..1
+  addRowsRot(6, 0,
     [23,25,27],
     2, 'left', '', 'כן');
 
-  // ══ בין פניה ב' לפניה א' ══  (y=16..)
-  // ימין: שורות 62,64,...,80 — 10 שורות × 9 עמודות
-  addRows(8, 16,
-    [62,64,66,68,70,72,74,76,78,80],
-    9, 'right', '', '', 'between');
+  // ══ בין הפניות ══  y=9 — לא מסובב
+  addRows(8,  9, [62,64,66,68,70,72,74,76,78,80], 9, 'right', '', '', 'between');
+  addRows(0,  9, [43,45,47,49,51,53,55,57,59,61], 9, 'left',  '', '', 'between');
 
-  // שמאל: שורות 43,45,...,61 — 10 שורות × 9 עמודות
-  addRows(0, 16,
-    [43,45,47,49,51,53,55,57,59,61],
-    9, 'left', '', '', 'between');
-
-  // ══ פניה א' ══  (y=28..)
-  // ימין: שורות 34,36,...,60 — 14 שורות × 8 עמודות
-  addRows(8, 28,
+  // ══ פניה א' ══  y=21 — מסובב 90° שמאלה
+  // ימין: 14 שורות רצות +x מ-8, 8 עמודות → x=8..21, y=21..28
+  addRowsRot(8, 21,
     [34,36,38,40,42,44,46,48,50,52,54,56,58,60],
     8, 'right', 'כן', '');
-
-  // שמאל: שורות 13,15,17,19,21 — 5 שורות × 4 עמודות
-  addRows(0, 28,
+  // שמאל: 5 שורות רצות -x מ-6, 4 עמודות → x=2..6, y=21..24
+  addRowsRot(6, 21,
     [13,15,17,19,21],
     4, 'left', 'כן', '');
 
-  // ══ מחסן ראשי ══  (y=44..)
-  // שורות ימין זוגיות: 2,4,6,...,32 — 16 שורות × 8 עמודות — x=8..15
-  addRows(8, 44,
+  // ══ מחסן ראשי ══  y=32
+  addRows(8, 32,
     [2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32],
     8, 'right', '', '');
-
-  // שורות שמאל אי-זוגיות: 1,3,5,7,9,11 — 6 שורות × 6 עמודות — x=0..5
-  addRows(0, 44,
+  addRows(0, 32,
     [1,3,5,7,9,11],
     6, 'left', '', '');
 
-  // ══ רחבה / עמסה ══  (y=62.., x=4..10)
+  // ══ רחבה / עמסה ══  y=51, x=4..10
   for(let r=0; r<7; r++){
     for(let c=0; c<7; c++){
       for(let fl=1; fl<=3; fl++){
@@ -4112,8 +4119,7 @@ function generateWarehouseLayout(silent){
           id: nextCageId++,
           name: String(c+1),
           floor: String(fl),
-          x: 4+c, y: 62+r,
-          rot: false,
+          x: 4+c, y: 51+r, rot: false,
           p1:'', p2:'', pn1:'', pn2:'',
           rahavaRow: String(r+1),
           section: 'rahava'
@@ -4125,7 +4131,7 @@ function generateWarehouseLayout(silent){
   selectedCageId=null; selectedCages=[];
   // שמירה מיידית לא דחויה + סימון גרסה
   localStorage.setItem('tirewms_map2',JSON.stringify({cages,walls,nextId:nextCageId}));
-  localStorage.setItem('tirewms_map_ver','layout-2026-v4');
+  localStorage.setItem('tirewms_map_ver','layout-2026-v5');
   if(silent){
     setTimeout(()=>{if(typeof renderWarehouse==='function'){renderWarehouse();whCenter();}},50);
   } else {
@@ -8687,18 +8693,36 @@ function _whBuildCache(){
     else{_whSecBuckets[k].minX=Math.min(_whSecBuckets[k].minX,g.x);_whSecBuckets[k].maxX=Math.max(_whSecBuckets[k].maxX,g.x);_whSecBuckets[k].minY=Math.min(_whSecBuckets[k].minY,g.y);_whSecBuckets[k].maxY=Math.max(_whSecBuckets[k].maxY,g.y);}
   });
   // ── מספרי שורות ──
+  // לא-מסובב: label משמאל לשורה → minX לכל (y, rowNum)
+  // מסובב:    label מעל לעמודה  → minY לכל (x, rowNum)
   _whRowMinX={};
+  const _whRowMinY_tmp={};
   cages.filter(g=>g.floor==='1').forEach(g=>{
     const rn=g.p1||g.p2; if(!rn) return;
-    const k=`${g.y}__${rn}`;
-    if(_whRowMinX[k]===undefined||g.x<_whRowMinX[k]) _whRowMinX[k]=g.x;
+    if(!g.rot){
+      const k=`${g.y}__${rn}`;
+      if(_whRowMinX[k]===undefined||g.x<_whRowMinX[k]) _whRowMinX[k]=g.x;
+    } else {
+      const k=`${g.x}__${rn}`;
+      if(_whRowMinY_tmp[k]===undefined||g.y<_whRowMinY_tmp[k]) _whRowMinY_tmp[k]=g.y;
+    }
   });
+  _whRowMinX.__rotated = _whRowMinY_tmp; // שמור sub-map בתוך הcache
   // ── מספרי עמודות ──
+  // לא-מסובב: label מעל עמודה  → minY לכל (x, colName)
+  // מסובב:    label משמאל      → minX לכל (y, colName)
   _whColMinY={};
+  const _whColMinX_tmp={};
   cages.filter(g=>g.floor==='1').forEach(g=>{
-    const k=`${g.x}__${g.name}`;
-    if(_whColMinY[k]===undefined||g.y<_whColMinY[k]) _whColMinY[k]=g.y;
+    if(!g.rot){
+      const k=`${g.x}__${g.name}`;
+      if(_whColMinY[k]===undefined||g.y<_whColMinY[k]) _whColMinY[k]=g.y;
+    } else {
+      const k=`${g.y}__${g.name}`;
+      if(_whColMinX_tmp[k]===undefined||g.x<_whColMinX_tmp[k]) _whColMinX_tmp[k]=g.x;
+    }
   });
+  _whColMinY.__rotated = _whColMinX_tmp;
   // ── reservations ──
   try{ _whResv=JSON.parse(localStorage.getItem('tirewms_reservations')||'{}'); }catch(e){ _whResv={}; }
 }
@@ -8838,20 +8862,42 @@ function renderWarehouse(){
   // ══ מספרי שורות ועמודות (ציר — מה-cache) ══
   const _axFs=Math.max(7,Math.min(12,whScale*0.55));
   ctx.font=`bold ${_axFs}px Heebo`;
+
+  // שורות לא-מסובבות: label משמאל
   ctx.fillStyle='rgba(160,190,255,0.85)';
   ctx.textAlign='right'; ctx.textBaseline='middle';
   Object.entries(rowMinX).forEach(([k,minX])=>{
+    if(k==='__rotated') return;
     const [yStr,rn]=k.split('__');
     const lx=whOffX+minX*whScale-3, ly=whOffY+parseInt(yStr)*whScale+whScale*0.5;
     if(ly<-10||ly>cv.height+10) return;
     ctx.fillText('ש'+rn,lx,ly);
   });
+  // שורות מסובבות: label מעל
+  ctx.textAlign='center'; ctx.textBaseline='bottom';
+  if(rowMinX.__rotated) Object.entries(rowMinX.__rotated).forEach(([k,minY])=>{
+    const [xStr,rn]=k.split('__');
+    const lx=whOffX+parseInt(xStr)*whScale+whScale*0.5, ly=whOffY+minY*whScale-3;
+    if(lx<-10||lx>cv.width+10) return;
+    ctx.fillText('ש'+rn,lx,ly);
+  });
+
+  // עמודות לא-מסובבות: label מעל
   ctx.fillStyle='rgba(245,190,60,0.85)';
   ctx.textAlign='center'; ctx.textBaseline='bottom';
   Object.entries(colMinY).forEach(([k,minY])=>{
+    if(k==='__rotated') return;
     const [xStr,cn]=k.split('__');
     const lx=whOffX+parseInt(xStr)*whScale+whScale*0.5, ly=whOffY+minY*whScale-3;
     if(lx<-10||lx>cv.width+10) return;
+    ctx.fillText(cn,lx,ly);
+  });
+  // עמודות מסובבות: label משמאל
+  ctx.textAlign='right'; ctx.textBaseline='middle';
+  if(colMinY.__rotated) Object.entries(colMinY.__rotated).forEach(([k,minX])=>{
+    const [yStr,cn]=k.split('__');
+    const lx=whOffX+minX*whScale-3, ly=whOffY+parseInt(yStr)*whScale+whScale*0.5;
+    if(ly<-10||ly>cv.height+10) return;
     ctx.fillText(cn,lx,ly);
   });
 
