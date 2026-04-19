@@ -3324,13 +3324,20 @@ function handleMove(cx,cy){
   } else if(mapTool==='move'&&dragCageId){
     const g=cages.find(c=>c.id===dragCageId);
     if(g){
-      // מגנט אמיתי: הכלוב נדבק למשבצת שמתחת לסמן (לא תלוי בנקודת האחיזה)
-      const fnx=Math.max(0, Math.floor(wx));
-      const fny=Math.max(0, Math.floor(wy));
-      // הזז את כל הכלובים הנבחרים תוך שמירת המרחקים היחסיים
+      // מגנט אמיתי: הכלוב נדבק למשבצת שמתחת לסמן
+      const fnx=Math.floor(wx), fny=Math.floor(wy);
+      // מצא את המינימום של הבלוק אחרי ההזזה — כדי שאם הוא חורג,
+      // כל הבלוק יוזז בבת אחת (לא ידחוס את הכלובים הקיצוניים)
+      let minNX=Infinity, minNY=Infinity;
+      _multiDragOffsets.forEach(o=>{
+        if(fnx+o.ox<minNX) minNX=fnx+o.ox;
+        if(fny+o.oy<minNY) minNY=fny+o.oy;
+      });
+      const shiftX = minNX<0 ? -minNX : 0;
+      const shiftY = minNY<0 ? -minNY : 0;
       _multiDragOffsets.forEach(o=>{
         const c=cages.find(x=>x.id===o.id);
-        if(c){ c.x=Math.max(0,fnx+o.ox); c.y=Math.max(0,fny+o.oy); }
+        if(c){ c.x=fnx+o.ox+shiftX; c.y=fny+o.oy+shiftY; }
       });
       drawMapThrottled();
     }
