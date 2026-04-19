@@ -607,6 +607,7 @@ if('serviceWorker' in navigator){
         <button onclick="rotateSelection(90)" title="סובב בחירה 90° שמאלה (אם אין בחירה — הכל)" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">↺ 90°</button>
         <button onclick="rotateSelection(180)" title="סובב בחירה 180°" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">⟲ 180°</button>
         <button onclick="rotateSelection(270)" title="סובב בחירה 90° ימינה" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">↻ 90°</button>
+        <button onclick="deleteSelection()" title="מחק את הבחירה (גם Delete במקלדת)" style="background:var(--red-dim);border:1px solid var(--red);color:var(--red);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🗑️ מחק בחירה</button>
       </div>
       <div style="display:flex;gap:5px;flex-shrink:0;margin-right:auto;">
         <button onclick="zoomIn()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 10px;font-size:14px;font-weight:700;cursor:pointer;">＋</button>
@@ -4074,6 +4075,22 @@ function rotateSelection(deg){
   toast(`${label} · ${targets.length} כלובים`);
 }
 window.rotateSelection = rotateSelection;
+
+// ── מחיקת קבוצת כלובים נבחרת ──
+function deleteSelection(){
+  const ids = selectedCages.length>0 ? [...selectedCages]
+            : selectedCageId ? [selectedCageId] : [];
+  if(ids.length===0){ toast('אין בחירה — גרור מלבן בחירה עם "✋ הזז" כדי לבחור כלובים'); return; }
+  if(!confirm(`למחוק ${ids.length} כלובים?`)) return;
+  pushHistory();
+  cages = cages.filter(c=>!ids.includes(c.id));
+  selectedCages=[]; selectedCageId=null; closeCageEdit();
+  if(typeof _dmInvalidate==='function') _dmInvalidate();
+  if(typeof _whInvalidate==='function') _whInvalidate();
+  drawMap();
+  toast(`🗑️ נמחקו ${ids.length} כלובים`);
+}
+window.deleteSelection = deleteSelection;
 function deleteCage(){
   if(!confirm('למחוק כלוב זה?'))return;
   cages=cages.filter(c=>c.id!==selectedCageId);
