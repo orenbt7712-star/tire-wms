@@ -603,6 +603,10 @@ if('serviceWorker' in navigator){
         <button id="tool-move" onclick="setMapTool('move')" title="הזזה" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">✋ הזז</button>
         <button id="tool-row" onclick="setMapTool('row')" title="שורה" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">📏 שורה</button>
         <button id="tool-erase" onclick="setMapTool('erase')" title="מחק" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🗑️ מחק</button>
+        <div style="width:1px;background:var(--border);margin:2px 4px;"></div>
+        <button onclick="rotateSelection(90)" title="סובב בחירה 90° שמאלה (אם אין בחירה — הכל)" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">↺ 90°</button>
+        <button onclick="rotateSelection(180)" title="סובב בחירה 180°" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">⟲ 180°</button>
+        <button onclick="rotateSelection(270)" title="סובב בחירה 90° ימינה" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">↻ 90°</button>
       </div>
       <div style="display:flex;gap:5px;flex-shrink:0;margin-right:auto;">
         <button onclick="zoomIn()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 10px;font-size:14px;font-weight:700;cursor:pointer;">＋</button>
@@ -4025,6 +4029,44 @@ function rotateCage(){
   const g=cages.find(c=>c.id===selectedCageId);
   if(g){g.rot=!g.rot;drawMap();}
 }
+
+// ── סיבוב קבוצת כלובים סביב מרכז הבלוק שלהם ──
+// deg = 90 (שמאלה CCW), 180, או 270 (ימינה)
+function rotateSelection(deg){
+  // בחר יעד: כלובים נבחרים → או הכל אם אין בחירה
+  let targetIds = selectedCages.length>0 ? [...selectedCages]
+                 : selectedCageId ? [selectedCageId]
+                 : cages.map(c=>c.id);
+  if(targetIds.length===0){ toast('אין כלובים לסיבוב'); return; }
+  const targets = targetIds.map(id=>cages.find(c=>c.id===id)).filter(Boolean);
+  if(!targets.length) return;
+  pushHistory();
+  // bounding box
+  const xs=targets.map(g=>g.x), ys=targets.map(g=>g.y);
+  const minX=Math.min(...xs), minY=Math.min(...ys);
+  const maxX=Math.max(...xs), maxY=Math.max(...ys);
+  const W=maxX-minX, H=maxY-minY;
+  targets.forEach(g=>{
+    const lx=g.x-minX, ly=g.y-minY;
+    let nx,ny;
+    if(deg===90){       // CCW
+      nx=minX+ly; ny=minY+(W-lx);
+      g.rot=!g.rot;
+    } else if(deg===270){ // CW
+      nx=minX+(H-ly); ny=minY+lx;
+      g.rot=!g.rot;
+    } else {              // 180
+      nx=minX+(W-lx); ny=minY+(H-ly);
+    }
+    g.x=Math.max(0,nx); g.y=Math.max(0,ny);
+  });
+  if(typeof _dmInvalidate==='function') _dmInvalidate();
+  if(typeof _whInvalidate==='function') _whInvalidate();
+  drawMap();
+  const label = deg===90?'↺ 90° שמאלה' : deg===270?'↻ 90° ימינה' : '⟲ 180°';
+  toast(`${label} · ${targets.length} כלובים`);
+}
+window.rotateSelection = rotateSelection;
 function deleteCage(){
   if(!confirm('למחוק כלוב זה?'))return;
   cages=cages.filter(c=>c.id!==selectedCageId);
