@@ -8800,6 +8800,45 @@ function renderWarehouse(){
     ctx.globalAlpha=1;
   });
 
+  // ══ מספרי שורות ועמודות (ציר) ══
+  ctx.save();
+  const _axFs=Math.max(7,Math.min(12,whScale*0.55));
+  ctx.font=`bold ${_axFs}px Heebo`;
+
+  // מספרי שורות — שמאל לכל שורה (floor=1 בלבד)
+  const _rowMinX={}; // key="y__rowNum" → minX
+  cages.filter(g=>g.floor==='1').forEach(g=>{
+    const rn=g.p1||g.p2; if(!rn) return;
+    const k=`${g.y}__${rn}`;
+    if(_rowMinX[k]===undefined||g.x<_rowMinX[k]) _rowMinX[k]=g.x;
+  });
+  Object.entries(_rowMinX).forEach(([k,minX])=>{
+    const [yStr,rn]=k.split('__');
+    const px=whOffX+minX*whScale-3;
+    const py=whOffY+parseInt(yStr)*whScale+whScale*0.5;
+    if(py<-10||py>cv.height+10||px<-60) return;
+    ctx.fillStyle='rgba(160,190,255,0.85)';
+    ctx.textAlign='right'; ctx.textBaseline='middle';
+    ctx.fillText('ש'+rn,px,py);
+  });
+
+  // מספרי עמודות — מעל כל עמודה, פעם אחת לכל x+name (floor=1 בלבד)
+  const _colMinY={}; // key="x__name" → minY
+  cages.filter(g=>g.floor==='1').forEach(g=>{
+    const k=`${g.x}__${g.name}`;
+    if(_colMinY[k]===undefined||g.y<_colMinY[k]) _colMinY[k]=g.y;
+  });
+  Object.entries(_colMinY).forEach(([k,minY])=>{
+    const [xStr,cn]=k.split('__');
+    const px=whOffX+parseInt(xStr)*whScale+whScale*0.5;
+    const py=whOffY+minY*whScale-3;
+    if(px<-10||px>cv.width+10||py<-20) return;
+    ctx.fillStyle='rgba(245,190,60,0.85)';
+    ctx.textAlign='center'; ctx.textBaseline='bottom';
+    ctx.fillText(cn,px,py);
+  });
+  ctx.restore();
+
   // ══ הדגשת כלוב מטופס הוספת צמיג ══
   if(window._formHighlight){
     const hg=cages.find(g=>g.id===window._formHighlight);
