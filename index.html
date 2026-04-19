@@ -1217,7 +1217,7 @@ function switchView(n,el){
         stopWhBlink();
       }
       // טען מפה שמורה — אם גרסה ישנה, ייצר מחדש
-      const _MAP_VER='layout-2026-v5';
+      const _MAP_VER='layout-2026-v6';
       if(cages.length===0){
         const saved=localStorage.getItem('tirewms_map2');
         if(saved){ try{ const d=JSON.parse(saved); cages=d.cages||[]; walls=d.walls||[]; nextCageId=d.nextId||1; }catch(e){} }
@@ -4080,38 +4080,45 @@ function generateWarehouseLayout(silent){
   // סדר מלמעלה למטה: פניה ב → בין הפניות → פניה א → מחסן ראשי → רחבה
 
   // ══ פניה ב' ══  y=0 — מסובב 90° שמאלה
-  // ימין: 14 שורות רצות +x מ-8, 7 עמודות רצות +y → בלוק x=8..21, y=0..6
-  addRowsRot(8, 0,
+  // ══ פריסה חדשה: שני טורים ══
+  // טור שמאל  (x=0..18): פניה ב (למעלה) → בין → פניה א (למטה)
+  // טור ימין  (x=24..39): מחסן ראשי (למעלה) → רחבה (למטה)
+
+  // ── פניה ב' (top-left) ── y=0..6 — מסובב
+  // ימין: 14 שורות × 7 עמודות → x=0..13, y=0..6
+  addRowsRot(0, 0,
     [82,84,86,88,90,92,94,96,98,100,102,104,106,108],
     7, 'right', '', 'כן');
-  // שמאל: 3 שורות רצות -x מ-6, 2 עמודות → בלוק x=4..6, y=0..1
-  addRowsRot(6, 0,
+  // שמאל קטן: 3 שורות × 2 עמודות צמוד מימין לגדול → x=14..16, y=0..1
+  addRowsRot(16, 0,
     [23,25,27],
     2, 'left', '', 'כן');
 
-  // ══ בין הפניות ══  y=9 — לא מסובב
-  addRows(8,  9, [62,64,66,68,70,72,74,76,78,80], 9, 'right', '', '', 'between');
-  addRows(0,  9, [43,45,47,49,51,53,55,57,59,61], 9, 'left',  '', '', 'between');
+  // ── בין הפניות (middle-left) ── y=10..19 — לא מסובב
+  addRows(8, 10, [62,64,66,68,70,72,74,76,78,80], 9, 'right', '', '', 'between');
+  addRows(0, 10, [43,45,47,49,51,53,55,57,59,61], 9, 'left',  '', '', 'between');
 
-  // ══ פניה א' ══  y=21 — מסובב 90° שמאלה
-  // ימין: 14 שורות רצות +x מ-8, 8 עמודות → x=8..21, y=21..28
-  addRowsRot(8, 21,
+  // ── פניה א' (bottom-left) ── y=23..30 — מסובב
+  // ימין: 14 שורות × 8 עמודות → x=0..13, y=23..30
+  addRowsRot(0, 23,
     [34,36,38,40,42,44,46,48,50,52,54,56,58,60],
     8, 'right', 'כן', '');
-  // שמאל: 5 שורות רצות -x מ-6, 4 עמודות → x=2..6, y=21..24
-  addRowsRot(6, 21,
+  // שמאל קטן: 5 שורות × 4 עמודות צמוד מימין → x=14..18, y=23..26
+  addRowsRot(18, 23,
     [13,15,17,19,21],
     4, 'left', 'כן', '');
 
-  // ══ מחסן ראשי ══  y=32
-  addRows(8, 32,
+  // ── מחסן ראשי (top-right) ── y=0..15, x=24..39
+  // ימין: 16 שורות × 8 עמודות → x=32..39
+  addRows(32, 0,
     [2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32],
     8, 'right', '', '');
-  addRows(0, 32,
+  // שמאל: 6 שורות × 6 עמודות → x=24..29
+  addRows(24, 0,
     [1,3,5,7,9,11],
     6, 'left', '', '');
 
-  // ══ רחבה / עמסה ══  y=51, x=4..10
+  // ── רחבה / עמסה (bottom-right) ── y=19..25, x=28..34 (במרכז מתחת למחסן)
   for(let r=0; r<7; r++){
     for(let c=0; c<7; c++){
       for(let fl=1; fl<=3; fl++){
@@ -4119,7 +4126,7 @@ function generateWarehouseLayout(silent){
           id: nextCageId++,
           name: String(c+1),
           floor: String(fl),
-          x: 4+c, y: 51+r, rot: false,
+          x: 28+c, y: 19+r, rot: false,
           p1:'', p2:'', pn1:'', pn2:'',
           rahavaRow: String(r+1),
           section: 'rahava'
@@ -4131,7 +4138,7 @@ function generateWarehouseLayout(silent){
   selectedCageId=null; selectedCages=[];
   // שמירה מיידית לא דחויה + סימון גרסה
   localStorage.setItem('tirewms_map2',JSON.stringify({cages,walls,nextId:nextCageId}));
-  localStorage.setItem('tirewms_map_ver','layout-2026-v5');
+  localStorage.setItem('tirewms_map_ver','layout-2026-v6');
   if(silent){
     setTimeout(()=>{if(typeof renderWarehouse==='function'){renderWarehouse();whCenter();}},50);
   } else {
