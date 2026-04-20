@@ -3066,25 +3066,32 @@ window._updateItems = function(newItems, newNextId){
   refreshDropdowns();
   renderTable();
   if(typeof _updatePendingBadge==='function') _updatePendingBadge();
-  // גיבוי אוטומטי ל-localStorage
+  // גיבוי אוטומטי ל-localStorage (מוצפן)
   if(newItems.length > 0){
-    try{ localStorage.setItem('tirewms_autobk', JSON.stringify({ts:Date.now(),items:newItems})); }catch(e){}
+    try{
+      const payload = JSON.stringify({ts:Date.now(),items:newItems});
+      if(window._enc) window._enc.set('tirewms_autobk', payload);
+      else localStorage.setItem('tirewms_autobk', payload);
+    }catch(e){}
   }
   // הצע שחזור אם אין פריטים אך יש גיבוי
   if(newItems.length === 0 && !window._restoreOffered){
     window._restoreOffered = true;
-    try{
-      const bk = JSON.parse(localStorage.getItem('tirewms_autobk')||'null');
-      if(bk && bk.items && bk.items.length > 0){
-        const d = new Date(bk.ts).toLocaleString('he-IL');
-        setTimeout(()=>{
-          if(confirm(`🔄 נמצא גיבוי (${bk.items.length} פריטים, ${d}).\nלשחזר?`)){
-            toast('⏳ משחזר...');
-            window._importItems(bk.items).then(()=>toast(`✅ שוחזרו ${bk.items.length} פריטים`)).catch(e=>toast('❌ '+e.message));
-          }
-        }, 1200);
-      }
-    }catch(e){}
+    (async()=>{
+      try{
+        const raw = window._enc ? await window._enc.get('tirewms_autobk') : localStorage.getItem('tirewms_autobk');
+        const bk = JSON.parse(raw||'null');
+        if(bk && bk.items && bk.items.length > 0){
+          const d = new Date(bk.ts).toLocaleString('he-IL');
+          setTimeout(()=>{
+            if(confirm(`🔄 נמצא גיבוי (${bk.items.length} פריטים, ${d}).\nלשחזר?`)){
+              toast('⏳ משחזר...');
+              window._importItems(bk.items).then(()=>toast(`✅ שוחזרו ${bk.items.length} פריטים`)).catch(e=>toast('❌ '+e.message));
+            }
+          }, 1200);
+        }
+      }catch(e){}
+    })();
   }
 };
 window.addCage = addCage;

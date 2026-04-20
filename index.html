@@ -775,6 +775,65 @@ window._getInvQty=function(code,it){
   for(const s of Object.values(scores)){if(s.score>bestScore){bestScore=s.score;best=s;}}
   return best&&bestScore>=1?best.qty:null;
 };
+// ── הצפנת localStorage עם AES-GCM, מפתח ב-IndexedDB ──
+const _enc = (() => {
+  let _key = null;
+  const DB_NAME = 'tirewms_keystore', STORE = 'keys', KEY_ID = 'main';
+
+  function _openDB() {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open(DB_NAME, 1);
+      r.onupgradeneeded = e => e.target.result.createObjectStore(STORE);
+      r.onsuccess = e => res(e.target.result);
+      r.onerror = rej;
+    });
+  }
+
+  async function init() {
+    try {
+      const db = await _openDB();
+      const get = () => new Promise(r => { const q = db.transaction(STORE).objectStore(STORE).get(KEY_ID); q.onsuccess = () => r(q.result); });
+      const put = raw => new Promise(r => { const tx = db.transaction(STORE,'readwrite'); tx.objectStore(STORE).put(raw, KEY_ID); tx.oncomplete = r; });
+      const existing = await get();
+      if (existing) {
+        _key = await crypto.subtle.importKey('raw', existing, {name:'AES-GCM'}, false, ['encrypt','decrypt']);
+      } else {
+        _key = await crypto.subtle.generateKey({name:'AES-GCM',length:256}, true, ['encrypt','decrypt']);
+        await put(await crypto.subtle.exportKey('raw', _key));
+      }
+    } catch(e) { console.warn('_enc init failed, localStorage stays plaintext:', e); }
+  }
+
+  async function set(lsKey, value) {
+    const str = typeof value === 'string' ? value : JSON.stringify(value);
+    if (!_key) { localStorage.setItem(lsKey, str); return; }
+    try {
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const enc = await crypto.subtle.encrypt({name:'AES-GCM',iv}, _key, new TextEncoder().encode(str));
+      localStorage.setItem(lsKey, JSON.stringify({
+        iv: btoa(String.fromCharCode(...iv)),
+        d:  btoa(String.fromCharCode(...new Uint8Array(enc)))
+      }));
+    } catch(e) { localStorage.setItem(lsKey, str); }
+  }
+
+  async function get(lsKey) {
+    const raw = localStorage.getItem(lsKey);
+    if (!raw || !_key) return raw;
+    try {
+      const p = JSON.parse(raw);
+      if (!p.iv || !p.d) return raw;
+      const iv  = Uint8Array.from(atob(p.iv), c => c.charCodeAt(0));
+      const buf = Uint8Array.from(atob(p.d),  c => c.charCodeAt(0));
+      const dec = await crypto.subtle.decrypt({name:'AES-GCM',iv}, _key, buf);
+      return new TextDecoder().decode(dec);
+    } catch(e) { return raw; }
+  }
+
+  return { init, set, get };
+})();
+window._enc = _enc;
+
 // עובדים נשמרים כמסמך מיוחד בתוך אוסף tires (שיש לו הרשאות)
 const WORKERS_DOC_ID = 'workers-config';
 const workersDocRef = doc(db, 'tires', WORKERS_DOC_ID);
@@ -821,6 +880,7 @@ const _authReadyCallbacks = [];
 function onAuthReady(cb) {
   if (_authReady) { cb(); } else { _authReadyCallbacks.push(cb); }
 }
+_enc.init(); // אתחל מפתח הצפנה לפני כל שימוש ב-localStorage
 signInAnonymously(auth)
   .then(() => {
     _authReady = true;
@@ -874,14 +934,15 @@ async function genToken(admin) {
 
 async function saveSession(admin, workerId=null, workerName=null) {
   const token = await genToken(admin);
-  localStorage.setItem('tirewms_session', JSON.stringify({admin, workerId, workerName, ts: Date.now(), token}));
+  await _enc.set('tirewms_session', JSON.stringify({admin, workerId, workerName, ts: Date.now(), token}));
   const role = _isOwner ? 'owner' : (admin ? 'admin' : 'worker');
   if (window._saveSessionRole) window._saveSessionRole(role);
 }
 
 async function loadSession() {
   try {
-    const s = JSON.parse(localStorage.getItem('tirewms_session') || 'null');
+    const raw = await _enc.get('tirewms_session');
+    const s = JSON.parse(raw || 'null');
     if (!s || !s.token) return null;
     if (Date.now() - s.ts > 30*24*60*60*1000) { localStorage.removeItem('tirewms_session'); return null; }
     const expected = await genToken(s.admin);
@@ -1590,11 +1651,11 @@ window.runInventoryImport = runInventoryImport;
 
 
 // ── תור אופליין ──
-function getOfflineQueue() { try { return JSON.parse(localStorage.getItem('tirewms_offline') || '[]'); } catch(e) { return []; } }
-function saveOfflineQueue(q) { localStorage.setItem('tirewms_offline', JSON.stringify(q)); }
+async function getOfflineQueue() { try { return JSON.parse(await _enc.get('tirewms_offline') || '[]'); } catch(e) { return []; } }
+async function saveOfflineQueue(q) { await _enc.set('tirewms_offline', JSON.stringify(q)); }
 
 async function processOfflineQueue() {
-  const q = getOfflineQueue();
+  const q = await getOfflineQueue();
   if (!q.length) return;
   const done = [];
   for (const op of q) {
@@ -1623,9 +1684,9 @@ window.addEventListener('offline', () => { setStatus('📵 אופליין'); });
 
 window._saveItem = async function(it) {
   if (!navigator.onLine) {
-    const q = getOfflineQueue();
+    const q = await getOfflineQueue();
     q.push({type: 'set', id: it.id, data: it});
-    saveOfflineQueue(q);
+    await saveOfflineQueue(q);
     window._toast && window._toast('📵 נשמר מקומית — יסונכרן כשיחזור אינטרנט');
     if ('serviceWorker' in navigator && 'SyncManager' in window) {
       navigator.serviceWorker.ready.then(sw => sw.sync.register('sync-tires')).catch(() => {});
@@ -1635,27 +1696,27 @@ window._saveItem = async function(it) {
   await new Promise(resolve => onAuthReady(resolve));
   try { await setDoc(doc(db, 'tires', String(it.id)), it); }
   catch(e) {
-    const q = getOfflineQueue();
+    const q = await getOfflineQueue();
     q.push({type: 'set', id: it.id, data: it});
-    saveOfflineQueue(q);
+    await saveOfflineQueue(q);
     window._toast && window._toast('⚠️ שמירה נכשלה — נשמר מקומית ויסונכרן כשיחזור חיבור');
   }
 };
 
 window._deleteItem = async function(id) {
   if (!navigator.onLine) {
-    const q = getOfflineQueue();
+    const q = await getOfflineQueue();
     q.push({type: 'del', id});
-    saveOfflineQueue(q);
+    await saveOfflineQueue(q);
     window._toast && window._toast('📵 מחיקה תסונכרן כשיחזור אינטרנט');
     return;
   }
   await new Promise(resolve => onAuthReady(resolve));
   try { await deleteDoc(doc(db, 'tires', String(id))); }
   catch(e) {
-    const q = getOfflineQueue();
+    const q = await getOfflineQueue();
     q.push({type: 'del', id});
-    saveOfflineQueue(q);
+    await saveOfflineQueue(q);
     window._toast && window._toast('⚠️ מחיקה נכשלה — תסונכרן כשיחזור חיבור');
   }
 };
@@ -1816,10 +1877,11 @@ async function clearAllData(){
 }
 window.clearAllData = clearAllData;
 
-function restoreFromAutoBackup(){
+async function restoreFromAutoBackup(){
   if(!window.isOwnerMode){toast('❌ גישה לבעלים בלבד');return;}
   try{
-    const bk = JSON.parse(localStorage.getItem('tirewms_autobk')||'null');
+    const raw = window._enc ? await window._enc.get('tirewms_autobk') : localStorage.getItem('tirewms_autobk');
+    const bk = JSON.parse(raw||'null');
     if(!bk||!bk.items?.length){toast('❌ אין גיבוי אוטומטי');return;}
     const d = new Date(bk.ts).toLocaleString('he-IL');
     if(!confirm(`שחזר ${bk.items.length} פריטים מגיבוי ${d}?`)) return;
