@@ -858,6 +858,11 @@ function loadWorkers() {
         _workers = snap.data().list;
       }
       // טעינת hash סיסמת בעלים מ-Firestore (migration אוטומטי בפעם הראשונה)
+      if (snap.exists() && snap.data().ownerTotpSecret) {
+        _ownerTotpSecret = snap.data().ownerTotpSecret;
+      } else {
+        _ownerTotpSecret = null;
+      }
       if (snap.exists() && snap.data().ownerPassHash) {
         window._ownerPassHash = snap.data().ownerPassHash;
       } else if (!window._ownerPassHash) {
@@ -872,6 +877,67 @@ function loadWorkers() {
     });
   });
 }
+
+// ── TOTP / Google Authenticator — MFA לבעלים ──
+let _ownerTotpSecret = null; // נטען מ-Firestore בעת טעינת workers-config
+
+function _b32decode(s) {
+  const a = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = 0, val = 0, out = [];
+  for (const c of s.toUpperCase().replace(/=+$/, '')) {
+    val = (val << 5) | a.indexOf(c); bits += 5;
+    if (bits >= 8) { out.push((val >>> (bits - 8)) & 255); bits -= 8; }
+  }
+  return new Uint8Array(out);
+}
+
+function _b32encode(buf) {
+  const a = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = 0, val = 0, out = '';
+  for (const b of buf) { val = (val << 8) | b; bits += 8; while (bits >= 5) { out += a[(val >>> (bits - 5)) & 31]; bits -= 5; } }
+  if (bits > 0) out += a[(val << (5 - bits)) & 31];
+  return out;
+}
+
+async function _calcTOTP(secret, ts) {
+  const counter = Math.floor((ts || Date.now() / 1000) / 30);
+  const key = await crypto.subtle.importKey('raw', _b32decode(secret), { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']);
+  const buf = new ArrayBuffer(8);
+  new DataView(buf).setUint32(4, counter, false);
+  const sig = new Uint8Array(await crypto.subtle.sign('HMAC', key, buf));
+  const off = sig[19] & 0xf;
+  const code = ((sig[off] & 0x7f) << 24 | sig[off+1] << 16 | sig[off+2] << 8 | sig[off+3]) % 1000000;
+  return String(code).padStart(6, '0');
+}
+
+window._verifyTOTP = async function(code) {
+  if (!_ownerTotpSecret) return false;
+  const now = Date.now() / 1000;
+  for (const delta of [0, -30, 30]) {
+    if (await _calcTOTP(_ownerTotpSecret, now + delta) === String(code).trim()) return true;
+  }
+  return false;
+};
+
+window._setupTOTP = async function() {
+  const raw = crypto.getRandomValues(new Uint8Array(20));
+  const secret = _b32encode(raw);
+  await new Promise(resolve => onAuthReady(resolve));
+  const snap = await getDoc(workersDocRef);
+  const existing = snap.exists() ? snap.data() : {};
+  await setDoc(workersDocRef, { ...existing, ownerTotpSecret: secret });
+  _ownerTotpSecret = secret;
+  return { secret, url: `otpauth://totp/TireWMS%3A%D7%91%D7%A2%D7%9C%D7%99%D7%9D?secret=${secret}&issuer=TireWMS` };
+};
+
+window._disableTOTP = async function() {
+  await new Promise(resolve => onAuthReady(resolve));
+  const snap = await getDoc(workersDocRef);
+  const existing = snap.exists() ? snap.data() : {};
+  delete existing.ownerTotpSecret;
+  await setDoc(workersDocRef, existing);
+  _ownerTotpSecret = null;
+};
 
 // ── אימות אנונימי — חוסם גישה ישירה ל-Firestore מחוץ לאפליקציה ──
 // מחכה לאימות לפני הפעלת Firestore (מונע race condition)
@@ -1001,13 +1067,24 @@ async function buildLoginScreen() {
     <button id="btnOwnerToggle" style="background:none;border:none;color:#7a8299;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;text-decoration:underline;">👑 כניסה כבעלים</button>
 
     <div id="adminPassWrap" style="display:none;width:100%;max-width:300px;flex-direction:column;gap:8px;">
-      <input id="adminPassInput" type="password" placeholder="סיסמת בעלים"
-        style="background:#191d28;border:1px solid #2a3045;border-radius:9px;color:#eef0f6;font-family:Heebo,sans-serif;font-size:15px;padding:12px;width:100%;outline:none;text-align:center;" autocomplete="current-password"/>
-      <button id="btnPassOk" style="background:#f5a623;border:none;color:#111;padding:12px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;width:100%;">כניסה כבעלים</button>
-      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#7a8299;cursor:pointer;">
-        <input type="checkbox" id="rememberMe" style="width:16px;height:16px;cursor:pointer;"/> זכור אותי (30 יום)
-      </label>
-      <div id="passErr" style="color:#e85d3f;font-size:12px;text-align:center;display:none;">סיסמא שגויה</div>
+      <!-- שלב 1: סיסמה -->
+      <div id="ownerPassStep" style="display:flex;flex-direction:column;gap:8px;">
+        <input id="adminPassInput" type="password" placeholder="סיסמת בעלים"
+          style="background:#191d28;border:1px solid #2a3045;border-radius:9px;color:#eef0f6;font-family:Heebo,sans-serif;font-size:15px;padding:12px;width:100%;outline:none;text-align:center;" autocomplete="current-password"/>
+        <button id="btnPassOk" style="background:#f5a623;border:none;color:#111;padding:12px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;width:100%;">כניסה כבעלים</button>
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#7a8299;cursor:pointer;">
+          <input type="checkbox" id="rememberMe" style="width:16px;height:16px;cursor:pointer;"/> זכור אותי (30 יום)
+        </label>
+        <div id="passErr" style="color:#e85d3f;font-size:12px;text-align:center;display:none;">סיסמא שגויה</div>
+      </div>
+      <!-- שלב 2: קוד Google Authenticator (מוצג רק אם MFA פעיל) -->
+      <div id="ownerTotpStep" style="display:none;flex-direction:column;gap:8px;">
+        <div style="text-align:center;font-size:13px;color:#7a8299;">🔐 הכנס קוד מ-Google Authenticator</div>
+        <input id="totpInput" type="number" inputmode="numeric" placeholder="000000" maxlength="6"
+          style="background:#191d28;border:1px solid #2a3045;border-radius:9px;color:#eef0f6;font-family:Heebo,sans-serif;font-size:22px;padding:12px;width:100%;outline:none;text-align:center;letter-spacing:6px;"/>
+        <button onclick="checkTOTP()" style="background:#f5a623;border:none;color:#111;padding:12px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;width:100%;">אמת קוד</button>
+        <div id="totpErr" style="color:#e85d3f;font-size:12px;text-align:center;display:none;"></div>
+      </div>
     </div>
   `;
 
@@ -1021,6 +1098,7 @@ async function buildLoginScreen() {
   });
   document.getElementById('btnPassOk').addEventListener('click', checkPass);
   document.getElementById('adminPassInput').addEventListener('keydown', e => { if(e.key==='Enter') checkPass(); });
+  document.getElementById('totpInput').addEventListener('keydown', e => { if(e.key==='Enter') checkTOTP(); });
 
   // עדכן רשימת עובדים ברקע כשהחיבור מוכן
   onAuthReady(() => {
@@ -1060,18 +1138,46 @@ async function _doWorkerLogin() {
   enterApp(_isAdmin, worker.name);
 }
 
+async function _doOwnerEnter(remember) {
+  if (remember) await saveSession(true, null, 'בעלים');
+  _isAdmin = true; _isOwner = true;
+  _currentWorkerId = null; _currentWorkerName = 'בעלים';
+  enterApp(true, 'בעלים');
+}
+
+async function checkTOTP() {
+  const code = (document.getElementById('totpInput')?.value || '').trim();
+  const err  = document.getElementById('totpErr');
+  if (!code) return;
+  const ok = await window._verifyTOTP(code);
+  if (ok) {
+    const remember = document.getElementById('rememberMe');
+    await _doOwnerEnter(remember && remember.checked);
+  } else {
+    if (err) { err.textContent = '❌ קוד שגוי — נסה שוב'; err.style.display = 'block'; }
+    if (document.getElementById('totpInput')) document.getElementById('totpInput').value = '';
+  }
+}
+window.checkTOTP = checkTOTP;
+
+function _showTotpStep() {
+  const passStep = document.getElementById('ownerPassStep');
+  const totpStep = document.getElementById('ownerTotpStep');
+  if (passStep) passStep.style.display = 'none';
+  if (totpStep) { totpStep.style.display = ''; document.getElementById('totpInput')?.focus(); }
+}
+
 function checkPass() {
   const val = document.getElementById('adminPassInput').value;
   if (!val) return;
   hashPass(val).then(async h => {
     if (h === (window._ownerPassHash || ADMIN_PASS_HASH)) {
+      if (_ownerTotpSecret) {
+        _showTotpStep();
+        return;
+      }
       const remember = document.getElementById('rememberMe');
-      if (remember && remember.checked) await saveSession(true, null, 'בעלים');
-      _isAdmin = true;
-      _isOwner = true;
-      _currentWorkerId = null;
-      _currentWorkerName = 'בעלים';
-      enterApp(true, 'בעלים');
+      await _doOwnerEnter(remember && remember.checked);
     } else {
       document.getElementById('passErr').style.display = 'block';
       document.getElementById('passErr').textContent = 'סיסמא שגויה';
@@ -1124,11 +1230,75 @@ function enterApp(admin, workerName) {
     <span style="font-size:11px;color:${admin ? '#f5a623' : '#7a8299'};font-weight:700;white-space:nowrap;">${roleIcon} ${escHTML(displayName)}</span>
     ${_isOwner ? `<button id="btnWorkerMgmt" onclick="openWorkerMgmt()" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:12px;padding:5px 9px;cursor:pointer;font-family:inherit;white-space:nowrap;">👥 עובדים</button>` : ''}
     ${_isOwner ? `<button onclick="openChangePass()" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:12px;padding:5px 9px;cursor:pointer;font-family:inherit;white-space:nowrap;">🔑 סיסמה</button>` : ''}
+    ${_isOwner ? `<button onclick="openMfaSetup()" style="background:none;border:1px solid ${_ownerTotpSecret ? '#3ecf8e' : '#252b3b'};border-radius:6px;color:${_ownerTotpSecret ? '#3ecf8e' : '#7a8299'};font-size:12px;padding:5px 9px;cursor:pointer;font-family:inherit;white-space:nowrap;">🔐 MFA${_ownerTotpSecret ? ' ✓' : ''}</button>` : ''}
     <button id="logoutBtn" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:12px;padding:5px 9px;cursor:pointer;font-family:inherit;white-space:nowrap;">🚪 יציאה</button>
   `;
   document.getElementById('logoutBtn').addEventListener('click', _logout);
   setStatus(admin ? `🟢 ${escHTML(displayName)}` : `🟢 ${escHTML(displayName)}`);
 }
+
+async function openMfaSetup() {
+  if (!_isOwner) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'mfaSetupOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(12,14,20,.9);z-index:9500;display:flex;align-items:center;justify-content:center;font-family:Heebo,sans-serif;direction:rtl;';
+
+  if (_ownerTotpSecret) {
+    overlay.innerHTML = `
+      <div style="background:#191d28;border-radius:12px;padding:24px;width:320px;display:flex;flex-direction:column;gap:14px;align-items:center;">
+        <div style="font-size:16px;font-weight:700;color:#3ecf8e;">🔐 אימות דו-שלבי פעיל</div>
+        <div style="font-size:13px;color:#7a8299;text-align:center;">Google Authenticator מוגדר ופעיל על החשבון שלך.</div>
+        <button onclick="confirmDisableMfa()" style="width:100%;padding:10px;background:rgba(232,93,63,.15);border:1px solid #e85d3f;border-radius:7px;color:#e85d3f;font-weight:700;cursor:pointer;font-family:inherit;">❌ בטל אימות דו-שלבי</button>
+        <button onclick="document.getElementById('mfaSetupOverlay').remove()" style="width:100%;padding:10px;background:#252b3b;border:none;border-radius:7px;color:#eef0f6;cursor:pointer;font-family:inherit;">סגור</button>
+      </div>`;
+  } else {
+    const { url } = await window._setupTOTP();
+    const qrUrl = `https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${encodeURIComponent(url)}`;
+    overlay.innerHTML = `
+      <div style="background:#191d28;border-radius:12px;padding:24px;width:320px;display:flex;flex-direction:column;gap:14px;align-items:center;">
+        <div style="font-size:16px;font-weight:700;color:#eef0f6;">🔐 הגדרת Google Authenticator</div>
+        <div style="font-size:12px;color:#7a8299;text-align:center;">1. הורד Google Authenticator מהחנות<br>2. לחץ "+" ← "סרוק QR"<br>3. סרוק את הקוד למטה</div>
+        <img src="${qrUrl}" style="width:180px;height:180px;border-radius:8px;background:#fff;padding:4px;" alt="QR Code"/>
+        <div style="font-size:12px;color:#7a8299;text-align:center;">לאחר הסריקה הכנס קוד לאישור:</div>
+        <input id="mfaConfirmCode" type="number" inputmode="numeric" placeholder="000000" maxlength="6"
+          style="background:#0c0e14;border:1px solid #252b3b;border-radius:7px;color:#eef0f6;font-size:22px;padding:10px;width:100%;text-align:center;letter-spacing:6px;font-family:inherit;"/>
+        <div id="mfaConfirmErr" style="color:#e85d3f;font-size:12px;display:none;"></div>
+        <button onclick="confirmMfaSetup()" style="width:100%;padding:10px;background:#f5a623;border:none;border-radius:7px;color:#111;font-weight:700;cursor:pointer;font-family:inherit;">אשר והפעל</button>
+        <button onclick="cancelMfaSetup()" style="width:100%;padding:10px;background:#252b3b;border:none;border-radius:7px;color:#eef0f6;cursor:pointer;font-family:inherit;">ביטול</button>
+      </div>`;
+  }
+  document.body.appendChild(overlay);
+}
+window.openMfaSetup = openMfaSetup;
+
+async function confirmMfaSetup() {
+  const code = (document.getElementById('mfaConfirmCode')?.value || '').trim();
+  const err  = document.getElementById('mfaConfirmErr');
+  const ok   = await window._verifyTOTP(code);
+  if (ok) {
+    document.getElementById('mfaSetupOverlay').remove();
+    if (window._toast) window._toast('✅ Google Authenticator הופעל בהצלחה!');
+    enterApp(true, 'בעלים'); // רענן סרגל כדי להציג MFA ✓
+  } else {
+    if (err) { err.textContent='❌ קוד שגוי — נסה שוב'; err.style.display='block'; }
+  }
+}
+window.confirmMfaSetup = confirmMfaSetup;
+
+async function cancelMfaSetup() {
+  await window._disableTOTP();
+  document.getElementById('mfaSetupOverlay')?.remove();
+}
+window.cancelMfaSetup = cancelMfaSetup;
+
+async function confirmDisableMfa() {
+  if (!confirm('לבטל את אימות דו-שלבי? חשבון הבעלים יהיה מוגן בסיסמה בלבד.')) return;
+  await window._disableTOTP();
+  document.getElementById('mfaSetupOverlay')?.remove();
+  if (window._toast) window._toast('⚠️ אימות דו-שלבי בוטל');
+  enterApp(true, 'בעלים');
+}
+window.confirmDisableMfa = confirmDisableMfa;
 
 function openChangePass() {
   if (!_isOwner) return;
