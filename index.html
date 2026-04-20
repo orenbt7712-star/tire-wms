@@ -165,7 +165,7 @@ if('serviceWorker' in navigator){
 <div class="filters-row">
   <div style="position:relative;flex:1;min-width:80px;">
     <input class="qsel" id="fBrand" type="text" placeholder="🏷️ חיפוש מותג..." autocomplete="off"
-      onfocus="showBrandDrop(this)" oninput="showBrandDrop(this);applyFilters()"
+      onfocus="showBrandDropDebounced(this)" oninput="showBrandDropDebounced(this);applyFilters()"
       onblur="setTimeout(()=>{const d=document.getElementById('brandDrop');if(d)d.style.display='none'},200)"
       style="width:100%;cursor:text;box-sizing:border-box;"/>
   </div>
@@ -181,9 +181,9 @@ if('serviceWorker' in navigator){
 <div style="padding:10px 12px;background:var(--bg);border-bottom:1px solid var(--border);">
   <div style="display:flex;align-items:center;background:var(--card);border:1.5px solid var(--border2);border-radius:12px;padding:0 14px;height:46px;gap:10px;">
     <span style="color:var(--muted);font-size:18px;">🔍</span>
-    <input id="mainSearch" type="tel" placeholder="חיפוש לפי מידה, מותג, מיקום..."
-      inputmode="tel"
-      maxlength="20"
+    <input id="mainSearch" type="search" placeholder="חיפוש: מידה (205/55R16), מותג, קוד, עמודה..."
+      inputmode="search"
+      maxlength="30"
       oninput="handleSearchInput(this)"
       onkeydown="if(event.key==='Escape'||event.key==='Delete'){clearSearch();}"
       style="flex:1;background:none;border:none;outline:none;color:var(--text);font-size:16px;font-family:inherit;text-align:right;unicode-bidi:plaintext;"/>
@@ -433,7 +433,7 @@ if('serviceWorker' in navigator){
     </div>
     <div class="fg">
       <div class="fi full"><label>🏷️ מותג *</label><input id="aBr" type="text" placeholder="שם מותג" autocomplete="off"
-        onfocus="showBrandDrop(this)" oninput="showBrandDrop(this);updateAutoComplete()"
+        onfocus="showBrandDropDebounced(this)" oninput="showBrandDropDebounced(this);updateAutoComplete()"
         onblur="setTimeout(()=>{const d=document.getElementById('brandDrop');if(d)d.style.display='none'},200)"/>
       </div>
       <div class="fi full"><label>🔖 תיאור פריט</label><input id="aMo" type="text" placeholder="בחר תיאור מהרשימה או הקלד" autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false" lang="en"
@@ -1061,7 +1061,7 @@ async function buildLoginScreen() {
         style="background:#0c0e14;border:1px solid #2a3045;border-radius:8px;color:#eef0f6;font-family:Heebo,sans-serif;font-size:15px;padding:11px 12px;width:100%;outline:none;box-sizing:border-box;"/>
       <datalist id="workersList"></datalist>
       <input id="workerPinInput" type="password" inputmode="numeric" maxlength="6" placeholder="קוד PIN"
-        style="background:#0c0e14;border:1px solid #2a3045;border-radius:8px;color:#eef0f6;font-family:Heebo,sans-serif;font-size:18px;padding:10px;width:100%;outline:none;text-align:center;letter-spacing:6px;" autocomplete="current-password"/>
+        style="background:#0c0e14;border:1px solid #2a3045;border-radius:8px;color:#eef0f6;font-family:Heebo,sans-serif;font-size:18px;padding:10px;width:100%;outline:none;text-align:center;letter-spacing:4px;" autocomplete="current-password" autocorrect="off" spellcheck="false"/>
       <button id="btnWorkerLogin" style="background:#3b82f6;border:none;color:#fff;padding:12px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">כניסה</button>
       <div id="workerErr" style="color:#e85d3f;font-size:12px;text-align:center;display:none;">PIN שגוי</div>
     </div>
@@ -1072,7 +1072,7 @@ async function buildLoginScreen() {
       <!-- שלב 1: סיסמה -->
       <div id="ownerPassStep" style="display:flex;flex-direction:column;gap:8px;">
         <input id="adminPassInput" type="password" placeholder="סיסמת בעלים"
-          style="background:#191d28;border:1px solid #2a3045;border-radius:9px;color:#eef0f6;font-family:Heebo,sans-serif;font-size:15px;padding:12px;width:100%;outline:none;text-align:center;" autocomplete="current-password"/>
+          style="background:#191d28;border:1px solid #2a3045;border-radius:9px;color:#eef0f6;font-family:Heebo,sans-serif;font-size:15px;padding:12px;width:100%;outline:none;text-align:center;" autocomplete="current-password" autocorrect="off" spellcheck="false"/>
         <button id="btnPassOk" style="background:#f5a623;border:none;color:#111;padding:12px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;width:100%;">כניסה כבעלים</button>
         <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#7a8299;cursor:pointer;">
           <input type="checkbox" id="rememberMe" style="width:16px;height:16px;cursor:pointer;"/> זכור אותי (30 יום)
@@ -1082,8 +1082,8 @@ async function buildLoginScreen() {
       <!-- שלב 2: קוד Google Authenticator (מוצג רק אם MFA פעיל) -->
       <div id="ownerTotpStep" style="display:none;flex-direction:column;gap:8px;">
         <div style="text-align:center;font-size:13px;color:#7a8299;">🔐 הכנס קוד מ-Google Authenticator</div>
-        <input id="totpInput" type="number" inputmode="numeric" placeholder="000000" maxlength="6"
-          style="background:#191d28;border:1px solid #2a3045;border-radius:9px;color:#eef0f6;font-family:Heebo,sans-serif;font-size:22px;padding:12px;width:100%;outline:none;text-align:center;letter-spacing:6px;"/>
+        <input id="totpInput" type="text" inputmode="numeric" placeholder="000000" maxlength="6"
+          style="background:#191d28;border:1px solid #2a3045;border-radius:9px;color:#eef0f6;font-family:monospace;font-size:22px;padding:12px;width:100%;outline:none;text-align:center;letter-spacing:3px;" autocomplete="off" autocorrect="off" spellcheck="false"/>
         <button onclick="checkTOTP()" style="background:#f5a623;border:none;color:#111;padding:12px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;width:100%;">אמת קוד</button>
         <div id="totpErr" style="color:#e85d3f;font-size:12px;text-align:center;display:none;"></div>
       </div>

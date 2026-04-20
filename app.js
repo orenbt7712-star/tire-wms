@@ -104,9 +104,15 @@ function floorColor(f){
 function floorClass(f){ return 'floor-'+(f||1); }
 
 function toast(m){
-  const t=document.getElementById('toast');
-  t.textContent=m;t.classList.add('show');
-  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2600);
+  const el=document.getElementById('toast');
+  if(!el) return;
+  if(el.classList.contains('show')){
+    clearTimeout(el._t);
+    el._t=setTimeout(()=>{ el.textContent=m; el._t=setTimeout(()=>el.classList.remove('show'),3200); },350);
+  } else {
+    el.textContent=m; el.classList.add('show');
+    clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),3200);
+  }
 }
 window._toast = toast;
 
@@ -118,6 +124,8 @@ window.escHTML = escHTML;
 
 /* VIEWS */
 function switchView(n,el){
+  if(!el) return;
+  clearTimeout(_searchDebounce); _searchDebounce=null;
   // נקה בחירה מרוכזת בעת מעבר תצוגה
   if(typeof clearBulkSelection==='function') clearBulkSelection();
   // בדוק הרשאות לפני כל שינוי ב-UI
@@ -167,7 +175,8 @@ function switchView(n,el){
       if(cages.length===0){
         const saved=localStorage.getItem('tirewms_map2');
         if(saved){ try{ const d=JSON.parse(saved); cages=d.cages||[]; walls=d.walls||[]; nextCageId=d.nextId||1; }catch(e){} }
-        if(cages.length===0||localStorage.getItem('tirewms_map_ver')!==_MAP_VER){
+        const _savedVer=localStorage.getItem('tirewms_map_ver');
+        if(cages.length===0||_savedVer===null||_savedVer!==_MAP_VER){
           generateWarehouseLayout(true); return;
         }
       }
@@ -184,7 +193,7 @@ function switchView(n,el){
     if(n==='dashboard') renderDashboard();
     if(n==='inventory' && (_isOwner||_isAdmin)){
       // טען נתוני מלאי ברקע כדי שיהיו זמינים בחיפוש
-      window._loadInvData && window._loadInvData().then(()=>renderTable()).catch(()=>{});
+      window._loadInvData && window._loadInvData().then(()=>renderTable()).catch(e=>console.warn('loadInvData:',e));
     }
   }
 }
@@ -281,7 +290,10 @@ function renderTable(){
   const data=getFiltered();
   const sc=document.getElementById('statCount'); if(sc) sc.textContent=data.length;
   if(items.length===0){
-    area.innerHTML=`<div class="empty-wrap"><div class="ei">🛞</div><p>${t('emptyTitle')}</p><span>${t('emptyHint')}</span></div>`;
+    const addBtn = (window.isOwnerMode||window.isAdminMode)
+      ? `<button onclick="document.querySelector('[data-view=add]')?.click()" style="margin-top:16px;padding:12px 24px;background:var(--accent);border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;color:#111;">+ הוסף פריט ראשון</button>`
+      : '';
+    area.innerHTML=`<div class="empty-wrap"><div class="ei">🛞</div><p>${t('emptyTitle')}</p><span>${t('emptyHint')}</span>${addBtn}</div>`;
     return;
   }
   // הצג כרטיס מיקומים כשיש חיפוש פעיל
@@ -957,7 +969,7 @@ function _onItemsChanged(col){
 function confirmEmptyCage(){
   const size=(document.getElementById('emptyCageSizeInput').value||'').trim();
   if(size){
-    const r=JSON.parse(localStorage.getItem('tirewms_reservations')||'{}');
+    let r={};try{r=JSON.parse(localStorage.getItem('tirewms_reservations')||'{}');}catch(e){r={};}
     r[_emptyCageCol]=size;
     localStorage.setItem('tirewms_reservations',JSON.stringify(r));
     toast(`📌 עמודה ${_emptyCageCol} שמורה למידה: ${size}`);
@@ -966,8 +978,8 @@ function confirmEmptyCage(){
   document.getElementById('emptyCageOv').classList.remove('open');
 }
 function skipEmptyCage(){
+  let r={};try{r=JSON.parse(localStorage.getItem('tirewms_reservations')||'{}');}catch(e){r={};}
   // נקה הזמנה קיימת אם יש
-  const r=JSON.parse(localStorage.getItem('tirewms_reservations')||'{}');
   delete r[_emptyCageCol];
   localStorage.setItem('tirewms_reservations',JSON.stringify(r));
   document.getElementById('emptyCageOv').classList.remove('open');
@@ -1141,15 +1153,18 @@ function showBrandDrop(inp){
   drop.style.left=rect.left+'px';
   drop.style.top=rect.bottom+'px';
   drop.style.width=rect.width+'px';
-  const extra=id==='fBrand'?';applyFilters()':'';
+  const isFilter=id==='fBrand';
   drop.innerHTML=filtered.length
-    ? filtered.map(b=>`<div onmousedown="document.getElementById('${id}').value='${b.replace(/'/g,"\\'")}';document.getElementById('brandDrop').style.display='none'${extra};if(typeof updateAutoComplete==='function')updateAutoComplete()"
+    ? filtered.map(b=>`<div class="drop-item" data-val="${escHTML(b)}" data-target="${escHTML(id)}" data-isfilter="${isFilter?'1':''}"
         style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border)"
-        onmouseenter="this.style.background='var(--border2)'" onmouseleave="this.style.background=''">${b}</div>`).join('')
+        onmouseenter="this.style.background='var(--border2)'" onmouseleave="this.style.background=''">${escHTML(b)}</div>`).join('')
     : '<div style="padding:8px 12px;color:var(--muted);font-size:13px">אין תוצאות</div>';
   drop.style.display='block';
 }
 window.showBrandDrop=showBrandDrop;
+let _brandDropT=null;
+function showBrandDropDebounced(inp){ clearTimeout(_brandDropT); _brandDropT=setTimeout(()=>showBrandDrop(inp),150); }
+window.showBrandDropDebounced=showBrandDropDebounced;
 function showDescDrop(inp){
   const q=(inp.value||'').trim().toUpperCase();
   const sb=(document.getElementById('aBr')||{}).value.trim().toUpperCase();
@@ -1165,9 +1180,9 @@ function showDescDrop(inp){
   drop.style.top=rect.bottom+'px';
   drop.style.width=rect.width+'px';
   drop.innerHTML=filtered.length
-    ? filtered.map(([d])=>`<div onmousedown="document.getElementById('aMo').value='${d.replace(/'/g,"\\'").replace(/"/g,'&quot;')}';document.getElementById('descDrop').style.display='none';onDescInput(document.getElementById('aMo'))"
+    ? filtered.map(([d])=>`<div class="drop-item" data-val="${escHTML(d)}"
         style="padding:8px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--border);font-family:monospace"
-        onmouseenter="this.style.background='var(--border2)'" onmouseleave="this.style.background=''">${d}</div>`).join('')
+        onmouseenter="this.style.background='var(--border2)'" onmouseleave="this.style.background=''">${escHTML(d)}</div>`).join('')
     : '<div style="padding:8px 12px;color:var(--muted);font-size:13px">אין תוצאות</div>';
   drop.style.display='block';
 }
@@ -1186,7 +1201,7 @@ function _brandFilter(inp){
     return;
   }
   drop.innerHTML=filtered.map(b=>
-    `<div onmousedown="document.getElementById('fBrand').value='${b.replace(/'/g,"\\'")}';applyFilters();document.getElementById('brandDrop').style.display='none';"
+    `<div class="drop-item" data-val="${escHTML(b)}" data-target="fBrand" data-isfilter="1"
       style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);"
       onmouseenter="this.style.background='var(--border2)'" onmouseleave="this.style.background=''">${escHTML(b)}</div>`
   ).join('');
@@ -1201,11 +1216,14 @@ function clearFilters(){
 }
 
 /* DROPDOWNS */
+let _lastSzKey='';
 function refreshDropdowns(){
-  // brand filter is now a free-text input — no dropdown to populate
-
-
-  const ss=document.getElementById('fSize'),sv=ss.value;
+  const ss=document.getElementById('fSize');
+  if(!ss) return;
+  const key=items.map(i=>sz(i)).join(',');
+  if(key===_lastSzKey) return;
+  _lastSzKey=key;
+  const sv=ss.value;
   ss.innerHTML='<option value="">📐 מידה</option>'+[...new Set(items.map(i=>sz(i)))].sort().map(s=>`<option value="${escHTML(s)}" ${s===sv?'selected':''}>${escHTML(s)}</option>`).join('');
 }
 
@@ -1435,24 +1453,24 @@ async function startBarcode(){
 
     barcodeDetector = new BarcodeDetector({ formats: ['ean_13','ean_8','code_128','code_39','qr_code','upc_a','upc_e'] });
 
+    let _bcRunning=false;
     barcodeInterval = setInterval(async () => {
-      if(video.readyState === video.HAVE_ENOUGH_DATA){
-        try {
+      if(_bcRunning) return;
+      _bcRunning=true;
+      try {
+        if(video.readyState === video.HAVE_ENOUGH_DATA){
           const barcodes2 = await barcodeDetector.detect(video);
           if(barcodes2.length > 0){
             const barcode = barcodes2[0];
             const code = barcode.rawValue;
             const format = barcode.format;
             stopBarcode();
-            // QR Code — עיבוד שונה
-            if(format === 'qr_code'){
-              parseQRData(code);
-            } else {
-              parseBarcodeData(code);
-            }
+            if(format === 'qr_code') parseQRData(code);
+            else parseBarcodeData(code);
           }
-        } catch(e){}
-      }
+        }
+      } catch(e){ console.warn('barcode detect:',e); }
+      finally { _bcRunning=false; }
     }, 300);
 
   } catch(e){
@@ -4737,5 +4755,40 @@ window._gdStartAutoBackup = _gdStartAutoBackup;
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
   else run();
+})();
+// ══ DROPDOWN EVENT DELEGATION — מניעת XSS ══
+function _initDropListeners(){
+  const brandDrop=document.getElementById('brandDrop');
+  const descDrop=document.getElementById('descDrop');
+  if(brandDrop){
+    brandDrop.addEventListener('mousedown',e=>{
+      const item=e.target.closest('[data-val]');
+      if(!item) return;
+      e.preventDefault();
+      const val=item.dataset.val;
+      const target=item.dataset.target;
+      const isFilter=item.dataset.isfilter==='1';
+      const el=document.getElementById(target);
+      if(el) el.value=val;
+      brandDrop.style.display='none';
+      if(isFilter) applyFilters();
+      else if(typeof updateAutoComplete==='function') updateAutoComplete();
+    });
+  }
+  if(descDrop){
+    descDrop.addEventListener('mousedown',e=>{
+      const item=e.target.closest('[data-val]');
+      if(!item) return;
+      e.preventDefault();
+      const val=item.dataset.val;
+      const el=document.getElementById('aMo');
+      if(el){ el.value=val; if(typeof onDescInput==='function') onDescInput(el); }
+      descDrop.style.display='none';
+    });
+  }
+}
+(function(){
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',_initDropListeners);
+  else _initDropListeners();
 })();
 // ══ END GOOGLE DRIVE BACKUP ══════════════════════════════════════
