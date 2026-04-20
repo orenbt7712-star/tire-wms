@@ -798,6 +798,16 @@ function loadWorkers() {
       if (snap.exists() && snap.data().list) {
         _workers = snap.data().list;
       }
+      // טעינת hash סיסמת בעלים מ-Firestore (migration אוטומטי בפעם הראשונה)
+      if (snap.exists() && snap.data().ownerPassHash) {
+        window._ownerPassHash = snap.data().ownerPassHash;
+      } else if (!window._ownerPassHash) {
+        // migration: העתק את ה-hash הקשוע לקוד אל Firestore פעם אחת
+        const legacy = '61270cb789566f5b26c4e12e11bb7a0d9e3e1b1922ef31b7e014b015c5214e3d';
+        window._ownerPassHash = legacy;
+        const existingData = snap.exists() ? snap.data() : {};
+        setDoc(workersDocRef, { ...existingData, ownerPassHash: legacy });
+      }
       const panel = document.getElementById('workerMgmtPanel');
       if (panel && panel.style.display !== 'none') _renderWorkerMgmtList();
     });
@@ -856,7 +866,8 @@ function hashPass(p) {
 // ── Session חתום — מונע זיוף ב-localStorage ──
 async function genToken(admin) {
   const day = Math.floor(Date.now() / 86400000);
-  const raw = SESSION_SALT + ADMIN_PASS_HASH + String(admin) + String(day);
+  const passRef = window._ownerPassHash || ADMIN_PASS_HASH;
+  const raw = SESSION_SALT + passRef + String(admin) + String(day);
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
   return Array.from(new Uint8Array(buf)).map(x => x.toString(16).padStart(2,'0')).join('');
 }
@@ -992,7 +1003,7 @@ function checkPass() {
   const val = document.getElementById('adminPassInput').value;
   if (!val) return;
   hashPass(val).then(async h => {
-    if (h === ADMIN_PASS_HASH) {
+    if (h === (window._ownerPassHash || ADMIN_PASS_HASH)) {
       const remember = document.getElementById('rememberMe');
       if (remember && remember.checked) await saveSession(true, null, 'בעלים');
       _isAdmin = true;
@@ -1051,11 +1062,57 @@ function enterApp(admin, workerName) {
   ub.innerHTML = `
     <span style="font-size:11px;color:${admin ? '#f5a623' : '#7a8299'};font-weight:700;white-space:nowrap;">${roleIcon} ${escHTML(displayName)}</span>
     ${_isOwner ? `<button id="btnWorkerMgmt" onclick="openWorkerMgmt()" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:12px;padding:5px 9px;cursor:pointer;font-family:inherit;white-space:nowrap;">👥 עובדים</button>` : ''}
+    ${_isOwner ? `<button onclick="openChangePass()" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:12px;padding:5px 9px;cursor:pointer;font-family:inherit;white-space:nowrap;">🔑 סיסמה</button>` : ''}
     <button id="logoutBtn" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:12px;padding:5px 9px;cursor:pointer;font-family:inherit;white-space:nowrap;">🚪 יציאה</button>
   `;
   document.getElementById('logoutBtn').addEventListener('click', _logout);
   setStatus(admin ? `🟢 ${escHTML(displayName)}` : `🟢 ${escHTML(displayName)}`);
 }
+
+function openChangePass() {
+  if (!_isOwner) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'changePassOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(12,14,20,.85);z-index:9500;display:flex;align-items:center;justify-content:center;font-family:Heebo,sans-serif;direction:rtl;';
+  overlay.innerHTML = `
+    <div style="background:#191d28;border-radius:12px;padding:24px;width:300px;display:flex;flex-direction:column;gap:12px;">
+      <div style="font-size:16px;font-weight:700;color:#eef0f6;">🔑 שינוי סיסמת בעלים</div>
+      <input id="cpCurrent" type="password" placeholder="סיסמה נוכחית" style="padding:10px;border-radius:7px;border:1px solid #252b3b;background:#0c0e14;color:#eef0f6;font-family:inherit;font-size:14px;"/>
+      <input id="cpNew" type="password" placeholder="סיסמה חדשה" style="padding:10px;border-radius:7px;border:1px solid #252b3b;background:#0c0e14;color:#eef0f6;font-family:inherit;font-size:14px;"/>
+      <input id="cpConfirm" type="password" placeholder="אשר סיסמה חדשה" style="padding:10px;border-radius:7px;border:1px solid #252b3b;background:#0c0e14;color:#eef0f6;font-family:inherit;font-size:14px;"/>
+      <div id="cpErr" style="color:#e85d3f;font-size:12px;display:none;"></div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="doChangePass()" style="flex:1;padding:10px;background:#f5a623;color:#0c0e14;border:none;border-radius:7px;font-weight:700;cursor:pointer;font-family:inherit;">שמור</button>
+        <button onclick="document.getElementById('changePassOverlay').remove()" style="flex:1;padding:10px;background:#252b3b;color:#eef0f6;border:none;border-radius:7px;cursor:pointer;font-family:inherit;">ביטול</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+window.openChangePass = openChangePass;
+
+async function doChangePass() {
+  const curr = document.getElementById('cpCurrent').value;
+  const nw   = document.getElementById('cpNew').value;
+  const conf = document.getElementById('cpConfirm').value;
+  const err  = document.getElementById('cpErr');
+  err.style.display = 'none';
+  if (!curr || !nw || !conf) { err.textContent='יש למלא את כל השדות'; err.style.display='block'; return; }
+  if (nw !== conf)           { err.textContent='הסיסמאות החדשות אינן תואמות'; err.style.display='block'; return; }
+  if (nw.length < 6)         { err.textContent='סיסמה חייבת להכיל לפחות 6 תווים'; err.style.display='block'; return; }
+  const currHash = await hashPass(curr);
+  if (currHash !== (window._ownerPassHash || ADMIN_PASS_HASH)) {
+    err.textContent='הסיסמה הנוכחית שגויה'; err.style.display='block'; return;
+  }
+  const newHash = await hashPass(nw);
+  const ok = await window._changeOwnerPass(newHash);
+  if (ok) {
+    document.getElementById('changePassOverlay').remove();
+    if (window._toast) window._toast('✅ הסיסמה שונתה בהצלחה');
+  } else {
+    err.textContent='שגיאה בשמירה — נסה שוב'; err.style.display='block';
+  }
+}
+window.doChangePass = doChangePass;
 
 function _logout() {
   if (window._clearSessionRole) window._clearSessionRole();
@@ -1363,6 +1420,7 @@ async function runInventoryImport() {
   resultEl.textContent = '⏳ טוען ספריית Excel...';
   const script = document.createElement('script');
   script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  script.integrity = 'sha384-rRoXxn2yHlrZYB587Ki9RO1tONhLdM6XfORg7Rw4uwH4/Fh/5nP7IUX91bkaKUgs';
   script.crossOrigin = 'anonymous';
   script.onload = doImport;
   script.onerror = () => { resultEl.textContent = '❌ לא ניתן לטעון ספריית Excel — בדוק חיבור אינטרנט'; };
@@ -1798,6 +1856,18 @@ onAuthReady(() => {
     console.error('Firebase error:', err);
   });
 });
+
+// ── שינוי סיסמת בעלים — שומר ב-Firestore בלבד ──
+window._changeOwnerPass = async function(newHash) {
+  try {
+    await new Promise(resolve => onAuthReady(resolve));
+    const snap = await getDoc(workersDocRef);
+    const existing = snap.exists() ? snap.data() : {};
+    await setDoc(workersDocRef, { ...existing, ownerPassHash: newHash });
+    window._ownerPassHash = newHash;
+    return true;
+  } catch(e) { console.error('changeOwnerPass failed:', e); return false; }
+};
 
 // ── Session role ב-Firestore (לאכיפת Security Rules) ──
 window._saveSessionRole = async function(role) {
