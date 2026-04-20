@@ -864,6 +864,8 @@ async function genToken(admin) {
 async function saveSession(admin, workerId=null, workerName=null) {
   const token = await genToken(admin);
   localStorage.setItem('tirewms_session', JSON.stringify({admin, workerId, workerName, ts: Date.now(), token}));
+  const role = _isOwner ? 'owner' : (admin ? 'admin' : 'worker');
+  if (window._saveSessionRole) window._saveSessionRole(role);
 }
 
 async function loadSession() {
@@ -1056,6 +1058,7 @@ function enterApp(admin, workerName) {
 }
 
 function _logout() {
+  if (window._clearSessionRole) window._clearSessionRole();
   clearSession();
   _isAdmin = false;
   _isOwner = false;
@@ -1795,6 +1798,22 @@ onAuthReady(() => {
     console.error('Firebase error:', err);
   });
 });
+
+// ── Session role ב-Firestore (לאכיפת Security Rules) ──
+window._saveSessionRole = async function(role) {
+  try {
+    await new Promise(resolve => onAuthReady(resolve));
+    if (!auth.currentUser) return;
+    await setDoc(doc(db, 'sessions', auth.currentUser.uid), { role, ts: Date.now() });
+  } catch(e) { console.warn('saveSessionRole failed:', e); }
+};
+
+window._clearSessionRole = async function() {
+  try {
+    if (!auth.currentUser) return;
+    await deleteDoc(doc(db, 'sessions', auth.currentUser.uid));
+  } catch(e) { console.warn('clearSessionRole failed:', e); }
+};
 
 window.buildLoginScreen = buildLoginScreen;
 </script>

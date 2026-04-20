@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function role() {
+      return get(/databases/$(database)/documents/sessions/$(request.auth.uid)).data.role;
+    }
+    function isAuth()          { return request.auth != null; }
+    function isAdminOrOwner()  { return isAuth() && role() in ['admin', 'owner']; }
+    function isOwner()         { return isAuth() && role() == 'owner'; }
+
+    // sessions: כל משתמש כותב ומוחק רק את שלו
+    match /sessions/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // tires (כולל workers-config document)
+    match /tires/{docId} {
+      allow read:          if isAuth();
+      allow create, update: if isAdminOrOwner();
+      allow delete:        if isOwner();
+    }
+
+    // inventory (ייבוא מ-Excel)
+    match /inventory/{docId} {
+      allow read:          if isAuth();
+      allow create, update: if isAdminOrOwner();
+      allow delete:        if isOwner();
+    }
+
+    // audit_log: כל מאומת יכול ליצור, רק בעלים יכול לקרוא
+    match /audit_log/{docId} {
+      allow read:   if isOwner();
+      allow create: if isAuth();
+    }
+  }
+}

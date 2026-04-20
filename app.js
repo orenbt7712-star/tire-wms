@@ -921,6 +921,7 @@ function dupSingles(){
   closeDupConflict(); closeAddModal();
 }
 function doDelete(){
+  if(!window.isOwnerMode){toast('❌ מחיקה מותרת לבעלים בלבד');closeConf();return;}
   const delIt=items.find(x=>x.id===pendingDel);
   if(!delIt){toast('❌ פריט לא נמצא');closeConf();return;}
   const delCol=delIt.col;
