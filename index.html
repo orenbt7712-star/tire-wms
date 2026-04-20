@@ -1040,6 +1040,8 @@ async function buildLoginScreen() {
     _isAdmin = session.admin;
     _isOwner = !session.workerId; // בעלים אם אין workerId
     _currentWorkerId = session.workerId || null;
+    const role = _isOwner ? 'owner' : (session.admin ? 'admin' : 'worker');
+    if (window._saveSessionRole) window._saveSessionRole(role);
     enterApp(session.admin, session.workerName || null);
     return;
   }
