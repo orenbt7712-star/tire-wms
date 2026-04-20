@@ -692,6 +692,8 @@ function _renderPendingList(){
 }
 function approveDeletion(id){
   if(!window.isOwnerMode) return;
+  const it=items.find(x=>x.id===id);
+  if(it) logDelete(it);
   if(window._deleteItem) window._deleteItem(id);
   toast('🗑️ הפריט נמחק');
   setTimeout(()=>_renderPendingList(),500);
@@ -701,6 +703,7 @@ function cancelPending(id){
   const it=items.find(x=>x.id===id);
   if(!it) return;
   delete it.status; delete it.pendingBy; delete it.pendingAt; delete it.workerReport;
+  logStatus(it);
   if(window._saveItem) window._saveItem(it);
   _renderPendingList();
   toast('↩️ הסימון בוטל');
@@ -878,9 +881,11 @@ function dupMarkDoneAndAdd(){
   // סמן ישן כנגמר
   const ex=items.find(x=>x.id===_dupExistingId);
   if(ex){
+    const beforeSnap=_auditSnapshot(ex);
     ex.status='pending_done';
     ex.pendingBy=window.currentWorkerName||'בעלים';
     ex.pendingAt=new Date().toISOString();
+    logEdit(beforeSnap,ex);
     if(window._saveItem) window._saveItem(ex);
   }
   // הוסף חדש
@@ -898,7 +903,7 @@ function dupMoveExisting(){
 }
 function dupHalfHalf(){
   const ex=items.find(x=>x.id===_dupExistingId);
-  if(ex){ ex.shareMode='half'; if(window._saveItem) window._saveItem(ex); }
+  if(ex){ const bs=_auditSnapshot(ex); ex.shareMode='half'; logEdit(bs,ex); if(window._saveItem) window._saveItem(ex); }
   if(_dupPendingItem){
     _dupPendingItem.shareMode='half';
     if(window._saveItem) window._saveItem(_dupPendingItem);
@@ -911,7 +916,7 @@ function dupSingles(){
   if(co){
     const trimCo=String(co).trim();
     items.filter(x=>String(x.col).trim()===trimCo&&String(x.floor||'1')===fl&&x.status!=='pending_done')
-      .forEach(x=>{ x.shareMode='singles'; if(window._saveItem) window._saveItem(x); });
+      .forEach(x=>{ const bs=_auditSnapshot(x); x.shareMode='singles'; logEdit(bs,x); if(window._saveItem) window._saveItem(x); });
   }
   if(_dupPendingItem){
     _dupPendingItem.shareMode='singles';
