@@ -104,11 +104,21 @@ function floorColor(f){
 function floorClass(f){ return 'floor-'+(f||1); }
 
 function toast(m){
-  const t=document.getElementById('toast');
-  t.textContent=m;t.classList.add('show');
-  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2600);
+  const el=document.getElementById('toast');
+  if(!el) return;
+  if(el.classList.contains('show')){
+    clearTimeout(el._t);
+    el._t=setTimeout(()=>{ el.textContent=m; el._t=setTimeout(()=>el.classList.remove('show'),3200); },350);
+  } else {
+    el.textContent=m; el.classList.add('show');
+    clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),3200);
+  }
 }
 window._toast = toast;
+
+window._goToAdd=function(){ document.querySelector('[data-view=add]')?.click(); };
+window._prevPage=function(){ if(currentPage>0){currentPage--;renderTable();} };
+window._nextPage=function(){ const tp=Math.ceil(getFiltered().length/PAGE_SIZE); if(currentPage<tp-1){currentPage++;renderTable();} };
 
 function escHTML(s){
   if(s==null) return '';
@@ -118,6 +128,8 @@ window.escHTML = escHTML;
 
 /* VIEWS */
 function switchView(n,el){
+  if(!el) return;
+  clearTimeout(_searchDebounce); _searchDebounce=null;
   // נקה בחירה מרוכזת בעת מעבר תצוגה
   if(typeof clearBulkSelection==='function') clearBulkSelection();
   // בדוק הרשאות לפני כל שינוי ב-UI
@@ -167,7 +179,8 @@ function switchView(n,el){
       if(cages.length===0){
         const saved=localStorage.getItem('tirewms_map2');
         if(saved){ try{ const d=JSON.parse(saved); cages=d.cages||[]; walls=d.walls||[]; nextCageId=d.nextId||1; }catch(e){} }
-        if(cages.length===0||localStorage.getItem('tirewms_map_ver')!==_MAP_VER){
+        const _savedVer=localStorage.getItem('tirewms_map_ver');
+        if(cages.length===0||_savedVer===null||_savedVer!==_MAP_VER){
           generateWarehouseLayout(true); return;
         }
       }
@@ -184,7 +197,7 @@ function switchView(n,el){
     if(n==='dashboard') renderDashboard();
     if(n==='inventory' && (_isOwner||_isAdmin)){
       // טען נתוני מלאי ברקע כדי שיהיו זמינים בחיפוש
-      window._loadInvData && window._loadInvData().then(()=>renderTable()).catch(()=>{});
+      window._loadInvData && window._loadInvData().then(()=>renderTable()).catch(e=>console.warn('loadInvData:',e));
     }
   }
 }
@@ -281,7 +294,10 @@ function renderTable(){
   const data=getFiltered();
   const sc=document.getElementById('statCount'); if(sc) sc.textContent=data.length;
   if(items.length===0){
-    area.innerHTML=`<div class="empty-wrap"><div class="ei">🛞</div><p>${t('emptyTitle')}</p><span>${t('emptyHint')}</span></div>`;
+    const addBtn = (window.isOwnerMode||window.isAdminMode)
+      ? `<button data-action="_goToAdd" style="margin-top:16px;padding:12px 24px;background:var(--accent);border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;color:#111;">+ הוסף פריט ראשון</button>`
+      : '';
+    area.innerHTML=`<div class="empty-wrap"><div class="ei">🛞</div><p>${t('emptyTitle')}</p><span>${t('emptyHint')}</span>${addBtn}</div>`;
     return;
   }
   // הצג כרטיס מיקומים כשיש חיפוש פעיל
@@ -291,11 +307,11 @@ function renderTable(){
   const canBulk=window.isOwnerMode||window.isAdminMode;
   let html=`<div class="twrap"><table>
     <thead><tr>
-      ${canBulk?`<th style="width:32px;padding:6px 4px;"><input type="checkbox" class="bulk-cb" id="checkAll" onchange="toggleSelectAll(this)" title="בחר הכל בדף"></th>`:''}
-      <th style="text-align:center;" onclick="sortBy('itemCode')" class="${sortCol==='itemCode'?'sorted':''}">קוד פריט ${sa('itemCode')}</th>
-      <th style="text-align:center;" onclick="sortBy('brand')" class="${sortCol==='brand'?'sorted':''}">תיאור פריט ${sa('brand')}</th>
+      ${canBulk?`<th style="width:32px;padding:6px 4px;"><input type="checkbox" class="bulk-cb" id="checkAll" data-onchange="toggleSelectAll" title="בחר הכל בדף"></th>`:''}
+      <th style="text-align:center;" data-action="sortBy" data-args="itemCode" class="${sortCol==='itemCode'?'sorted':''}">קוד פריט ${sa('itemCode')}</th>
+      <th style="text-align:center;" data-action="sortBy" data-args="brand" class="${sortCol==='brand'?'sorted':''}">תיאור פריט ${sa('brand')}</th>
       <th style="text-align:center;">📦 קיסריה 01</th>
-      <th onclick="sortBy('row')" class="${sortCol==='row'?'sorted':''}">מיקום ${sa('row')}</th>
+      <th data-action="sortBy" data-args="row" class="${sortCol==='row'?'sorted':''}">מיקום ${sa('row')}</th>
       <th>${editingId?'↵·Esc':'פעולות'}</th>
     </tr></thead><tbody>`;
   // Pagination
@@ -312,9 +328,9 @@ function renderTable(){
     const prevDis = currentPage===0 ? 'opacity:0.4;cursor:default;' : 'cursor:pointer;';
     const nextDis = currentPage>=totalPages-1 ? 'opacity:0.4;cursor:default;' : 'cursor:pointer;';
     html += `<div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:10px;background:var(--surface);border-top:1px solid var(--border);flex-shrink:0;">
-      <button onclick="if(${currentPage}>0){currentPage--;renderTable();}" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 14px;color:var(--text);font-family:inherit;font-size:13px;${prevDis}">→ הקודם</button>
+      <button data-action="_prevPage" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 14px;color:var(--text);font-family:inherit;font-size:13px;${prevDis}">→ הקודם</button>
       <span style="font-size:12px;color:var(--muted);">${currentPage+1} / ${totalPages} &nbsp;(${data.length} פריטים)</span>
-      <button onclick="if(${currentPage}<${totalPages}-1){currentPage++;renderTable();}" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 14px;color:var(--text);font-family:inherit;font-size:13px;${nextDis}">הבא ←</button>
+      <button data-action="_nextPage" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 14px;color:var(--text);font-family:inherit;font-size:13px;${nextDis}">הבא ←</button>
     </div>`;
   }
 
@@ -334,8 +350,8 @@ function renderTable(){
 function viewRow(it){
   const isPending=it.status==='pending_done';
   const canBulk=window.isOwnerMode||window.isAdminMode;
-  const cbCell=canBulk?`<td style="padding:6px 4px;" onclick="event.stopPropagation()"><input type="checkbox" class="bulk-cb row-cb" data-id="${it.id}" onchange="toggleBulkRow(this,${it.id})"${selectedIds.has(it.id)?' checked':''}></td>`:'';
-  return `<tr id="tr-${it.id}" class="tr-anim${isPending?' pending-row':''}${selectedIds.has(it.id)?' bulk-checked':''}" onclick="showItemLocation(${it.id})" style="cursor:pointer;">
+  const cbCell=canBulk?`<td style="padding:6px 4px;" data-stop-prop="true"><input type="checkbox" class="bulk-cb row-cb" data-id="${it.id}" data-onchange="toggleBulkRow:${it.id}"${selectedIds.has(it.id)?' checked':''}></td>`:'';
+  return `<tr id="tr-${it.id}" class="tr-anim${isPending?' pending-row':''}${selectedIds.has(it.id)?' bulk-checked':''}" data-action="showItemLocation" data-args="${it.id}" style="cursor:pointer;">
     ${cbCell}
     <td style="text-align:center;"><span style="font-family:monospace;font-size:12px;color:var(--muted);">${escHTML(it.itemCode||'')}</span></td>
     <td style="text-align:center;"><span style="font-weight:700;">${escHTML(it.brand)}</span>${it.model?`<br><span style="font-size:10px;color:var(--muted)">${escHTML(it.model)}</span>`:''}</td>
@@ -354,11 +370,11 @@ function viewRow(it){
       ${it.shareMode==='singles'?`<span style="color:var(--border2)">·</span><span style="background:rgba(74,158,255,0.15);color:var(--blue);border-radius:4px;padding:1px 5px;font-size:10px;font-weight:900;">יח׳</span>`:''}
     </div></td>
     <td><div class="acts">
-      <button class="ib owner-only" onclick="event.stopPropagation();startEdit(${it.id})" title="עריכה מלאה">✏️</button>
-      <button class="ib del owner-only" onclick="event.stopPropagation();askDelete(${it.id})" title="מחיקה">🗑️</button>
-      <button class="ib loc-edit-btn" onclick="event.stopPropagation();openLocationEdit(${it.id})" title="עבר למיקום">🔄 מיקום</button>
-      <button class="ib loc-edit-btn done-btn${isPending?' active':''}" onclick="event.stopPropagation();markAsDone(${it.id})" title="${isPending?'ממתין לאישור בעלים':'סמן כנגמר'}">${isPending?'⏳ ממתין':'✅ <span style="color:var(--red,#e85d3f)">נגמר</span>'}</button>
-      <button class="ib worker-report-btn${isPending?' active':''}" onclick="event.stopPropagation();reportByWorker(${it.id})" style="font-size:11px;padding:0 6px;width:auto;gap:3px;${isPending?'background:rgba(232,93,63,.15);border-color:var(--red);color:var(--red);':''}" title="${isPending?'ממתין לטיפול מנהל':'דווח למנהל — נגמר'}">${isPending?'⏳ דווח':'📢 <span style="color:var(--red,#e85d3f)">נגמר</span>'}</button>
+      <button class="ib owner-only" data-stop-prop="true" data-action="startEdit" data-args="${it.id}" title="עריכה מלאה">✏️</button>
+      <button class="ib del owner-only" data-stop-prop="true" data-action="askDelete" data-args="${it.id}" title="מחיקה">🗑️</button>
+      <button class="ib loc-edit-btn" data-stop-prop="true" data-action="openLocationEdit" data-args="${it.id}" title="עבר למיקום">🔄 מיקום</button>
+      <button class="ib loc-edit-btn done-btn${isPending?' active':''}" data-stop-prop="true" data-action="markAsDone" data-args="${it.id}" title="${isPending?'ממתין לאישור בעלים':'סמן כנגמר'}">${isPending?'⏳ ממתין':'✅ <span style="color:var(--red,#e85d3f)">נגמר</span>'}</button>
+      <button class="ib worker-report-btn${isPending?' active':''}" data-stop-prop="true" data-action="reportByWorker" data-args="${it.id}" style="font-size:11px;padding:0 6px;width:auto;gap:3px;${isPending?'background:rgba(232,93,63,.15);border-color:var(--red);color:var(--red);':''}" title="${isPending?'ממתין לטיפול מנהל':'דווח למנהל — נגמר'}">${isPending?'⏳ דווח':'📢 <span style="color:var(--red,#e85d3f)">נגמר</span>'}</button>
     </div></td>
   </tr>`;
 }
@@ -400,8 +416,8 @@ function editRow(it){
       </div>
     </div></td>
     <td><div class="acts">
-      <button class="ib sv" onclick="saveEdit(${it.id})">💾</button>
-      <button class="ib cx" onclick="cancelEdit()">✕</button>
+      <button class="ib sv" data-action="saveEdit" data-args="${it.id}">💾</button>
+      <button class="ib cx" data-action="cancelEdit">✕</button>
     </div></td>
   </tr>`;
 }
@@ -684,8 +700,8 @@ function _renderPendingList(){
       <div style="font-size:12px;color:var(--muted);margin-top:4px;">📍 ${escHTML(it.col||'—')} · קומה ${it.floor||1}</div>
       <div style="font-size:11px;color:var(--muted);margin-top:3px;">${it.workerReport?'📢 דיווח עובד:':'סומן ע״י:'} <b>${escHTML(it.pendingBy||'')}</b>${date?' · '+date:''}</div>
       <div style="display:flex;gap:8px;margin-top:12px;">
-        <button onclick="cancelPending(${it.id})" style="flex:1;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">↩️ בטל סימון</button>
-        <button onclick="approveDeletion(${it.id})" style="flex:1;background:rgba(232,93,63,.15);border:1px solid var(--red,#e85d3f);color:var(--red,#e85d3f);border-radius:9px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">🗑️ אשר מחיקה</button>
+        <button data-action="cancelPending" data-args="${it.id}" style="flex:1;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">↩️ בטל סימון</button>
+        <button data-action="approveDeletion" data-args="${it.id}" style="flex:1;background:rgba(232,93,63,.15);border:1px solid var(--red,#e85d3f);color:var(--red,#e85d3f);border-radius:9px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">🗑️ אשר מחיקה</button>
       </div>
     </div>`;
   }).join('');
@@ -837,7 +853,7 @@ function openLocPicker(id){
       byFloor[f].sort((a,b)=>String(a.name).localeCompare(String(b.name),'he')).forEach(g=>{
         const isCur=String(it.col)===String(g.name)&&String(it.floor)===String(g.floor||'1');
         const cnt=items.filter(x=>String(x.col)===String(g.name)&&String(x.floor)===String(g.floor||'1')).length;
-        html+=`<button onclick="pickLocation('${escHTML(g.name)}','${escHTML(g.floor||'1')}')" style="padding:8px 12px;border-radius:8px;border:2px solid ${isCur?col:'var(--border)'};background:${isCur?'rgba(74,158,255,0.12)':'var(--card)'};color:${isCur?col:'var(--text)'};font-family:inherit;font-size:13px;font-weight:${isCur?'900':'600'};cursor:pointer;min-width:60px;position:relative;">
+        html+=`<button data-action="pickLocation" data-args="${escHTML(g.name)}|${escHTML(g.floor||'1')}" style="padding:8px 12px;border-radius:8px;border:2px solid ${isCur?col:'var(--border)'};background:${isCur?'rgba(74,158,255,0.12)':'var(--card)'};color:${isCur?col:'var(--text)'};font-family:inherit;font-size:13px;font-weight:${isCur?'900':'600'};cursor:pointer;min-width:60px;position:relative;">
           ${escHTML(g.name)}${cnt>0?`<span style="position:absolute;top:-5px;left:-5px;background:${col};color:#fff;border-radius:999px;font-size:9px;font-weight:900;padding:1px 4px;min-width:14px;text-align:center;">${cnt}</span>`:''}
         </button>`;
       });
@@ -957,7 +973,7 @@ function _onItemsChanged(col){
 function confirmEmptyCage(){
   const size=(document.getElementById('emptyCageSizeInput').value||'').trim();
   if(size){
-    const r=JSON.parse(localStorage.getItem('tirewms_reservations')||'{}');
+    let r={};try{r=JSON.parse(localStorage.getItem('tirewms_reservations')||'{}');}catch(e){r={};}
     r[_emptyCageCol]=size;
     localStorage.setItem('tirewms_reservations',JSON.stringify(r));
     toast(`📌 עמודה ${_emptyCageCol} שמורה למידה: ${size}`);
@@ -966,8 +982,8 @@ function confirmEmptyCage(){
   document.getElementById('emptyCageOv').classList.remove('open');
 }
 function skipEmptyCage(){
+  let r={};try{r=JSON.parse(localStorage.getItem('tirewms_reservations')||'{}');}catch(e){r={};}
   // נקה הזמנה קיימת אם יש
-  const r=JSON.parse(localStorage.getItem('tirewms_reservations')||'{}');
   delete r[_emptyCageCol];
   localStorage.setItem('tirewms_reservations',JSON.stringify(r));
   document.getElementById('emptyCageOv').classList.remove('open');
@@ -1141,15 +1157,18 @@ function showBrandDrop(inp){
   drop.style.left=rect.left+'px';
   drop.style.top=rect.bottom+'px';
   drop.style.width=rect.width+'px';
-  const extra=id==='fBrand'?';applyFilters()':'';
+  const isFilter=id==='fBrand';
   drop.innerHTML=filtered.length
-    ? filtered.map(b=>`<div onmousedown="document.getElementById('${id}').value='${b.replace(/'/g,"\\'")}';document.getElementById('brandDrop').style.display='none'${extra};if(typeof updateAutoComplete==='function')updateAutoComplete()"
+    ? filtered.map(b=>`<div class="drop-item" data-val="${escHTML(b)}" data-target="${escHTML(id)}" data-isfilter="${isFilter?'1':''}"
         style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border)"
-        onmouseenter="this.style.background='var(--border2)'" onmouseleave="this.style.background=''">${b}</div>`).join('')
+        onmouseenter="this.style.background='var(--border2)'" onmouseleave="this.style.background=''">${escHTML(b)}</div>`).join('')
     : '<div style="padding:8px 12px;color:var(--muted);font-size:13px">אין תוצאות</div>';
   drop.style.display='block';
 }
 window.showBrandDrop=showBrandDrop;
+let _brandDropT=null;
+function showBrandDropDebounced(inp){ clearTimeout(_brandDropT); _brandDropT=setTimeout(()=>showBrandDrop(inp),150); }
+window.showBrandDropDebounced=showBrandDropDebounced;
 function showDescDrop(inp){
   const q=(inp.value||'').trim().toUpperCase();
   const sb=(document.getElementById('aBr')||{}).value.trim().toUpperCase();
@@ -1165,9 +1184,9 @@ function showDescDrop(inp){
   drop.style.top=rect.bottom+'px';
   drop.style.width=rect.width+'px';
   drop.innerHTML=filtered.length
-    ? filtered.map(([d])=>`<div onmousedown="document.getElementById('aMo').value='${d.replace(/'/g,"\\'").replace(/"/g,'&quot;')}';document.getElementById('descDrop').style.display='none';onDescInput(document.getElementById('aMo'))"
+    ? filtered.map(([d])=>`<div class="drop-item" data-val="${escHTML(d)}"
         style="padding:8px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--border);font-family:monospace"
-        onmouseenter="this.style.background='var(--border2)'" onmouseleave="this.style.background=''">${d}</div>`).join('')
+        onmouseenter="this.style.background='var(--border2)'" onmouseleave="this.style.background=''">${escHTML(d)}</div>`).join('')
     : '<div style="padding:8px 12px;color:var(--muted);font-size:13px">אין תוצאות</div>';
   drop.style.display='block';
 }
@@ -1186,7 +1205,7 @@ function _brandFilter(inp){
     return;
   }
   drop.innerHTML=filtered.map(b=>
-    `<div onmousedown="document.getElementById('fBrand').value='${b.replace(/'/g,"\\'")}';applyFilters();document.getElementById('brandDrop').style.display='none';"
+    `<div class="drop-item" data-val="${escHTML(b)}" data-target="fBrand" data-isfilter="1"
       style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);"
       onmouseenter="this.style.background='var(--border2)'" onmouseleave="this.style.background=''">${escHTML(b)}</div>`
   ).join('');
@@ -1201,11 +1220,14 @@ function clearFilters(){
 }
 
 /* DROPDOWNS */
+let _lastSzKey='';
 function refreshDropdowns(){
-  // brand filter is now a free-text input — no dropdown to populate
-
-
-  const ss=document.getElementById('fSize'),sv=ss.value;
+  const ss=document.getElementById('fSize');
+  if(!ss) return;
+  const key=items.map(i=>sz(i)).join(',');
+  if(key===_lastSzKey) return;
+  _lastSzKey=key;
+  const sv=ss.value;
   ss.innerHTML='<option value="">📐 מידה</option>'+[...new Set(items.map(i=>sz(i)))].sort().map(s=>`<option value="${escHTML(s)}" ${s===sv?'selected':''}>${escHTML(s)}</option>`).join('');
 }
 
@@ -1273,7 +1295,7 @@ function svgCell(col,row,x,y){
     inner+=`<text x="${x+CW/2}" y="${y+CH/2+5}" text-anchor="middle" fill="#252b3b" font-size="20">·</text>`;
   }
   inner+=`<text x="${x+3}" y="${y+9}" fill="#3e4560" font-size="7" font-weight="600">${col}</text>`;
-  return `<g onclick="onCellClick('${col}','${row}')" style="cursor:${has?'pointer':'default'}">
+  return `<g data-action="onCellClick" data-args="${col}|${row}" style="cursor:${has?'pointer':'default'}">
     <rect x="${x}" y="${y}" width="${CW}" height="${CH}" rx="5" fill="${bg}" stroke="${strk}" stroke-width="${sw}"/>
     ${inner}
   </g>`;
@@ -1435,24 +1457,24 @@ async function startBarcode(){
 
     barcodeDetector = new BarcodeDetector({ formats: ['ean_13','ean_8','code_128','code_39','qr_code','upc_a','upc_e'] });
 
+    let _bcRunning=false;
     barcodeInterval = setInterval(async () => {
-      if(video.readyState === video.HAVE_ENOUGH_DATA){
-        try {
+      if(_bcRunning) return;
+      _bcRunning=true;
+      try {
+        if(video.readyState === video.HAVE_ENOUGH_DATA){
           const barcodes2 = await barcodeDetector.detect(video);
           if(barcodes2.length > 0){
             const barcode = barcodes2[0];
             const code = barcode.rawValue;
             const format = barcode.format;
             stopBarcode();
-            // QR Code — עיבוד שונה
-            if(format === 'qr_code'){
-              parseQRData(code);
-            } else {
-              parseBarcodeData(code);
-            }
+            if(format === 'qr_code') parseQRData(code);
+            else parseBarcodeData(code);
           }
-        } catch(e){}
-      }
+        }
+      } catch(e){ console.warn('barcode detect:',e); }
+      finally { _bcRunning=false; }
     }, 300);
 
   } catch(e){
@@ -1889,7 +1911,7 @@ function showCageItems(g){
         <span style="font-size:11px;font-weight:700;color:${color};">קומה ${f}</span>
       </div>`;
     byFloor[f].forEach(it=>{
-      body+=`<div onclick="showItemLocation(${it.id})" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:10px;">
+      body+=`<div data-action="showItemLocation" data-args="${it.id}" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:10px;">
         <span style="font-family:monospace;font-size:14px;font-weight:900;color:var(--accent);">${sz(it)}</span>
         <span style="font-weight:700;">${escHTML(it.brand)}</span>
         ${it.model?`<span style="font-size:11px;color:var(--muted);">${escHTML(it.model)}</span>`:''}
@@ -4395,7 +4417,7 @@ function showWhCageDetail(g){
   Object.keys(bf).sort().forEach(f=>{
     const color=fc[f]||'var(--accent)';
     body+=`<div style="margin-bottom:10px;"><div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span class="floor-badge floor-${f}">${f}</span><span style="font-size:11px;font-weight:700;color:${color};">${currentLang==='ar'?'طابق':'קומה'} ${f}</span></div>`;
-    bf[f].forEach(it=>{ body+=`<div onclick="showItemLocation(${it.id})" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:10px;"><span style="font-family:monospace;font-size:14px;font-weight:900;color:var(--accent);">${sz(it)}</span><span style="font-weight:700;">${escHTML(it.brand)}</span>${it.model?`<span style="font-size:11px;color:var(--muted);">${escHTML(it.model)}</span>`:''}</div>`; });
+    bf[f].forEach(it=>{ body+=`<div data-action="showItemLocation" data-args="${it.id}" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:10px;"><span style="font-family:monospace;font-size:14px;font-weight:900;color:var(--accent);">${sz(it)}</span><span style="font-weight:700;">${escHTML(it.brand)}</span>${it.model?`<span style="font-size:11px;color:var(--muted);">${escHTML(it.model)}</span>`:''}</div>`; });
     body+='</div>';
   });
   document.getElementById('cellDetailTitle').innerHTML=`📦 ${escHTML(g.name)}`;
@@ -4651,7 +4673,7 @@ async function restoreFromGDrive() {
           <div style="font-size:13px;font-weight:700;">${escHTML(dt)}</div>
           <div style="font-size:11px;color:var(--muted);">${escHTML(f.name)}${kb?' · '+kb:''}</div>
         </div>
-        <button class="btn btn-acc" style="padding:8px 14px;font-size:13px;flex-shrink:0;" onclick="_gdRestoreFile('${escHTML(f.id)}')">שחזר</button>
+        <button class="btn btn-acc" style="padding:8px 14px;font-size:13px;flex-shrink:0;" data-action="_gdRestoreFile" data-args="${escHTML(f.id)}">שחזר</button>
       </div>`;
     }).join('');
   } catch(e) {
@@ -4737,5 +4759,40 @@ window._gdStartAutoBackup = _gdStartAutoBackup;
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
   else run();
+})();
+// ══ DROPDOWN EVENT DELEGATION — מניעת XSS ══
+function _initDropListeners(){
+  const brandDrop=document.getElementById('brandDrop');
+  const descDrop=document.getElementById('descDrop');
+  if(brandDrop){
+    brandDrop.addEventListener('mousedown',e=>{
+      const item=e.target.closest('[data-val]');
+      if(!item) return;
+      e.preventDefault();
+      const val=item.dataset.val;
+      const target=item.dataset.target;
+      const isFilter=item.dataset.isfilter==='1';
+      const el=document.getElementById(target);
+      if(el) el.value=val;
+      brandDrop.style.display='none';
+      if(isFilter) applyFilters();
+      else if(typeof updateAutoComplete==='function') updateAutoComplete();
+    });
+  }
+  if(descDrop){
+    descDrop.addEventListener('mousedown',e=>{
+      const item=e.target.closest('[data-val]');
+      if(!item) return;
+      e.preventDefault();
+      const val=item.dataset.val;
+      const el=document.getElementById('aMo');
+      if(el){ el.value=val; if(typeof onDescInput==='function') onDescInput(el); }
+      descDrop.style.display='none';
+    });
+  }
+}
+(function(){
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',_initDropListeners);
+  else _initDropListeners();
 })();
 // ══ END GOOGLE DRIVE BACKUP ══════════════════════════════════════
