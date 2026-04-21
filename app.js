@@ -3393,9 +3393,16 @@ function vibrate(pattern){
 }
 
 function openAccessPanel(){
-  applySettings();
-  applyLang();
-  document.getElementById('accessPanel').style.display='flex';
+  try {
+    applySettings();
+    applyLang();
+    const p=document.getElementById('accessPanel');
+    if(!p){ toast('❌ accessPanel חסר'); return; }
+    p.style.display='flex';
+  } catch(err) {
+    console.error('openAccessPanel:', err);
+    toast('❌ שגיאה: '+err.message);
+  }
 }
 function closeAccessPanel(){
   document.getElementById('accessPanel').style.display='none';
@@ -4839,3 +4846,5 @@ function _initDropListeners(){
   else _do();
 })();
 // ══ END GOOGLE DRIVE BACKUP ══════════════════════════════════════
+console.log('[app.js] loaded ✓ | openAccessPanel=', typeof openAccessPanel);
+window.APP_JS_LOADED = true;

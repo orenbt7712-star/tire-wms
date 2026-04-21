@@ -36,6 +36,7 @@ document.addEventListener('click', function(e){
   if(!el) return;
   const action=el.dataset.action;
   const fn=window[action];
+  console.log('[event-init] action:', action, '| fn=', typeof fn);
   if(typeof fn!=='function'){ console.warn('[event-init] unknown action:', action); return; }
   const args=el.dataset.args ? el.dataset.args.split('|').map(_parseArg) : [];
   fn(...args, el);
@@ -120,7 +121,10 @@ document.addEventListener('DOMContentLoaded', function(){
 
   // ── File inputs ──
   const invReportInput=document.getElementById('invReportInput');
-  if(invReportInput) invReportInput.addEventListener('change',()=>window.autoUpdateInventory&&window.autoUpdateInventory(invReportInput));
+  if(invReportInput) invReportInput.addEventListener('change',()=>{
+    if(window.autoUpdateInventory) window.autoUpdateInventory(invReportInput);
+    else if(window._toast) window._toast('⏳ המערכת טוענת, נסה שוב');
+  });
   const importExcel=document.getElementById('importExcel');
   if(importExcel) importExcel.addEventListener('change',()=>window.importExcel&&window.importExcel(importExcel));
   const importFile=document.getElementById('importFile');

@@ -532,7 +532,7 @@ function enterApp(admin, workerName) {
 }
 
 async function openMfaSetup() {
-  if (!_isOwner) return;
+  if (!_isOwner) { if(window._toast) window._toast('❌ MFA זמין לבעלים בלבד'); return; }
   const overlay = document.createElement('div');
   overlay.id = 'mfaSetupOverlay';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(12,14,20,.9);z-index:9500;display:flex;align-items:center;justify-content:center;font-family:Heebo,sans-serif;direction:rtl;';
