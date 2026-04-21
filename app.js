@@ -583,6 +583,7 @@ function addItem(){
   const pn1=document.getElementById('aPn1').value.trim(),pn2=document.getElementById('aPn2').value.trim();
   const agr=document.getElementById('aAgr').value.trim();
   const rahava=document.getElementById('aRahava')?document.getElementById('aRahava').value:'';
+  if(itemCode && !/^[\w\-/. ]+$/.test(itemCode)){toast('❌ קוד פריט מכיל תווים לא תקינים');return;}
   if(!b){toast('❌ נא להזין מותג');return;}
   if(!co.trim()&&!agr&&!rahava){toast('❌ נא להזין עמודה (מיקום במחסן)');return;}
   if(!fl){toast('❌ נא לבחור קומה');return;}
@@ -3742,7 +3743,7 @@ function processExcelRows(rows, colMap){
         if(newItems.length && window._importItems) await window._importItems(newItems);
 
         closeBackupMenu(); closeExcelImportPanel();
-        if(window._loadInvData) await window._loadInvData().catch(()=>{});
+        if(window._loadInvData) await window._loadInvData().catch(e=>console.warn('loadInvData refresh:',e));
         if(typeof renderTable==='function') renderTable();
         const updMsg=updateIds.length?` · ${updateIds.length} קודים עודכנו`:'';
         toast(`✅ מלאי עודכן — ${entries.length} פריטים${newItems.length?` · ${newItems.length} חדשים נוספו`:''}${updMsg}`);
