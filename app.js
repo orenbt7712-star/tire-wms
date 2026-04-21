@@ -2145,8 +2145,16 @@ function onTM(e){
   const cv=document.getElementById('mapCanvas');
   if(e.touches.length===2&&pinchDist!==null){
     const newDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+    if(!isFinite(newDist)||newDist===0){ pinchDist=newDist; return; }
+    const r2=cv.getBoundingClientRect();
+    const midCX=(e.touches[0].clientX+e.touches[1].clientX)/2-r2.left;
+    const midCY=(e.touches[0].clientY+e.touches[1].clientY)/2-r2.top;
+    const wxBefore=(midCX-mapOffX)/mapScale;
+    const wyBefore=(midCY-mapOffY)/mapScale;
     const factor=newDist/pinchDist;
-    mapScale=Math.max(12,Math.min(120,mapScale*factor));
+    mapScale=Math.max(10,Math.min(120,mapScale*factor));
+    mapOffX=midCX-wxBefore*mapScale;
+    mapOffY=midCY-wyBefore*mapScale;
     pinchDist=newDist;
     autoExpandCages(); drawMap(); return;
   }
@@ -2626,7 +2634,7 @@ function drawMap(){
     ctx.fillStyle='rgba(100,110,140,0.6)';ctx.font='7px Heebo';ctx.textAlign='left';ctx.textBaseline='bottom';
     if(pw>32) ctx.fillText(`${g.x+1},${g.y+1}`,cx+2,cy+ph-1);
   });
-
+  ctx.globalAlpha=1;
 
   // ── Rubber-band selection overlay ──
   if(isRubberBand&&rubberStart&&rubberCurrent){
@@ -2804,6 +2812,7 @@ function undoMap(){
   mapRedoHistory.push({cages:JSON.stringify(cages),walls:JSON.stringify(walls)});
   const prev=mapHistory.pop();
   cages=JSON.parse(prev.cages);walls=JSON.parse(prev.walls);
+  if(typeof _dmInvalidate==='function') _dmInvalidate();
   drawMap();toast('↩️ בוטל');
 }
 
@@ -2812,6 +2821,7 @@ function redoMap(){
   mapHistory.push({cages:JSON.stringify(cages),walls:JSON.stringify(walls)});
   const next=mapRedoHistory.pop();
   cages=JSON.parse(next.cages);walls=JSON.parse(next.walls);
+  if(typeof _dmInvalidate==='function') _dmInvalidate();
   drawMap();toast('↪️ חזרה');
 }
 
@@ -2857,7 +2867,8 @@ function autoExpandCages(){
 function _scheduleAutoSave(){
   clearTimeout(_autoSaveTimer);
   _autoSaveTimer=setTimeout(()=>{
-    localStorage.setItem('tirewms_map2',JSON.stringify({cages,walls,nextId:nextCageId}));
+    try{ localStorage.setItem('tirewms_map2',JSON.stringify({cages,walls,nextId:nextCageId})); }
+    catch(e){ console.warn('map auto-save failed:',e); }
     const h=document.getElementById('mapHint');
     if(h){ const old=h.textContent; h.textContent='💾 נשמר אוטומטית'; setTimeout(()=>{if(h.textContent==='💾 נשמר אוטומטית')h.textContent=old;},1500); }
   },2000);
@@ -2915,7 +2926,7 @@ function onWheel(e){
   // זום ממורכז על מיקום הסמן
   const wx=(mx-mapOffX)/mapScale;
   const wy=(my-mapOffY)/mapScale;
-  mapScale=Math.max(10,Math.min(100,mapScale*factor));
+  mapScale=Math.max(10,Math.min(120,mapScale*factor));
   mapOffX=mx-wx*mapScale;
   mapOffY=my-wy*mapScale;
   autoExpandCages();
@@ -2996,12 +3007,14 @@ function closeCageEdit(){document.getElementById('cageEditPanel').style.display=
 function saveCageEdit(){
   const g=cages.find(c=>c.id===selectedCageId);
   if(g){
+    pushHistory();
     g.name=document.getElementById('cageEditName').value;
     g.floor=document.getElementById('cageEditFloor').value;
     g.pn1=document.getElementById('cageEditPn1').value;
     g.p1=document.getElementById('cageEditP1').value;
     g.pn2=document.getElementById('cageEditPn2').value;
     g.p2=document.getElementById('cageEditP2').value;
+    if(typeof _dmInvalidate==='function') _dmInvalidate();
   }
   closeCageEdit();drawMap();
 }
@@ -3065,20 +3078,22 @@ function deleteSelection(){
 window.deleteSelection = deleteSelection;
 function deleteCage(){
   if(!confirm('למחוק כלוב זה?'))return;
+  pushHistory();
   cages=cages.filter(c=>c.id!==selectedCageId);
   selectedCageId=null;closeCageEdit();drawMap();
 }
 function saveMapLayout(){
-  localStorage.setItem('tirewms_map2',JSON.stringify({cages,walls,nextId:nextCageId}));
-  // סנכרן עם תצוגת המחסן
+  try{ localStorage.setItem('tirewms_map2',JSON.stringify({cages,walls,nextId:nextCageId})); }
+  catch(e){ toast('❌ שגיאה בשמירה — אחסון מלא'); return; }
   if(document.getElementById('viewWarehouse')?.classList.contains('active')) renderWarehouse();
   toast('✅ '+(currentLang==='ar'?'تم حفظ الخريطة!':'מפה נשמרה!'));
 }
 function clearMap(){
   if(!confirm('למחוק את כל המפה?'))return;
+  pushHistory();
   cages=[];walls=[];nextCageId=1;selectedCageId=null;
-  mapHistory=[];closeCageEdit();drawMap();
-  localStorage.removeItem('tirewms_map2');toast('🗑️ המפה נוקתה');
+  closeCageEdit();drawMap();
+  localStorage.removeItem('tirewms_map2');toast('🗑️ המפה נוקתה (Ctrl+Z לביטול)');
 }
 /* INIT */
 window.refreshDropdowns = refreshDropdowns;
@@ -3231,9 +3246,10 @@ function generateWarehouseLayout(silent){
   };
 
   selectedCageId=null; selectedCages=[];
-  // שמירה מיידית לא דחויה + סימון גרסה
-  localStorage.setItem('tirewms_map2',JSON.stringify({cages,walls,nextId:nextCageId}));
-  localStorage.setItem('tirewms_map_ver','layout-2026-v6');
+  try{
+    localStorage.setItem('tirewms_map2',JSON.stringify({cages,walls,nextId:nextCageId}));
+    localStorage.setItem('tirewms_map_ver','layout-2026-v6');
+  }catch(e){ console.warn('layout save failed:',e); }
   if(silent){
     setTimeout(()=>{if(typeof renderWarehouse==='function'){renderWarehouse();whCenter();}},50);
   } else {
