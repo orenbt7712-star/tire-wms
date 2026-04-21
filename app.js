@@ -4851,28 +4851,32 @@ function _initDropListeners(){
 console.log('[app.js] loaded ✓ | openAccessPanel=', typeof openAccessPanel);
 window.APP_JS_LOADED = true;
 
-// ── DIAGNOSTIC: bulletproof direct click on settings button ──
-(function _diagSettings(){
-  function _attach(){
+// ── DIAGNOSTIC: detect what element is blocking the settings button ──
+(function _diagOverlay(){
+  function _check(){
     const btn = document.querySelector('[data-action="openAccessPanel"]');
-    if(!btn){ console.warn('[diag] settings button not found'); return; }
-    btn.addEventListener('click', function(e){
-      console.log('[diag] settings click received at', new Date().toISOString());
-      toast('⚙️ נפתח...');
-      try {
-        const p = document.getElementById('accessPanel');
-        if(!p){ toast('❌ הפאנל חסר ב-DOM'); return; }
-        applySettings();
-        applyLang();
-        p.style.display = 'flex';
-        console.log('[diag] panel display set to flex, actual:', getComputedStyle(p).display);
-      } catch(err){
-        console.error('[diag]', err);
-        toast('❌ ' + err.message);
-      }
-    }, true); // capture phase on the button itself
-    console.log('[diag] bulletproof settings listener attached');
+    if(!btn) return;
+    const r = btn.getBoundingClientRect();
+    const cx = r.left + r.width/2, cy = r.top + r.height/2;
+    const els = document.elementsFromPoint(cx, cy);
+    const top = els[0];
+    if(top !== btn && !btn.contains(top)){
+      const info = top.id ? '#'+top.id : top.className ? '.'+top.className.split(' ')[0] : top.tagName;
+      const cs = getComputedStyle(top);
+      toast('🔍 חוסם: '+info+' z:'+cs.zIndex+' pe:'+cs.pointerEvents);
+      console.warn('[diag] topbar blocked by:', top, 'zIndex:', cs.zIndex, 'pointerEvents:', cs.pointerEvents);
+    } else {
+      toast('✅ לחצן פנוי — בודק פתיחה');
+      console.log('[diag] button is accessible, top element:', top);
+      const p = document.getElementById('accessPanel');
+      if(p){ p.style.display='flex'; }
+    }
   }
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _attach);
-  else _attach();
+  // run on document click anywhere — shows diagnostic once
+  function _once(e){
+    document.removeEventListener('click', _once, true);
+    _check();
+  }
+  document.addEventListener('click', _once, true);
+  console.log('[diag] overlay detector armed — tap anywhere');
 })();
