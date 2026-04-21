@@ -137,8 +137,8 @@ document.addEventListener('DOMContentLoaded', function(){
   if(locationPanel) locationPanel.addEventListener('click',e=>{ if(e.target===locationPanel) window.closeLocationPanel&&window.closeLocationPanel(); });
 
   // ── Search input ──
-  const mainSearch=document.getElementById('mainSearch');
-  if(mainSearch) mainSearch.addEventListener('input',()=>window.handleSearchInput&&window.handleSearchInput(mainSearch));
+  const mainSearch2=document.getElementById('mainSearch');
+  if(mainSearch2) mainSearch2.addEventListener('input',()=>window.handleSearchInput&&window.handleSearchInput(mainSearch2));
 
   // ── Add overlay: click outside to close ──
   const addOverlay=document.getElementById('addOverlay');
