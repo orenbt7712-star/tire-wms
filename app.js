@@ -3393,12 +3393,14 @@ function vibrate(pattern){
 }
 
 function openAccessPanel(){
+  console.log('[openAccessPanel] called');
   try {
     applySettings();
     applyLang();
     const p=document.getElementById('accessPanel');
     if(!p){ toast('❌ accessPanel חסר'); return; }
     p.style.display='flex';
+    console.log('[openAccessPanel] display set to flex');
   } catch(err) {
     console.error('openAccessPanel:', err);
     toast('❌ שגיאה: '+err.message);
