@@ -3412,7 +3412,7 @@ function toggleLang(){
 function applyLang(){
   const isAr = currentLang==='ar';
   const lb=document.getElementById('langBtn');
-  if(lb){lb.textContent=isAr?'🇮🇱':'🇸🇦';}
+  if(lb){ const s=lb.querySelector('span'); if(s) s.textContent=isAr?'🇮🇱':'🌐'; }
   const ms=document.getElementById('mainSearch');
   if(ms) ms.placeholder=t('searchPlaceholder');
   const fb=document.getElementById('fBrand');

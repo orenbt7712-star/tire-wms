@@ -531,6 +531,7 @@ async function openMfaSetup() {
   overlay.id = 'mfaSetupOverlay';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(12,14,20,.9);z-index:9500;display:flex;align-items:center;justify-content:center;font-family:Heebo,sans-serif;direction:rtl;';
 
+  try {
   if (_ownerTotpSecret) {
     overlay.innerHTML = `
       <div style="background:#191d28;border-radius:12px;padding:24px;width:320px;display:flex;flex-direction:column;gap:14px;align-items:center;">
@@ -556,6 +557,10 @@ async function openMfaSetup() {
       </div>`;
   }
   document.body.appendChild(overlay);
+  } catch(err) {
+    console.error('openMfaSetup error:', err);
+    if(window._toast) window._toast('❌ שגיאה בפתיחת MFA: ' + (err?.message || String(err)));
+  }
 }
 window.openMfaSetup = openMfaSetup;
 
