@@ -4850,3 +4850,29 @@ function _initDropListeners(){
 // ══ END GOOGLE DRIVE BACKUP ══════════════════════════════════════
 console.log('[app.js] loaded ✓ | openAccessPanel=', typeof openAccessPanel);
 window.APP_JS_LOADED = true;
+
+// ── DIAGNOSTIC: bulletproof direct click on settings button ──
+(function _diagSettings(){
+  function _attach(){
+    const btn = document.querySelector('[data-action="openAccessPanel"]');
+    if(!btn){ console.warn('[diag] settings button not found'); return; }
+    btn.addEventListener('click', function(e){
+      console.log('[diag] settings click received at', new Date().toISOString());
+      toast('⚙️ נפתח...');
+      try {
+        const p = document.getElementById('accessPanel');
+        if(!p){ toast('❌ הפאנל חסר ב-DOM'); return; }
+        applySettings();
+        applyLang();
+        p.style.display = 'flex';
+        console.log('[diag] panel display set to flex, actual:', getComputedStyle(p).display);
+      } catch(err){
+        console.error('[diag]', err);
+        toast('❌ ' + err.message);
+      }
+    }, true); // capture phase on the button itself
+    console.log('[diag] bulletproof settings listener attached');
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _attach);
+  else _attach();
+})();
