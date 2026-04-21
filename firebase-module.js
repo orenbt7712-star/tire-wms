@@ -522,6 +522,12 @@ function enterApp(admin, workerName) {
     <button id="logoutBtn" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:12px;padding:5px 9px;cursor:pointer;font-family:inherit;white-space:nowrap;">🚪 יציאה</button>
   `;
   document.getElementById('logoutBtn').addEventListener('click', _logout);
+  // Direct listeners on userBar buttons (backup for event delegation)
+  const _wbind = (id, fn) => { const el = document.getElementById(id); if(el) el.addEventListener('click', fn); };
+  const _wsel  = (sel, fn) => { const el = ub.querySelector(sel); if(el && !el._wired){ el._wired=true; el.addEventListener('click', fn); } };
+  _wsel('[data-action="openWorkerMgmt"]', () => openWorkerMgmt && openWorkerMgmt());
+  _wsel('[data-action="openChangePass"]', () => openChangePass && openChangePass());
+  _wsel('[data-action="openMfaSetup"]',   () => openMfaSetup && openMfaSetup());
   setStatus(admin ? `🟢 ${escHTML(displayName)}` : `🟢 ${escHTML(displayName)}`);
 }
 

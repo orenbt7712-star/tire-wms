@@ -4820,4 +4820,22 @@ function _initDropListeners(){
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',_initDropListeners);
   else _initDropListeners();
 })();
+
+// ── Direct topbar button wiring (backup in case event-init.js delegate fails) ──
+(function _wireTopbar(){
+  function _bind(sel, fn){ const el=document.querySelector(sel); if(el && !el._wired){ el._wired=true; el.addEventListener('click',fn); } }
+  function _do(){
+    _bind('[data-action="openAccessPanel"]',  ()=>window.openAccessPanel&&window.openAccessPanel());
+    _bind('[data-action="toggleLang"]',        ()=>window.toggleLang&&window.toggleLang());
+    _bind('[data-action="openAddModal"]',      ()=>window.openAddModal&&window.openAddModal());
+    _bind('[data-action="locateNearest"]',     ()=>window.locateNearest&&window.locateNearest());
+    _bind('[data-action="openAuditPanel"]',    ()=>window.openAuditPanel&&window.openAuditPanel());
+    _bind('[data-action="showBackupMenu"]',    ()=>window.showBackupMenu&&window.showBackupMenu());
+    _bind('[data-action="clearAllInventory"]', ()=>window.clearAllInventory&&window.clearAllInventory());
+    _bind('[data-action="openPendingPanel"]',  ()=>window.openPendingPanel&&window.openPendingPanel());
+    _bind('[data-trigger="invReportInput"]',   ()=>{ const t=document.getElementById('invReportInput'); if(t) t.click(); });
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',_do);
+  else _do();
+})();
 // ══ END GOOGLE DRIVE BACKUP ══════════════════════════════════════
