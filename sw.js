@@ -1,5 +1,5 @@
 // TireWMS Service Worker — עדכון אוטומטי מיידי
-const VERSION = 'tirewms-' + Date.now(); // גרסה חדשה בכל deploy
+const VERSION = 'tirewms-v3.9-' + Date.now(); // גרסה חדשה בכל deploy
 const CACHE = VERSION;
 
 self.addEventListener('install', e=>{
