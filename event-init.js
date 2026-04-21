@@ -1,5 +1,6 @@
 // Central event dispatcher — מחליף את כל ה-inline event handlers ב-HTML
 // מאפשר הסרת 'unsafe-inline' מה-CSP
+window._eventInitOK = true; // diagnostic marker
 
 function _parseArg(s){
   if(s===undefined||s==='') return s;
@@ -10,32 +11,35 @@ function _parseArg(s){
   return isNaN(n)?s:n;
 }
 
-// ── Click dispatcher ──
+// ── Click dispatcher (capture=true: fires before any stopPropagation) ──
 document.addEventListener('click', function(e){
+  const target = e.target;
+  if(!target) return;
+
   // data-self-hide: סגירת overlay בלחיצה על הרקע
-  const selfHide=e.target.closest('[data-self-hide]');
-  if(selfHide && e.target===selfHide){ selfHide.style.display='none'; return; }
+  const selfHide=target.closest('[data-self-hide]');
+  if(selfHide && target===selfHide){ selfHide.style.display='none'; return; }
 
   // data-stop-prop: עצור התפשטות
-  if(e.target.closest('[data-stop-prop]')){ e.stopPropagation(); }
+  if(target.closest('[data-stop-prop]')){ e.stopPropagation(); }
 
   // data-trigger: הפעלת input.click() על אלמנט אחר
-  const trigEl=e.target.closest('[data-trigger]');
+  const trigEl=target.closest('[data-trigger]');
   if(trigEl){ const t=document.getElementById(trigEl.dataset.trigger); if(t) t.click(); return; }
 
   // data-remove: הסרת אלמנט מה-DOM
-  const removeEl=e.target.closest('[data-remove]');
+  const removeEl=target.closest('[data-remove]');
   if(removeEl){ const r=document.getElementById(removeEl.dataset.remove); if(r) r.remove(); return; }
 
   // data-action: קריאה לפונקציה
-  const el=e.target.closest('[data-action]');
+  const el=target.closest('[data-action]');
   if(!el) return;
   const action=el.dataset.action;
   const fn=window[action];
-  if(typeof fn!=='function'){ console.warn('data-action: unknown function',action); return; }
+  if(typeof fn!=='function'){ console.warn('[event-init] unknown action:', action); return; }
   const args=el.dataset.args ? el.dataset.args.split('|').map(_parseArg) : [];
   fn(...args, el);
-});
+}, true); // true = capture phase
 
 // ── oninput dispatcher ──
 document.addEventListener('input', function(e){
