@@ -288,7 +288,7 @@ async function saveSession(admin, workerId=null, workerName=null) {
   const token = await genToken(admin);
   await _enc.set('tirewms_session', JSON.stringify({admin, workerId, workerName, ts: Date.now(), token}));
   const role = _isOwner ? 'owner' : (admin ? 'admin' : 'worker');
-  if (window._saveSessionRole) window._saveSessionRole(role);
+  if (window._saveSessionRole) await window._saveSessionRole(role);
 }
 
 async function loadSession() {
@@ -327,7 +327,7 @@ async function buildLoginScreen() {
     _isOwner = !session.workerId; // בעלים אם אין workerId
     _currentWorkerId = session.workerId || null;
     const role = _isOwner ? 'owner' : (session.admin ? 'admin' : 'worker');
-    if (window._saveSessionRole) window._saveSessionRole(role);
+    if (window._saveSessionRole) await window._saveSessionRole(role);
     enterApp(session.admin, session.workerName || null);
     return;
   }
@@ -1249,8 +1249,20 @@ window._loadAuditPage = async function(reset) {
     });
     if (moreBtn) moreBtn.style.display = snap.docs.length >= AUDIT_PAGE ? 'block' : 'none';
   } catch(err) {
-    list.innerHTML = '<div style="color:var(--red,#e85d3f);text-align:center;padding:20px;">❌ שגיאה בטעינה</div>';
     console.error('audit load error:', err);
+    if (err?.code === 'permission-denied') {
+      // race: session role לא נשמר עדיין — נסה שוב אחרי 2 שניות
+      if (!window._auditRetried) {
+        window._auditRetried = true;
+        _auditLoading = false;
+        setTimeout(() => { window._auditRetried = false; window._loadAuditPage(true); }, 2000);
+        list.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px;">⏳ מחכה לאימות…</div>';
+        return;
+      }
+      list.innerHTML = '<div style="color:var(--red,#e85d3f);text-align:center;padding:20px;">❌ אין הרשאה לצפות ביומן<br><small style="font-size:11px;opacity:.7">בדוק Firestore Rules</small></div>';
+    } else {
+      list.innerHTML = `<div style="color:var(--red,#e85d3f);text-align:center;padding:20px;">❌ שגיאה בטעינה<br><small style="font-size:11px;opacity:.7">${escHTML(err?.message||String(err))}</small></div>`;
+    }
   } finally {
     _auditLoading = false;
   }
