@@ -4850,6 +4850,7 @@ function _initDropListeners(){
 // ══ END GOOGLE DRIVE BACKUP ══════════════════════════════════════
 console.log('[app.js] loaded ✓ | openAccessPanel=', typeof openAccessPanel);
 window.APP_JS_LOADED = true;
+document.title = 'TireWMS ✓3.9'; // diagnostic: confirms app.js v3.9 loaded
 
 // ── DIAGNOSTIC: detect what element is blocking the settings button ──
 (function _diagOverlay(){
@@ -4863,9 +4864,12 @@ window.APP_JS_LOADED = true;
     if(top !== btn && !btn.contains(top)){
       const info = top.id ? '#'+top.id : top.className ? '.'+top.className.split(' ')[0] : top.tagName;
       const cs = getComputedStyle(top);
-      toast('🔍 חוסם: '+info+' z:'+cs.zIndex+' pe:'+cs.pointerEvents);
+      const msg = '🔍 חוסם: '+info+' z:'+cs.zIndex+' pe:'+cs.pointerEvents;
+      document.title = msg;
+      toast(msg);
       console.warn('[diag] topbar blocked by:', top, 'zIndex:', cs.zIndex, 'pointerEvents:', cs.pointerEvents);
     } else {
+      document.title = '✅ כפתור פנוי';
       toast('✅ לחצן פנוי — בודק פתיחה');
       console.log('[diag] button is accessible, top element:', top);
       const p = document.getElementById('accessPanel');
