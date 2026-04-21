@@ -313,7 +313,7 @@ td{padding:8px 10px;vertical-align:middle;}
   /* כפתורי פאנל תחתון — הגדלה */
   #cageEditPanel button,#cageItemsPanel button,#rowPanel button{min-height:36px;}
   /* כפתורי פעולה בטבלה */
-  .ib{min-width:32px;min-height:32px;}
+  .ib{min-width:40px;min-height:40px;width:40px;height:40px;}
 }
 /* ════ מערכת הרשאות — שלוש רמות ════ */
 .loc-edit-btn{display:none!important;}

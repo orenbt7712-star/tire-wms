@@ -634,6 +634,7 @@ async function doChangePass() {
 window.doChangePass = doChangePass;
 
 function _logout() {
+  if (window._gdAutoInterval) { clearInterval(window._gdAutoInterval); window._gdAutoInterval = null; }
   if (window._clearSessionRole) window._clearSessionRole();
   clearSession();
   _isAdmin = false;
@@ -1138,7 +1139,7 @@ window.addEventListener('online', () => {
   processOfflineQueue();
   setStatus('🟢 מחובר');
 });
-window.addEventListener('offline', () => { setStatus('📵 אופליין'); });
+window.addEventListener('offline', () => { setStatus('📵 אופליין'); if(window._toast) window._toast('📵 אין חיבור לאינטרנט'); });
 
 window._saveItem = async function(it) {
   if (!navigator.onLine) {

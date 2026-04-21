@@ -540,6 +540,7 @@ function openAddModal(){
   setTimeout(()=>document.getElementById('aBr').focus(),80);
 }
 function closeAddModal(){
+  clearTimeout(_brandDropT);
   resetTurnButtons();
   const ri=document.getElementById('aRahava'); if(ri) ri.value='';
   const rb=document.getElementById('btnRahava'); if(rb){ rb.style.background='var(--card)'; rb.style.borderColor='var(--border)'; rb.style.color='var(--muted)'; rb.style.boxShadow='none'; }
@@ -1749,6 +1750,7 @@ function startVoice(){
   resultBox.style.display = 'none';
 
   voiceRecog.onresult = e => {
+    if(!e.results?.[0]?.[0]) return;
     const text = e.results[0][0].transcript;
     document.getElementById('voiceText').textContent = '"' + text + '"';
     resultBox.style.display = 'block';
@@ -4395,7 +4397,10 @@ function renderWarehouse(){
     cv.addEventListener('mousedown',e=>{ _md=true; const r=cv.getBoundingClientRect(); whIsPanning=true; whPanStartX=e.clientX-r.left; whPanStartY=e.clientY-r.top; whPanOffX=whOffX; whPanOffY=whOffY; });
     cv.addEventListener('mousemove',e=>{ if(!whIsPanning) return; const r=cv.getBoundingClientRect(); whOffX=whPanOffX+(e.clientX-r.left-whPanStartX); whOffY=whPanOffY+(e.clientY-r.top-whPanStartY); renderWarehouse(); });
     cv.addEventListener('mouseup',e=>{ whIsPanning=false; if(_md){ const r=cv.getBoundingClientRect(); whHandleClick(e.clientX-r.left,e.clientY-r.top); } _md=false; });
-    window.addEventListener('resize',()=>{ if(document.getElementById('viewWarehouse')?.classList.contains('active')) renderWarehouse(); });
+    if(!window._whResizeListener){
+      window._whResizeListener=()=>{ clearTimeout(window._whResizeT); window._whResizeT=setTimeout(()=>{ if(document.getElementById('viewWarehouse')?.classList.contains('active')) renderWarehouse(); },100); };
+      window.addEventListener('resize',window._whResizeListener);
+    }
   }
 }
 
@@ -4762,7 +4767,10 @@ window._gdStartAutoBackup = _gdStartAutoBackup;
   else run();
 })();
 // ══ DROPDOWN EVENT DELEGATION — מניעת XSS ══
+let _dropListenersInited=false;
 function _initDropListeners(){
+  if(_dropListenersInited) return;
+  _dropListenersInited=true;
   const brandDrop=document.getElementById('brandDrop');
   const descDrop=document.getElementById('descDrop');
   if(brandDrop){
