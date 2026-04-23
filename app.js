@@ -3367,8 +3367,27 @@ function removeBlockedBrand(brand){
   renderBlockedBrands();
   toast(`✅ ${brand} הוסר מהרשימה`);
 }
+function renderBrandPicker(){
+  const el = document.getElementById('brandPickerList');
+  if(!el) return;
+  const brands = [...new Set((window.items||[]).map(i=>(i.brand||'').trim().toUpperCase()).filter(Boolean))].sort();
+  el.innerHTML = brands.map(b=>`<button onclick="pickBrand('${b}')" style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:4px 12px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit;">${b}</button>`).join('');
+}
+function toggleBrandPicker(){
+  const el = document.getElementById('brandPickerList');
+  if(!el) return;
+  const open = el.style.display === 'flex';
+  el.style.display = open ? 'none' : 'flex';
+}
+function pickBrand(brand){
+  const input = document.getElementById('blockedBrandInput');
+  if(input) input.value = brand;
+  toggleBrandPicker();
+}
 window.addBlockedBrand = addBlockedBrand;
 window.removeBlockedBrand = removeBlockedBrand;
+window.toggleBrandPicker = toggleBrandPicker;
+window.pickBrand = pickBrand;
 
 function applySettings(){
   document.body.classList.toggle('light-mode', themeMode==='light');
@@ -3418,13 +3437,7 @@ function openAccessPanel(){
   try { applySettings(); } catch(e) {}
   try { applyLang(); } catch(e) {}
   try { renderBlockedBrands(); } catch(e) {}
-  try {
-    const dl = document.getElementById('brandSuggestions');
-    if(dl){
-      const brands = [...new Set((window.items||[]).map(i=>(i.brand||'').trim().toUpperCase()).filter(Boolean))].sort();
-      dl.innerHTML = brands.map(b=>`<option value="${b}">`).join('');
-    }
-  } catch(e) {}
+  try { renderBrandPicker(); } catch(e) {}
 }
 function closeAccessPanel(){
   document.getElementById('accessPanel').style.display='none';
