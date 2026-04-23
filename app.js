@@ -3375,9 +3375,20 @@ function showBlockedBrandDrop(inp){
   const filtered = q ? brands.filter(b=>b.includes(q)) : brands;
   if(!filtered.length){ drop.style.display='none'; return; }
   const rect = inp.getBoundingClientRect();
+  const spaceBelow = window.innerHeight - rect.bottom - 8;
+  const spaceAbove = rect.top - 8;
+  const maxH = Math.min(220, spaceBelow > spaceAbove ? spaceBelow : spaceAbove);
   drop.style.left = rect.left+'px';
-  drop.style.top = rect.bottom+'px';
   drop.style.width = rect.width+'px';
+  drop.style.maxHeight = maxH+'px';
+  drop.style.borderRadius = spaceBelow > spaceAbove ? '0 0 8px 8px' : '8px 8px 0 0';
+  if(spaceBelow > spaceAbove){
+    drop.style.top = rect.bottom+'px';
+    drop.style.bottom = '';
+  } else {
+    drop.style.bottom = (window.innerHeight - rect.top)+'px';
+    drop.style.top = '';
+  }
   drop.innerHTML = filtered.map(b=>`<div data-bval="${escHTML(b)}"
     style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border)"
     onmouseenter="this.style.background='var(--border2)'" onmouseleave="this.style.background=''">${escHTML(b)}</div>`).join('');
