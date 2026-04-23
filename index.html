@@ -1245,7 +1245,7 @@ async function openMfaSetup() {
   if (!_isOwner) return;
   const overlay = document.createElement('div');
   overlay.id = 'mfaSetupOverlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(12,14,20,.9);z-index:9500;display:flex;align-items:center;justify-content:center;font-family:Heebo,sans-serif;direction:rtl;';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(12,14,20,.9);z-index:10000;display:flex;align-items:center;justify-content:center;font-family:Heebo,sans-serif;direction:rtl;';
 
   if (_ownerTotpSecret) {
     overlay.innerHTML = `
@@ -1308,7 +1308,7 @@ function openChangePass() {
   if (!_isOwner) return;
   const overlay = document.createElement('div');
   overlay.id = 'changePassOverlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(12,14,20,.85);z-index:9500;display:flex;align-items:center;justify-content:center;font-family:Heebo,sans-serif;direction:rtl;';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(12,14,20,.85);z-index:10000;display:flex;align-items:center;justify-content:center;font-family:Heebo,sans-serif;direction:rtl;';
   overlay.innerHTML = `
     <div style="background:#191d28;border-radius:12px;padding:24px;width:300px;display:flex;flex-direction:column;gap:12px;">
       <div style="font-size:16px;font-weight:700;color:#eef0f6;">🔑 שינוי סיסמת בעלים</div>
