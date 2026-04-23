@@ -543,7 +543,9 @@ if('serviceWorker' in navigator){
       <div id="blockedBrandsList" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;min-height:24px;"></div>
       <div style="display:flex;gap:8px;">
         <input id="blockedBrandInput" type="text" placeholder="שם מותג (למשל ARIVO)..."
+          list="brandSuggestions"
           style="flex:1;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:Heebo,sans-serif;font-size:14px;padding:8px 10px;outline:none;" autocorrect="off" spellcheck="false"/>
+        <datalist id="brandSuggestions"></datalist>
         <button onclick="addBlockedBrand()" style="background:var(--accent);border:none;color:#111;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;font-family:inherit;">הוסף</button>
       </div>
     </div>

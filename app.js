@@ -3418,6 +3418,13 @@ function openAccessPanel(){
   try { applySettings(); } catch(e) {}
   try { applyLang(); } catch(e) {}
   try { renderBlockedBrands(); } catch(e) {}
+  try {
+    const dl = document.getElementById('brandSuggestions');
+    if(dl){
+      const brands = [...new Set((window.items||[]).map(i=>(i.brand||'').trim().toUpperCase()).filter(Boolean))].sort();
+      dl.innerHTML = brands.map(b=>`<option value="${b}">`).join('');
+    }
+  } catch(e) {}
 }
 function closeAccessPanel(){
   document.getElementById('accessPanel').style.display='none';
