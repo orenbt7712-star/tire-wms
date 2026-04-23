@@ -3378,6 +3378,7 @@ function toggleBrandPicker(){
   if(!el) return;
   const open = el.style.display === 'flex';
   el.style.display = open ? 'none' : 'flex';
+  if(!open) setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'nearest'}), 50);
 }
 function pickBrand(brand){
   const input = document.getElementById('blockedBrandInput');
