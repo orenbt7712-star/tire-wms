@@ -58,7 +58,6 @@ if('serviceWorker' in navigator){
   <div class="logo-icon">🛞</div>
   <div class="app-title">TireWMS</div>
   <span id="syncStatus" style="font-size:11px;color:var(--muted);flex-shrink:0;">🔄</span>
-  <button onclick="openAccessPanel()" title="הגדרות תצוגה" style="background:var(--card);border:1px solid var(--border);border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex-shrink:0;">⚙️</button>
   <button id="langBtn" onclick="toggleLang()" title="שפה / لغة" style="background:var(--card);border:1px solid var(--border);border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex-shrink:0;">🌐</button>
   <button class="btn-locate owner-only" id="pendingBell" onclick="openPendingPanel()" title="ממתינים לאישור" style="position:relative;">🔔<span id="pendingCount" class="pending-badge" style="display:none;position:absolute;top:2px;right:2px;"></span></button>
   <button class="btn-locate owner-only" onclick="openAuditPanel()" title="יומן שינויים">📜</button>
@@ -391,6 +390,9 @@ if('serviceWorker' in navigator){
   </button>
   <button class="bnav-btn admin-only" id="nav-mapEditor" onclick="switchView('mapEditor',this)">
     <span class="bi">✏️</span><span class="bl">עורך מפה</span>
+  </button>
+  <button class="bnav-btn" onclick="openAccessPanel()" title="הגדרות תצוגה">
+    <span class="bi">⚙️</span><span class="bl">הגדרות</span>
   </button>
 </div>
 
