@@ -3370,9 +3370,11 @@ function vibrate(pattern){
 }
 
 function openAccessPanel(){
-  applySettings();
-  applyLang();
-  document.getElementById('accessPanel').style.display='flex';
+  const panel = document.getElementById('accessPanel');
+  if(!panel) return;
+  panel.style.display = 'flex';
+  try { applySettings(); } catch(e) {}
+  try { applyLang(); } catch(e) {}
 }
 function closeAccessPanel(){
   document.getElementById('accessPanel').style.display='none';
