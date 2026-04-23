@@ -3366,8 +3366,15 @@ function addBlockedBrand(){
   toAdd.forEach(brand => {
     if(!blockedBrands.includes(brand)){ blockedBrands.push(brand); added++; }
   });
-  if(added){ _saveBlockedBrands(); renderBlockedBrands(); toast(`🚫 נוספו ${added} מותגים לרשימה`); }
-  else toast('⚠️ כל המותגים כבר ברשימה');
+  if(added){
+    _saveBlockedBrands();
+    renderBlockedBrands();
+    toast(`🚫 נוספו ${added} מותגים לרשימה`);
+    setTimeout(()=>{
+      const list = document.getElementById('blockedBrandsList');
+      if(list) list.scrollIntoView({behavior:'smooth', block:'nearest'});
+    }, 80);
+  } else toast('⚠️ כל המותגים כבר ברשימה');
   _selBlockedBrands.clear();
   if(input) input.value = '';
   const drop = document.getElementById('blockedBrandDrop');
@@ -3404,9 +3411,10 @@ function showBlockedBrandDrop(inp){
   }
   drop.innerHTML = filtered.map(b=>{
     const sel = _selBlockedBrands.has(b);
+    const bg = sel ? 'var(--border2)' : '';
     return `<div data-bval="${escHTML(b)}"
-      style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;${sel?'background:var(--border2);font-weight:700;':''}"
-      onmouseenter="this.style.background='var(--border2)'" onmouseleave="this.style.background='${sel?'var(--border2)':''}'"">
+      style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;background:${bg};${sel?'font-weight:700;':''}"
+      onmouseenter="this.style.background='var(--border2)'" onmouseleave="this.style.background='${bg}'">
       <span style="font-size:15px;width:18px;text-align:center;">${sel?'☑':'☐'}</span>${escHTML(b)}
     </div>`;
   }).join('');
