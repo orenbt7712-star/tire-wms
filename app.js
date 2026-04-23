@@ -3371,7 +3371,7 @@ function showBlockedBrandDrop(inp){
   const drop = document.getElementById('blockedBrandDrop');
   if(!drop) return;
   const q = (inp.value||'').trim().toUpperCase();
-  const brands = [...new Set((window.items||[]).map(i=>(i.brand||'').trim().toUpperCase()).filter(Boolean))].sort();
+  const brands = [...new Set(items.map(i=>(i.brand||'').trim().toUpperCase()).filter(Boolean))].sort();
   const filtered = q ? brands.filter(b=>b.includes(q)) : brands;
   if(!filtered.length){ drop.style.display='none'; return; }
   const rect = inp.getBoundingClientRect();
