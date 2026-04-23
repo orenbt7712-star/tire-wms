@@ -3329,6 +3329,47 @@ let themeMode = localStorage.getItem('tirewms_theme')||'dark';
 let fontMode = localStorage.getItem('tirewms_font')||'normal';
 let bigButtons = localStorage.getItem('tirewms_big')==='on';
 
+/* ══ BLOCKED BRANDS ══ */
+let blockedBrands = [];
+(async()=>{
+  try{
+    const raw = window._enc ? await window._enc.get('tirewms_blocked_brands') : localStorage.getItem('tirewms_blocked_brands');
+    blockedBrands = JSON.parse(raw||'[]');
+  }catch(e){ blockedBrands=[]; }
+})();
+function _saveBlockedBrands(){
+  const data = JSON.stringify(blockedBrands);
+  if(window._enc) window._enc.set('tirewms_blocked_brands', data);
+  else localStorage.setItem('tirewms_blocked_brands', data);
+}
+function renderBlockedBrands(){
+  const el = document.getElementById('blockedBrandsList');
+  if(!el) return;
+  el.innerHTML = blockedBrands.length
+    ? blockedBrands.map(b=>`<span style="display:inline-flex;align-items:center;gap:4px;background:var(--red-dim);border:1px solid var(--red);color:var(--red);border-radius:20px;padding:4px 10px;font-size:12px;font-weight:700;">${b}<button onclick="removeBlockedBrand('${b}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:0 0 0 2px;">✕</button></span>`).join('')
+    : '<span style="font-size:12px;color:var(--muted);">אין מותגים חסומים</span>';
+}
+function addBlockedBrand(){
+  const input = document.getElementById('blockedBrandInput');
+  if(!input) return;
+  const brand = input.value.trim().toUpperCase();
+  if(!brand){ toast('❌ הכנס שם מותג'); return; }
+  if(blockedBrands.includes(brand)){ toast('⚠️ מותג כבר ברשימה'); input.value=''; return; }
+  blockedBrands.push(brand);
+  _saveBlockedBrands();
+  renderBlockedBrands();
+  input.value='';
+  toast(`🚫 ${brand} נוסף לרשימה`);
+}
+function removeBlockedBrand(brand){
+  blockedBrands = blockedBrands.filter(b=>b!==brand);
+  _saveBlockedBrands();
+  renderBlockedBrands();
+  toast(`✅ ${brand} הוסר מהרשימה`);
+}
+window.addBlockedBrand = addBlockedBrand;
+window.removeBlockedBrand = removeBlockedBrand;
+
 function applySettings(){
   document.body.classList.toggle('light-mode', themeMode==='light');
   document.body.classList.toggle('large-font', fontMode==='large');
@@ -3376,6 +3417,7 @@ function openAccessPanel(){
   panel.style.display = 'flex';
   try { applySettings(); } catch(e) {}
   try { applyLang(); } catch(e) {}
+  try { renderBlockedBrands(); } catch(e) {}
 }
 function closeAccessPanel(){
   document.getElementById('accessPanel').style.display='none';
@@ -3689,6 +3731,10 @@ function processExcelRows(rows, colMap){
           // עדכון מלאי קיסריה לכולם
           invEntries[code]={caesareaQty:caesQty,itemDescription:desc,itemCode:code};
 
+          // בדוק מותג חסום
+          const _rowBrand = (brandCol ? String(row[brandCol]||'') : (desc||'').trim().split(/\s+/).slice(-1)[0]||'').trim().toUpperCase();
+          if(blockedBrands.includes(_rowBrand)) return;
+
           if(existingCodes.has(code)) return; // קיים עם קוד — דלג
 
           // בדוק אם קיים פריט עם אותו תיאור אך ללא קוד — עדכן קוד
@@ -3777,6 +3823,7 @@ function processExcelRows(rows, colMap){
       const rawSize=sizeCol?String(row[sizeCol]||'').trim():(_sizeFromDesc?_sizeFromDesc(descVal):'');
       const brandVal=brandCol?String(row[brandCol]||'').trim():'';
       if(!rawSize&&!brandVal){ skipped++; return; }
+      if(blockedBrands.includes((brandVal||'').toUpperCase())){ skipped++; return; }
       const parsed=rawSize?parseSize(rawSize.replace(/\s/g,'').toUpperCase()):null;
       const qty=Math.max(1, parseInt(qtyCol?String(row[qtyCol]||'1'):1,10)||1);
       const actualQty=Math.min(qty,50);
