@@ -3102,11 +3102,12 @@ window._updateItems = function(newItems, newNextId){
         if(bk && bk.items && bk.items.length > 0){
           const d = new Date(bk.ts).toLocaleString('he-IL');
           setTimeout(()=>{
+            if(items.length > 0) return;
             if(confirm(`🔄 נמצא גיבוי (${bk.items.length} פריטים, ${d}).\nלשחזר?`)){
               toast('⏳ משחזר...');
               window._importItems(bk.items).then(()=>toast(`✅ שוחזרו ${bk.items.length} פריטים`)).catch(e=>toast('❌ '+e.message));
             }
-          }, 1200);
+          }, 5000);
         }
       }catch(e){}
     })();
