@@ -27,6 +27,13 @@ body.large-font .bnav-btn{ padding:14px 0 10px; }
 body.large-font .btn-add{ width:42px;height:42px;font-size:24px; }
 body.large-font input,body.large-font select{ font-size:16px!important;padding:10px!important; }
 body.large-font td{ font-size:15px;padding:10px 8px; }
+body.big-buttons .btn,.big-buttons .btn-acc,.big-buttons .btn-ghost{ padding:14px 20px!important;font-size:16px!important;min-height:48px; }
+body.big-buttons .bnav-btn{ padding:14px 0 10px; }
+body.big-buttons .bnav-btn .bi{ font-size:26px; }
+body.big-buttons .bnav-btn .bl{ font-size:12px; }
+body.big-buttons .ib{ width:44px!important;height:44px!important;font-size:20px!important; }
+body.big-buttons input,body.big-buttons select{ font-size:16px!important;padding:12px!important;min-height:48px; }
+body.big-buttons td{ padding:12px 8px; }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;width:100%;font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;font-size:var(--font-size,14px);}
 
