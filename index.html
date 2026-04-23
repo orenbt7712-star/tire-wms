@@ -549,7 +549,7 @@ if('serviceWorker' in navigator){
           oninput="showBlockedBrandDrop(this)"
           onfocus="showBlockedBrandDrop(this)"
           onblur="setTimeout(()=>{const d=document.getElementById('blockedBrandDrop');if(d)d.style.display='none'},200)"/>
-        <button onclick="addBlockedBrand()" style="background:var(--accent);border:none;color:#111;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;font-family:inherit;">הוסף</button>
+        <button id="addBlockedBrandBtn" onclick="addBlockedBrand()" style="background:var(--accent);border:none;color:#111;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;">הוסף</button>
       </div>
     </div>
 

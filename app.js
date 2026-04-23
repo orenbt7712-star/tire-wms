@@ -3331,6 +3331,7 @@ let bigButtons = localStorage.getItem('tirewms_big')==='on';
 
 /* ══ BLOCKED BRANDS ══ */
 let blockedBrands = [];
+let _selBlockedBrands = new Set();
 (async()=>{
   try{
     const raw = window._enc ? await window._enc.get('tirewms_blocked_brands') : localStorage.getItem('tirewms_blocked_brands');
@@ -3349,17 +3350,29 @@ function renderBlockedBrands(){
     ? blockedBrands.map(b=>`<span style="display:inline-flex;align-items:center;gap:4px;background:var(--red-dim);border:1px solid var(--red);color:var(--red);border-radius:20px;padding:4px 10px;font-size:12px;font-weight:700;">${b}<button onclick="removeBlockedBrand('${b}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:0 0 0 2px;">✕</button></span>`).join('')
     : '<span style="font-size:12px;color:var(--muted);">אין מותגים חסומים</span>';
 }
+function _updateBlockedAddBtn(){
+  const btn = document.getElementById('addBlockedBrandBtn');
+  if(!btn) return;
+  const n = _selBlockedBrands.size;
+  btn.textContent = n > 0 ? `הוסף (${n})` : 'הוסף';
+}
 function addBlockedBrand(){
   const input = document.getElementById('blockedBrandInput');
-  if(!input) return;
-  const brand = input.value.trim().toUpperCase();
-  if(!brand){ toast('❌ הכנס שם מותג'); return; }
-  if(blockedBrands.includes(brand)){ toast('⚠️ מותג כבר ברשימה'); input.value=''; return; }
-  blockedBrands.push(brand);
-  _saveBlockedBrands();
-  renderBlockedBrands();
-  input.value='';
-  toast(`🚫 ${brand} נוסף לרשימה`);
+  const toAdd = new Set(_selBlockedBrands);
+  const typed = (input?.value||'').trim().toUpperCase();
+  if(typed) toAdd.add(typed);
+  if(!toAdd.size){ toast('❌ בחר או הקלד מותג'); return; }
+  let added = 0;
+  toAdd.forEach(brand => {
+    if(!blockedBrands.includes(brand)){ blockedBrands.push(brand); added++; }
+  });
+  if(added){ _saveBlockedBrands(); renderBlockedBrands(); toast(`🚫 נוספו ${added} מותגים לרשימה`); }
+  else toast('⚠️ כל המותגים כבר ברשימה');
+  _selBlockedBrands.clear();
+  if(input) input.value = '';
+  const drop = document.getElementById('blockedBrandDrop');
+  if(drop) drop.style.display = 'none';
+  _updateBlockedAddBtn();
 }
 function removeBlockedBrand(brand){
   blockedBrands = blockedBrands.filter(b=>b!==brand);
@@ -3389,9 +3402,14 @@ function showBlockedBrandDrop(inp){
     drop.style.bottom = (window.innerHeight - rect.top)+'px';
     drop.style.top = '';
   }
-  drop.innerHTML = filtered.map(b=>`<div data-bval="${escHTML(b)}"
-    style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border)"
-    onmouseenter="this.style.background='var(--border2)'" onmouseleave="this.style.background=''">${escHTML(b)}</div>`).join('');
+  drop.innerHTML = filtered.map(b=>{
+    const sel = _selBlockedBrands.has(b);
+    return `<div data-bval="${escHTML(b)}"
+      style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;${sel?'background:var(--border2);font-weight:700;':''}"
+      onmouseenter="this.style.background='var(--border2)'" onmouseleave="this.style.background='${sel?'var(--border2)':''}'"">
+      <span style="font-size:15px;width:18px;text-align:center;">${sel?'☑':'☐'}</span>${escHTML(b)}
+    </div>`;
+  }).join('');
   drop.style.display = 'block';
 }
 window.addBlockedBrand = addBlockedBrand;
@@ -4871,9 +4889,11 @@ function _initDropListeners(){
       if(!item) return;
       e.preventDefault();
       const val=item.dataset.bval;
+      if(_selBlockedBrands.has(val)) _selBlockedBrands.delete(val);
+      else _selBlockedBrands.add(val);
+      _updateBlockedAddBtn();
       const inp=document.getElementById('blockedBrandInput');
-      if(inp){ inp.value=val; }
-      blockedBrandDrop.style.display='none';
+      if(inp) showBlockedBrandDrop(inp);
     });
   }
 }
