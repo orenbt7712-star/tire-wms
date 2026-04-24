@@ -3416,7 +3416,7 @@ function showBlockedBrandDrop(inp){
     drop.style.bottom = (window.innerHeight - rect.top)+'px';
     drop.style.top = '';
   }
-  drop.innerHTML = filtered.map(b=>{
+  const listHTML = filtered.map(b=>{
     const sel = _selBlockedBrands.has(b);
     const bg = sel ? 'var(--border2)' : '';
     return `<div data-bval="${escHTML(b)}"
@@ -3425,6 +3425,12 @@ function showBlockedBrandDrop(inp){
       <span style="font-size:15px;width:18px;text-align:center;">${sel?'☑':'☐'}</span>${escHTML(b)}
     </div>`;
   }).join('');
+  const n = _selBlockedBrands.size;
+  const footerHTML = `<div data-action="add-blocked"
+    style="position:sticky;bottom:0;background:${n>0?'var(--accent)':'var(--card2)'};color:${n>0?'#111':'var(--muted)'};text-align:center;padding:10px 12px;font-weight:700;cursor:${n>0?'pointer':'default'};font-size:13px;border-top:2px solid var(--border);">
+    ${n>0?`✅ הוסף ${n} מותגים`:'בחר מותגים מהרשימה'}
+  </div>`;
+  drop.innerHTML = listHTML + footerHTML;
   drop.style.display = 'block';
 }
 window.addBlockedBrand = addBlockedBrand;
@@ -4900,9 +4906,13 @@ function _initDropListeners(){
   const blockedBrandDrop=document.getElementById('blockedBrandDrop');
   if(blockedBrandDrop){
     blockedBrandDrop.addEventListener('mousedown',e=>{
+      e.preventDefault();
+      if(e.target.closest('[data-action="add-blocked"]')){
+        if(_selBlockedBrands.size>0) addBlockedBrand();
+        return;
+      }
       const item=e.target.closest('[data-bval]');
       if(!item) return;
-      e.preventDefault();
       const val=item.dataset.bval;
       if(_selBlockedBrands.has(val)) _selBlockedBrands.delete(val);
       else _selBlockedBrands.add(val);
