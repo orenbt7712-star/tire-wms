@@ -3366,20 +3366,27 @@ function addBlockedBrand(){
   toAdd.forEach(brand => {
     if(!blockedBrands.includes(brand)){ blockedBrands.push(brand); added++; }
   });
-  if(added){
-    _saveBlockedBrands();
-    renderBlockedBrands();
-    toast(`🚫 נוספו ${added} מותגים לרשימה`);
-    setTimeout(()=>{
-      const list = document.getElementById('blockedBrandsList');
-      if(list) list.scrollIntoView({behavior:'smooth', block:'nearest'});
-    }, 80);
-  } else toast('⚠️ כל המותגים כבר ברשימה');
   _selBlockedBrands.clear();
   if(input) input.value = '';
   const drop = document.getElementById('blockedBrandDrop');
   if(drop) drop.style.display = 'none';
   _updateBlockedAddBtn();
+  if(added){
+    _saveBlockedBrands();
+    renderBlockedBrands();
+    toast(`✅ נוספו ${added} מותגים חסומים`);
+    setTimeout(()=>{
+      const list = document.getElementById('blockedBrandsList');
+      const panel = document.querySelector('#accessPanel > div');
+      if(list && panel){
+        const listRect = list.getBoundingClientRect();
+        const panelRect = panel.getBoundingClientRect();
+        panel.scrollTop += listRect.top - panelRect.top - 16;
+      }
+    }, 150);
+  } else {
+    toast('⚠️ כל המותגים כבר ברשימה');
+  }
 }
 function removeBlockedBrand(brand){
   blockedBrands = blockedBrands.filter(b=>b!==brand);
