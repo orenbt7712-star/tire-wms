@@ -745,7 +745,7 @@ if('serviceWorker' in navigator){
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDocs, updateDoc, addDoc, serverTimestamp, getDoc, writeBatch, query, orderBy, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBd8xA9EpA7JRJv-YcOxMWfunef1d4t6yc",
@@ -1232,11 +1232,6 @@ async function _doGoogleOwnerLogin() {
   if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
   try {
     const provider = new GoogleAuthProvider();
-    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-    if (isMobile) {
-      await signInWithRedirect(auth, provider);
-      return;
-    }
     const result = await signInWithPopup(auth, provider);
     const email = (result.user.email || '').toLowerCase();
     if (email === OWNER_EMAIL.toLowerCase()) {
@@ -2130,19 +2125,6 @@ window.restoreFromAutoBackup = restoreFromAutoBackup;
 try { document.querySelector('.app').style.display = 'none'; } catch(e) {}
 buildLoginScreen();
 
-// טיפול בחזרה מ-Google redirect (מובייל)
-getRedirectResult(auth).then(async result => {
-  if (result && result.user) {
-    const email = (result.user.email || '').toLowerCase();
-    const errEl = document.getElementById('googleOwnerErr');
-    if (email === OWNER_EMAIL.toLowerCase()) {
-      await _doOwnerEnter(true);
-    } else {
-      if (errEl) { errEl.textContent = `❌ האימייל ${result.user.email} אינו מורשה`; errEl.style.display = 'block'; }
-      await signInAnonymously(auth);
-    }
-  }
-}).catch(e => { console.warn('Redirect result:', e); });
 
 // ── Firestore sync — מתחיל רק אחרי שהאימות מוכן ──
 setTimeout(processOfflineQueue, 3000);
