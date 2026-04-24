@@ -745,7 +745,7 @@ if('serviceWorker' in navigator){
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDocs, updateDoc, addDoc, serverTimestamp, getDoc, writeBatch, query, orderBy, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBd8xA9EpA7JRJv-YcOxMWfunef1d4t6yc",
@@ -1227,32 +1227,42 @@ function checkPass() {
   });
 }
 
-async function _handleGoogleResult(result, errEl) {
-  const email = (result.user.email || '').toLowerCase();
-  if (email === OWNER_EMAIL.toLowerCase()) {
-    await _doOwnerEnter(true);
-  } else {
-    if (errEl) { errEl.textContent = `❌ האימיל ${result.user.email} אינו מורשה כבעלים`; errEl.style.display = 'block'; }
-    await signInAnonymously(auth);
+async function _handleGSICredential(response) {
+  const errEl = document.getElementById('googleOwnerErr');
+  try {
+    const b64 = response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(atob(b64));
+    const email = (payload.email || '').toLowerCase();
+    if (email === OWNER_EMAIL.toLowerCase()) {
+      await _doOwnerEnter(true);
+    } else {
+      if (errEl) { errEl.textContent = `❌ האימייל ${payload.email} אינו מורשה כבעלים`; errEl.style.display = 'block'; }
+    }
+  } catch(e) {
+    console.error('GSI credential error:', e);
+    if (errEl) { errEl.textContent = '❌ שגיאה — נסה שנית'; errEl.style.display = 'block'; }
   }
 }
 
 async function _doGoogleOwnerLogin() {
   const errEl = document.getElementById('googleOwnerErr');
   if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
-  try {
-    const provider = new GoogleAuthProvider();
-    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-    if (isMobile) {
-      await signInWithRedirect(auth, provider);
-      return;
-    }
-    const result = await signInWithPopup(auth, provider);
-    await _handleGoogleResult(result, errEl);
-  } catch(e) {
-    console.error('Google login error:', e);
-    if (errEl) { errEl.textContent = `❌ ${e.code || e.message || 'שגיאה'}`; errEl.style.display = 'block'; }
+  const clientId = localStorage.getItem('tirewms_gdrive_client_id');
+  if (!clientId) {
+    if (errEl) { errEl.textContent = '⚠️ הגדר Google Client ID בהגדרות Drive תחילה'; errEl.style.display = 'block'; }
+    return;
   }
+  if (!window.google?.accounts?.id) {
+    if (errEl) { errEl.textContent = '❌ Google Sign-In לא נטען — רענן את הדף'; errEl.style.display = 'block'; }
+    return;
+  }
+  google.accounts.id.initialize({ client_id: clientId, callback: _handleGSICredential, auto_select: false });
+  google.accounts.id.prompt(n => {
+    if (n.isNotDisplayed() || n.isSkippedMoment()) {
+      const btn = document.getElementById('btnGoogleOwner');
+      if (btn) google.accounts.id.renderButton(btn, { theme: 'outline', size: 'large', text: 'signin_with' });
+    }
+  });
 }
 
 function enterApp(admin, workerName) {
@@ -2133,16 +2143,6 @@ window.restoreFromAutoBackup = restoreFromAutoBackup;
 // ── הצג מסך כניסה ──
 try { document.querySelector('.app').style.display = 'none'; } catch(e) {}
 buildLoginScreen();
-
-// טיפול בחזרה מ-Google redirect (מובייל)
-getRedirectResult(auth).then(async result => {
-  if (result && result.user) {
-    const errEl = document.getElementById('googleOwnerErr');
-    await _handleGoogleResult(result, errEl);
-  }
-}).catch(e => {
-  console.error('Google redirect result error:', e);
-});
 
 // ── Firestore sync — מתחיל רק אחרי שהאימות מוכן ──
 setTimeout(processOfflineQueue, 3000);
