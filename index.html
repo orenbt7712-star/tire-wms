@@ -43,9 +43,9 @@ if('serviceWorker' in navigator){
       });
     });
   });
-  // כשה-SW החדש ממתין — רענן
+  // כשה-SW החדש ממתין — רענן (לא אם אנחנו באמצע Google redirect)
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
-    window.location.reload();
+    if(!sessionStorage.getItem('_googleRedirectActive')) window.location.reload();
   });
 }
 </script>
@@ -985,6 +985,7 @@ if (_googleRedirectPending) {
   sessionStorage.removeItem('_googleRedirectPending');
   getRedirectResult(auth)
     .then(async result => {
+      sessionStorage.removeItem('_googleRedirectActive');
       if (result && result.user) {
         const email = (result.user.email || '').toLowerCase();
         if (email === OWNER_EMAIL.toLowerCase()) {
@@ -1001,6 +1002,7 @@ if (_googleRedirectPending) {
       _authReadyCallbacks.forEach(cb => cb());
     })
     .catch(async () => {
+      sessionStorage.removeItem('_googleRedirectActive');
       await signInAnonymously(auth).catch(() => {});
       _authReady = true;
       _authReadyCallbacks.forEach(cb => cb());
@@ -1257,6 +1259,7 @@ async function _doGoogleOwnerLogin() {
     const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
     if (isMobile) {
       sessionStorage.setItem('_googleRedirectPending', '1');
+      sessionStorage.setItem('_googleRedirectActive', '1');
       await signInWithRedirect(auth, provider);
       return; // הדף יועבר לגוגל ויחזור
     }
