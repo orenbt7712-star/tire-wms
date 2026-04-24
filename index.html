@@ -979,40 +979,37 @@ function onAuthReady(cb) {
 }
 _enc.init(); // אתחל מפתח הצפנה לפני כל שימוש ב-localStorage
 
-const _googleRedirectPending = sessionStorage.getItem('_googleRedirectPending');
-if (_googleRedirectPending) {
-  // חוזרים מ-Google redirect — לא נכנס אנונימית, מחכים לתוצאה
-  sessionStorage.removeItem('_googleRedirectPending');
-  getRedirectResult(auth)
-    .then(async result => {
-      sessionStorage.removeItem('_googleRedirectActive');
-      if (result && result.user) {
-        const email = (result.user.email || '').toLowerCase();
-        if (email === OWNER_EMAIL.toLowerCase()) {
-          _authReady = true;
-          _authReadyCallbacks.forEach(cb => cb());
-          await _doOwnerEnter(true);
-          return;
-        }
-        const errEl = document.getElementById('googleOwnerErr');
-        if (errEl) { errEl.textContent = `❌ האימייל ${result.user.email} אינו מורשה`; errEl.style.display = 'block'; }
-      }
-      await signInAnonymously(auth).catch(() => {});
+// onAuthStateChanged מופעל אוטומטית כשFirebase מעבד redirect מגוגל
+// — זה מהימן יותר מ-getRedirectResult שעלול להחזיר null
+let _authInitialized = false;
+onAuthStateChanged(auth, async (user) => {
+  if (_authInitialized) return; // רק הפעם הראשונה
+  _authInitialized = true;
+
+  const fromGoogleRedirect = sessionStorage.getItem('_googleRedirectActive');
+
+  if (user && !user.isAnonymous && fromGoogleRedirect) {
+    // חזרנו מ-Google redirect — משתמש מאומת
+    sessionStorage.removeItem('_googleRedirectActive');
+    sessionStorage.removeItem('_googleRedirectPending');
+    const email = (user.email || '').toLowerCase();
+    if (email === OWNER_EMAIL.toLowerCase()) {
       _authReady = true;
       _authReadyCallbacks.forEach(cb => cb());
-    })
-    .catch(async () => {
-      sessionStorage.removeItem('_googleRedirectActive');
-      await signInAnonymously(auth).catch(() => {});
-      _authReady = true;
-      _authReadyCallbacks.forEach(cb => cb());
-    });
-} else {
-  // כניסה רגילה — אנונימית
-  signInAnonymously(auth)
-    .then(() => { _authReady = true; _authReadyCallbacks.forEach(cb => cb()); })
-    .catch(e => { console.warn('Auth error:', e); _authReady = true; _authReadyCallbacks.forEach(cb => cb()); });
-}
+      await _doOwnerEnter(true);
+      return;
+    }
+    // אימייל לא מורשה
+    const errEl = document.getElementById('googleOwnerErr');
+    if (errEl) { errEl.textContent = `❌ האימייל ${user.email} אינו מורשה כבעלים`; errEl.style.display = 'block'; }
+    await signInAnonymously(auth).catch(() => {});
+  } else if (!user) {
+    // אין משתמש — כניסה אנונימית
+    await signInAnonymously(auth).catch(() => {});
+  }
+  // בכל מקרה — אתחול מוכן
+  if (!_authReady) { _authReady = true; _authReadyCallbacks.forEach(cb => cb()); }
+});
 
 // ── אבטחה: isAdminMode קריאה בלבד — לא ניתן לשינוי מ-DevTools ──
 const ADMIN_PASS_HASH = '0de4d3bc060236f1e1d54077a8ee352118c3094d4e5f5f3f082bc187f8c46b96';
