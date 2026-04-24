@@ -745,7 +745,7 @@ if('serviceWorker' in navigator){
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDocs, updateDoc, addDoc, serverTimestamp, getDoc, writeBatch, query, orderBy, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBd8xA9EpA7JRJv-YcOxMWfunef1d4t6yc",
@@ -978,14 +978,33 @@ function onAuthReady(cb) {
   if (_authReady) { cb(); } else { _authReadyCallbacks.push(cb); }
 }
 _enc.init(); // אתחל מפתח הצפנה לפני כל שימוש ב-localStorage
-signInAnonymously(auth)
-  .then(() => {
-    _authReady = true;
-    _authReadyCallbacks.forEach(cb => cb());
+// בדוק תחילה אם חוזרים מ-Google redirect — רק אז כניסה אנונימית
+getRedirectResult(auth)
+  .then(async result => {
+    if (result && result.user) {
+      // חזרנו מ-Google redirect — עיבוד הכניסה אחרי שה-DOM מוכן
+      // (כל הקוד הסינכרוני כבר רץ בשלב זה)
+      const email = (result.user.email || '').toLowerCase();
+      if (email === OWNER_EMAIL.toLowerCase()) {
+        _authReady = true;
+        _authReadyCallbacks.forEach(cb => cb());
+        await _doOwnerEnter(true);
+      } else {
+        const errEl = document.getElementById('googleOwnerErr');
+        if (errEl) { errEl.textContent = `❌ האימייל ${result.user.email} אינו מורשה`; errEl.style.display = 'block'; }
+        await signInAnonymously(auth).catch(() => {});
+        _authReady = true;
+        _authReadyCallbacks.forEach(cb => cb());
+      }
+    } else {
+      await signInAnonymously(auth).catch(() => {});
+      _authReady = true;
+      _authReadyCallbacks.forEach(cb => cb());
+    }
   })
-  .catch(e => {
-    console.warn('Auth error:', e);
-    // גם אם האימות נכשל — ממשיך (עבור Firestore rules פתוחות)
+  .catch(async e => {
+    console.warn('Auth init:', e);
+    await signInAnonymously(auth).catch(() => {});
     _authReady = true;
     _authReadyCallbacks.forEach(cb => cb());
   });
@@ -1232,6 +1251,11 @@ async function _doGoogleOwnerLogin() {
   if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
   try {
     const provider = new GoogleAuthProvider();
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    if (isMobile) {
+      await signInWithRedirect(auth, provider);
+      return; // הדף יועבר לגוגל ויחזור
+    }
     const result = await signInWithPopup(auth, provider);
     const email = (result.user.email || '').toLowerCase();
     if (email === OWNER_EMAIL.toLowerCase()) {
