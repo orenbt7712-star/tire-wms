@@ -1251,7 +1251,7 @@ async function _doGoogleOwnerLogin() {
     await _handleGoogleResult(result, errEl);
   } catch(e) {
     console.error('Google login error:', e);
-    if (errEl) { errEl.textContent = '❌ שגיאה בכניסה עם Google — נסה שנית'; errEl.style.display = 'block'; }
+    if (errEl) { errEl.textContent = `❌ ${e.code || e.message || 'שגיאה'}`; errEl.style.display = 'block'; }
   }
 }
 
