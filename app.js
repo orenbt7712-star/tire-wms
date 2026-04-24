@@ -1843,6 +1843,7 @@ function hebrewToNum(str){
 
 /* ══ MAP EDITOR ══ */
 let cages=[], walls=[], mapHistory=[];
+let colLabels={}, rowLabels={}, mapLabels=[], nextLabelId=1;
 let whBlinkCols=new Set(), _whBlinkRAF=null;
 function startWhBlink(){
   if(_whBlinkRAF) return;
@@ -2022,7 +2023,7 @@ function centerMap(){
 
 function setMapTool(t){
   mapTool=t;
-  ['wall','pan','cage','move','erase','row'].forEach(n=>{
+  ['wall','pan','cage','move','erase','row','text'].forEach(n=>{
     const b=document.getElementById('tool-'+n);
     if(!b) return;
     const on=n===t;
@@ -2031,7 +2032,7 @@ function setMapTool(t){
     b.style.color=on?'#111':'var(--muted)';
     b.style.fontWeight=on?'900':'600';
   });
-  const hints={wall:'🖊️ גרור לציור קיר | W',pan:'🖐 גרור להזזת המפה — עכבר שמאל / מגע | P',cage:'📦 לחץ למיקום כלוב | C | Ctrl+D לשכפול',move:'✋ גרור כלוב | גרור על ריק לבחירה מרובה | Delete למחיקה | M',erase:'🗑️ לחץ למחיקה',row:'📏 לחץ להוספת שורת כלובים'};
+  const hints={wall:'🖊️ גרור לציור קיר | W',pan:'🖐 גרור להזזת המפה | P',cage:'📦 לחץ למיקום כלוב | C',move:'✋ גרור כלוב | Delete למחיקה | M',erase:'🗑️ לחץ למחיקה',row:'📏 לחץ להוספת שורת כלובים',text:'🔤 לחץ על הסרגל לעריכת מספרים | לחץ על המפה לטקסט חופשי'};
   const h=document.getElementById('mapHint');
   if(h) h.textContent=hints[t]||'';
   const cursor=t==='pan'?'grab':t==='move'?'grab':t==='erase'?'cell':'crosshair';
@@ -2045,8 +2046,9 @@ function initMapEditor(){
   if(!canvas||!wrap) return;
   const saved=localStorage.getItem('tirewms_map2');
   if(saved){ try{ const d=JSON.parse(saved); walls=d.walls||[]; nextCageId=d.nextId||1;
-    // נרמל מיקומי כלובים לגריד הריבועי (עיגול למספר שלם)
     cages=(d.cages||[]).map(g=>({...g,x:Math.round(g.x),y:Math.round(g.y)}));
+    colLabels=d.colLabels||{}; rowLabels=d.rowLabels||{};
+    mapLabels=d.mapLabels||[]; nextLabelId=d.nextLabelId||1;
   }catch(e){} }
   resizeCanvas(); drawMap(); setMapTool('wall');
 
@@ -2188,7 +2190,33 @@ function onCK(e){
 function handleDown(cx,cy){
   const _cv=document.getElementById('mapCanvas');
   const RULER=28, RULER_R=28;
-  // קליק על הסרגלים → זום
+  const CELL=mapScale;
+
+  // ── כלי טקסט — קליק על הסרגל עורך תוויות ──
+  if(mapTool==='text'){
+    if(cy<RULER && cx>=RULER && (!_cv||cx<=_cv.width-RULER_R)){
+      const col=Math.floor((cx-mapOffX)/CELL);
+      _openLabelEditor(cx, cy+RULER+4, `תווית עמודה ${col+1}`, colLabels[col]||'', {type:'col',key:col});
+      return;
+    }
+    if((cx<RULER||(_cv&&cx>_cv.width-RULER_R)) && cy>=RULER){
+      const row=Math.floor((cy-mapOffY)/CELL);
+      _openLabelEditor(cx<RULER?RULER+4:_cv.width-RULER_R-224, cy, `תווית שורה ${row+1}`, rowLabels[row]||'', {type:'row',key:row});
+      return;
+    }
+    if(cx>=RULER && cy>=RULER && (!_cv||cx<=_cv.width-RULER_R)){
+      const wx=(cx-mapOffX)/CELL, wy=(cy-mapOffY)/CELL;
+      const existing=mapLabels.find(l=>Math.hypot(l.wx-wx,l.wy-wy)<1.5);
+      if(existing){
+        _openLabelEditor(cx, cy+10, 'ערוך טקסט (רוקן למחיקה)', existing.text, {type:'map-edit',key:{id:existing.id}});
+      } else {
+        _openLabelEditor(cx, cy+10, 'טקסט חדש על המפה', '', {type:'map-new',key:{wx,wy,color:'#ffffff'}});
+      }
+      return;
+    }
+  }
+
+  // קליק על הסרגלים → זום (כלים רגילים)
   if(cy<RULER && cx>=RULER && (!_cv||cx<=_cv.width-RULER_R)){
     _axisZoom={type:'x',startCX:cx,startCY:cy,startScale:mapScale,startOffX:mapOffX,startOffY:mapOffY};
     return;
@@ -2201,7 +2229,6 @@ function handleDown(cx,cy){
     _axisZoom={type:'y',startCX:cx,startCY:cy,startScale:mapScale,startOffX:mapOffX,startOffY:mapOffY};
     return;
   }
-  // התעלם מקליקים באזור הסרגל אך לא על הסרגל (פינות)
   if(cx<RULER||cy<RULER) return;
   if(_cv && cx>_cv.width-RULER_R) return;
   const[wx,wy]=c2w(cx,cy);
@@ -2621,6 +2648,26 @@ function drawMap(){
   });
 
 
+  // ── תוויות טקסט על המפה ──
+  mapLabels.forEach(lbl=>{
+    const lx=lbl.wx*CELL+mapOffX, ly=lbl.wy*CELL+mapOffY;
+    if(lx<-200||lx>cv.width+200||ly<-40||ly>cv.height+40) return;
+    ctx.globalAlpha=1;
+    const fs=Math.round((lbl.fontSize||16)*Math.min(2,Math.max(0.5,CELL/40)));
+    ctx.font=`bold ${fs}px Heebo`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.shadowColor='rgba(0,0,0,0.95)'; ctx.shadowBlur=8;
+    ctx.fillStyle=lbl.color||'#ffffff';
+    ctx.fillText(lbl.text, lx, ly);
+    ctx.shadowBlur=0;
+    if(mapTool==='text'){
+      ctx.strokeStyle='rgba(245,166,35,0.7)'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+      const m=ctx.measureText(lbl.text);
+      ctx.strokeRect(lx-m.width/2-4, ly-fs/2-3, m.width+8, fs+6);
+      ctx.setLineDash([]);
+    }
+  });
+
   // ── Rubber-band selection overlay ──
   if(isRubberBand&&rubberStart&&rubberCurrent){
     const[rx1w,ry1w]=[Math.min(rubberStart[0],rubberCurrent[0]),Math.min(rubberStart[1],rubberCurrent[1])];
@@ -2690,20 +2737,13 @@ function drawMap(){
   // רקע סרגל שמאלי
   ctx.fillRect(0, RULER, RULER, cv.height - RULER);
 
-  // ── מספרי שורות: מלמטה לגדול, שמאל=אי-זוגי, ימין=זוגי, באותה גובה ──
-  // כל שורת גריד מציגה שני מספרים רצופים: שמאל=2n-1, ימין=2n
-  const bottomWorldRow = Math.ceil((cv.height - mapOffY) / CELL);
-  const getRowIndex  = wr => Math.max(1, bottomWorldRow - wr); // 1 = שורה תחתונה
-  const getLeftNum   = wr => 2 * getRowIndex(wr) - 1;          // אי-זוגי
-  const getRightNum  = wr => 2 * getRowIndex(wr);               // זוגי
-
-  const RULER_R = 28; // סרגל ימין
+  const RULER_R = 28;
 
   // רקע סרגל ימני
   ctx.fillStyle = 'rgba(8,10,16,0.97)';
   ctx.fillRect(cv.width - RULER_R, RULER, RULER_R, cv.height - RULER);
 
-  // מספרי עמודות (ציר X — סרגל עליון)
+  // ── עמודות (סרגל עליון) — tick + תווית מותאמת אישית ──
   ctx.font = 'bold 11px Heebo';
   ctx.textBaseline = 'middle';
   for(let col = rStartCol; col <= rEndCol; col++){
@@ -2712,18 +2752,16 @@ function drawMap(){
     if(centerX < RULER + 4 || centerX > cv.width - RULER_R - 2) continue;
     ctx.fillStyle = col % 2 === 0 ? 'rgba(245,166,35,0.07)' : 'rgba(245,166,35,0.03)';
     ctx.fillRect(mapOffX + col * CELL, 0, CELL, RULER);
-    ctx.strokeStyle = 'rgba(245,166,35,0.3)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(245,166,35,0.3)'; ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(mapOffX + col * CELL + 0.5, RULER - 6);
     ctx.lineTo(mapOffX + col * CELL + 0.5, RULER);
     ctx.stroke();
-    ctx.fillStyle = '#f5a623';
-    ctx.textAlign = 'center';
-    ctx.fillText(String(col + 1), centerX, RULER / 2);
+    const lbl = colLabels[col];
+    if(lbl){ ctx.fillStyle='#f5a623'; ctx.textAlign='center'; ctx.fillText(lbl, centerX, RULER/2); }
   }
 
-  // מספרי שורות — שמאל (אי-זוגי) + ימין (זוגי) — באותה גובה בדיוק
+  // ── שורות (סרגל שמאל + ימין) — tick + תווית מותאמת אישית ──
   ctx.font = 'bold 11px Heebo';
   ctx.textBaseline = 'middle';
   for(let row = rStartRow; row <= rEndRow; row++){
@@ -2731,32 +2769,20 @@ function drawMap(){
     const centerY = mapOffY + row * CELL + CELL / 2;
     if(centerY < RULER + 4 || centerY > cv.height - 2) continue;
     const rowY = mapOffY + row * CELL;
-
-    // ── סרגל שמאל: אי-זוגי ──
-    const leftNum = getLeftNum(row);
     ctx.fillStyle = 'rgba(74,158,255,0.06)';
     ctx.fillRect(0, rowY, RULER, CELL);
-    ctx.strokeStyle = 'rgba(74,158,255,0.3)';
-    ctx.lineWidth = 0.5;
-    ctx.beginPath();
-    ctx.moveTo(RULER - 6, rowY + 0.5); ctx.lineTo(RULER, rowY + 0.5);
-    ctx.stroke();
-    ctx.fillStyle = '#7ac8ff';
-    ctx.textAlign = 'center';
-    ctx.fillText(String(leftNum), RULER / 2, centerY);
-
-    // ── סרגל ימין: זוגי — ממול בדיוק ──
-    const rightNum = getRightNum(row);
-    ctx.fillStyle = 'rgba(74,158,255,0.06)';
     ctx.fillRect(cv.width - RULER_R, rowY, RULER_R, CELL);
-    ctx.strokeStyle = 'rgba(74,158,255,0.3)';
-    ctx.lineWidth = 0.5;
+    ctx.strokeStyle = 'rgba(74,158,255,0.3)'; ctx.lineWidth = 0.5;
     ctx.beginPath();
-    ctx.moveTo(cv.width - RULER_R, rowY + 0.5); ctx.lineTo(cv.width - RULER_R + 6, rowY + 0.5);
+    ctx.moveTo(RULER-6, rowY+0.5); ctx.lineTo(RULER, rowY+0.5);
+    ctx.moveTo(cv.width-RULER_R, rowY+0.5); ctx.lineTo(cv.width-RULER_R+6, rowY+0.5);
     ctx.stroke();
-    ctx.fillStyle = '#7ac8ff';
-    ctx.textAlign = 'center';
-    ctx.fillText(String(rightNum), cv.width - RULER_R / 2, centerY);
+    const lbl = rowLabels[row];
+    if(lbl){
+      ctx.fillStyle='#7ac8ff'; ctx.textAlign='center';
+      ctx.fillText(lbl, RULER/2, centerY);
+      ctx.fillText(lbl, cv.width-RULER_R/2, centerY);
+    }
   }
 
   // קווי גבול סרגלים
@@ -2850,7 +2876,7 @@ function autoExpandCages(){
 function _scheduleAutoSave(){
   clearTimeout(_autoSaveTimer);
   _autoSaveTimer=setTimeout(()=>{
-    localStorage.setItem('tirewms_map2',JSON.stringify({cages,walls,nextId:nextCageId}));
+    localStorage.setItem('tirewms_map2',JSON.stringify({cages,walls,nextId:nextCageId,colLabels,rowLabels,mapLabels,nextLabelId}));
     const h=document.getElementById('mapHint');
     if(h){ const old=h.textContent; h.textContent='💾 נשמר אוטומטית'; setTimeout(()=>{if(h.textContent==='💾 נשמר אוטומטית')h.textContent=old;},1500); }
   },2000);
@@ -3061,8 +3087,59 @@ function deleteCage(){
   cages=cages.filter(c=>c.id!==selectedCageId);
   selectedCageId=null;closeCageEdit();drawMap();
 }
+// ── תוויות מפה ──
+let _pendingLabelCtx=null;
+function _openLabelEditor(sx, sy, title, existingText, ctx){
+  _pendingLabelCtx=ctx;
+  const dlg=document.getElementById('mapLabelInput');
+  const inp=document.getElementById('mapLabelText');
+  const ttl=document.getElementById('mapLabelTitle');
+  if(!dlg||!inp) return;
+  if(ttl) ttl.textContent=title;
+  inp.value=existingText||'';
+  const w=220,h=120;
+  let left=sx-w/2, top=sy+8;
+  left=Math.max(4,Math.min(window.innerWidth-w-4,left));
+  top=Math.max(4,Math.min(window.innerHeight-h-4,top));
+  dlg.style.left=left+'px'; dlg.style.top=top+'px';
+  dlg.style.display='block';
+  setTimeout(()=>{inp.focus();inp.select();},50);
+}
+function confirmMapLabel(){
+  const inp=document.getElementById('mapLabelText');
+  const text=(inp?.value||'').trim();
+  if(_pendingLabelCtx){
+    const{type,key}=_pendingLabelCtx;
+    if(type==='col'){ if(text) colLabels[key]=text; else delete colLabels[key]; }
+    else if(type==='row'){ if(text) rowLabels[key]=text; else delete rowLabels[key]; }
+    else if(type==='map-new'){ if(text) mapLabels.push({id:nextLabelId++,wx:key.wx,wy:key.wy,text,color:key.color||'#ffffff',fontSize:16}); }
+    else if(type==='map-edit'){ const l=mapLabels.find(x=>x.id===key.id); if(l){ if(text) l.text=text; else mapLabels=mapLabels.filter(x=>x.id!==key.id); } }
+    _scheduleAutoSave(); drawMap();
+  }
+  document.getElementById('mapLabelInput').style.display='none';
+  _pendingLabelCtx=null;
+}
+function deleteMapLabel(){
+  if(_pendingLabelCtx){
+    const{type,key}=_pendingLabelCtx;
+    if(type==='col') delete colLabels[key];
+    else if(type==='row') delete rowLabels[key];
+    else if(type==='map-edit') mapLabels=mapLabels.filter(x=>x.id!==key.id);
+    _scheduleAutoSave(); drawMap();
+  }
+  document.getElementById('mapLabelInput').style.display='none';
+  _pendingLabelCtx=null;
+}
+function cancelMapLabel(){
+  document.getElementById('mapLabelInput').style.display='none';
+  _pendingLabelCtx=null;
+}
+window.confirmMapLabel=confirmMapLabel;
+window.deleteMapLabel=deleteMapLabel;
+window.cancelMapLabel=cancelMapLabel;
+
 function saveMapLayout(){
-  localStorage.setItem('tirewms_map2',JSON.stringify({cages,walls,nextId:nextCageId}));
+  localStorage.setItem('tirewms_map2',JSON.stringify({cages,walls,nextId:nextCageId,colLabels,rowLabels,mapLabels,nextLabelId}));
   // סנכרן עם תצוגת המחסן
   if(document.getElementById('viewWarehouse')?.classList.contains('active')) renderWarehouse();
   toast('✅ '+(currentLang==='ar'?'تم حفظ الخريطة!':'מפה נשמרה!'));
@@ -3226,7 +3303,7 @@ function generateWarehouseLayout(silent){
 
   selectedCageId=null; selectedCages=[];
   // שמירה מיידית לא דחויה + סימון גרסה
-  localStorage.setItem('tirewms_map2',JSON.stringify({cages,walls,nextId:nextCageId}));
+  localStorage.setItem('tirewms_map2',JSON.stringify({cages,walls,nextId:nextCageId,colLabels,rowLabels,mapLabels,nextLabelId}));
   localStorage.setItem('tirewms_map_ver','layout-2026-v6');
   if(silent){
     setTimeout(()=>{if(typeof renderWarehouse==='function'){renderWarehouse();whCenter();}},50);
