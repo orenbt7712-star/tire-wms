@@ -3331,7 +3331,6 @@ let bigButtons = localStorage.getItem('tirewms_big')==='on';
 
 /* ══ BLOCKED BRANDS ══ */
 let blockedBrands = [];
-let _selBlockedBrands = new Set();
 (async()=>{
   try{
     const raw = window._enc ? await window._enc.get('tirewms_blocked_brands') : localStorage.getItem('tirewms_blocked_brands');
@@ -3350,43 +3349,29 @@ function renderBlockedBrands(){
     ? blockedBrands.map(b=>`<span style="display:inline-flex;align-items:center;gap:4px;background:var(--red-dim);border:1px solid var(--red);color:var(--red);border-radius:20px;padding:4px 10px;font-size:12px;font-weight:700;">${b}<button onclick="removeBlockedBrand('${b}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:0 0 0 2px;">✕</button></span>`).join('')
     : '<span style="font-size:12px;color:var(--muted);">אין מותגים חסומים</span>';
 }
-function _updateBlockedAddBtn(){
-  const btn = document.getElementById('addBlockedBrandBtn');
-  if(!btn) return;
-  const n = _selBlockedBrands.size;
-  btn.textContent = n > 0 ? `הוסף (${n})` : 'הוסף';
-}
 function addBlockedBrand(){
   const input = document.getElementById('blockedBrandInput');
-  const toAdd = new Set(_selBlockedBrands);
   const typed = (input?.value||'').trim().toUpperCase();
-  if(typed) toAdd.add(typed);
-  if(!toAdd.size){ toast('❌ בחר או הקלד מותג'); return; }
-  let added = 0;
-  toAdd.forEach(brand => {
-    if(!blockedBrands.includes(brand)){ blockedBrands.push(brand); added++; }
-  });
-  _selBlockedBrands.clear();
-  if(input) input.value = '';
-  const drop = document.getElementById('blockedBrandDrop');
-  if(drop) drop.style.display = 'none';
-  _updateBlockedAddBtn();
-  if(added){
-    _saveBlockedBrands();
-    renderBlockedBrands();
-    toast(`✅ נוספו ${added} מותגים חסומים`);
-    setTimeout(()=>{
-      const list = document.getElementById('blockedBrandsList');
-      const panel = document.querySelector('#accessPanel > div');
-      if(list && panel){
-        const listRect = list.getBoundingClientRect();
-        const panelRect = panel.getBoundingClientRect();
-        panel.scrollTop += listRect.top - panelRect.top - 16;
-      }
-    }, 150);
+  if(!typed){ toast('❌ הכנס שם מותג'); return; }
+  if(blockedBrands.includes(typed)){ toast('⚠️ מותג כבר ברשימה'); if(input) input.value=''; return; }
+  blockedBrands.push(typed);
+  _saveBlockedBrands();
+  renderBlockedBrands();
+  if(input) input.value='';
+  toast(`🚫 ${typed} נוסף`);
+}
+function toggleBlockedBrand(brand){
+  if(blockedBrands.includes(brand)){
+    blockedBrands = blockedBrands.filter(b=>b!==brand);
+    toast(`✅ ${brand} הוסר`);
   } else {
-    toast('⚠️ כל המותגים כבר ברשימה');
+    blockedBrands.push(brand);
+    toast(`🚫 ${brand} נחסם`);
   }
+  _saveBlockedBrands();
+  renderBlockedBrands();
+  const inp = document.getElementById('blockedBrandInput');
+  if(inp) showBlockedBrandDrop(inp);
 }
 function removeBlockedBrand(brand){
   blockedBrands = blockedBrands.filter(b=>b!==brand);
@@ -3416,25 +3401,21 @@ function showBlockedBrandDrop(inp){
     drop.style.bottom = (window.innerHeight - rect.top)+'px';
     drop.style.top = '';
   }
-  const listHTML = filtered.map(b=>{
-    const sel = _selBlockedBrands.has(b);
-    const bg = sel ? 'var(--border2)' : '';
+  drop.innerHTML = filtered.map(b=>{
+    const blocked = blockedBrands.includes(b);
+    const bg = blocked ? 'var(--red-dim,#3a1a1a)' : '';
+    const color = blocked ? 'var(--red,#ff6b6b)' : 'var(--text)';
     return `<div data-bval="${escHTML(b)}"
-      style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;background:${bg};${sel?'font-weight:700;':''}"
+      style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;background:${bg};color:${color};${blocked?'font-weight:700;':''}"
       onmouseenter="this.style.background='var(--border2)'" onmouseleave="this.style.background='${bg}'">
-      <span style="font-size:15px;width:18px;text-align:center;">${sel?'☑':'☐'}</span>${escHTML(b)}
+      <span style="font-size:15px;width:18px;text-align:center;">${blocked?'🚫':'☐'}</span>${escHTML(b)}
     </div>`;
   }).join('');
-  const n = _selBlockedBrands.size;
-  const footerHTML = `<div data-action="add-blocked"
-    style="position:sticky;bottom:0;background:${n>0?'var(--accent)':'var(--card2)'};color:${n>0?'#111':'var(--muted)'};text-align:center;padding:10px 12px;font-weight:700;cursor:${n>0?'pointer':'default'};font-size:13px;border-top:2px solid var(--border);">
-    ${n>0?`✅ הוסף ${n} מותגים`:'בחר מותגים מהרשימה'}
-  </div>`;
-  drop.innerHTML = listHTML + footerHTML;
   drop.style.display = 'block';
 }
 window.addBlockedBrand = addBlockedBrand;
 window.removeBlockedBrand = removeBlockedBrand;
+window.toggleBlockedBrand = toggleBlockedBrand;
 window.showBlockedBrandDrop = showBlockedBrandDrop;
 
 function applySettings(){
@@ -4906,19 +4887,10 @@ function _initDropListeners(){
   const blockedBrandDrop=document.getElementById('blockedBrandDrop');
   if(blockedBrandDrop){
     blockedBrandDrop.addEventListener('mousedown',e=>{
-      e.preventDefault();
-      if(e.target.closest('[data-action="add-blocked"]')){
-        if(_selBlockedBrands.size>0) addBlockedBrand();
-        return;
-      }
       const item=e.target.closest('[data-bval]');
       if(!item) return;
-      const val=item.dataset.bval;
-      if(_selBlockedBrands.has(val)) _selBlockedBrands.delete(val);
-      else _selBlockedBrands.add(val);
-      _updateBlockedAddBtn();
-      const inp=document.getElementById('blockedBrandInput');
-      if(inp) showBlockedBrandDrop(inp);
+      e.preventDefault();
+      toggleBlockedBrand(item.dataset.bval);
     });
   }
 }
