@@ -1102,6 +1102,16 @@ async function buildLoginScreen() {
     </button>
     <div id="googleOwnerErr" style="color:#e85d3f;font-size:12px;text-align:center;display:none;max-width:300px;width:100%;"></div>
 
+    <div style="width:100%;max-width:300px;">
+      <button id="btnToggleGsiSetup" style="background:none;border:none;color:#7a8299;font-size:11px;cursor:pointer;font-family:Heebo,sans-serif;text-decoration:underline;display:block;width:100%;text-align:center;padding:0;">⚙️ הגדר Google Client ID</button>
+      <div id="gsiSetupInner" style="display:none;flex-direction:column;gap:6px;margin-top:8px;">
+        <input id="loginClientIdInput" type="text" placeholder="הדבק Client ID מ-Google Cloud..." dir="ltr"
+          style="background:#191d28;border:1px solid #2a3045;border-radius:8px;color:#eef0f6;font-family:monospace;font-size:11px;padding:8px 10px;width:100%;outline:none;box-sizing:border-box;text-align:left;"/>
+        <button onclick="_saveLoginClientId()" style="background:#3b82f6;border:none;color:#fff;padding:8px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;width:100%;">שמור Client ID</button>
+        <div id="gsiSetupStatus" style="font-size:11px;text-align:center;color:#3ecf8e;display:none;">✅ נשמר</div>
+      </div>
+    </div>
+
     <button id="btnOwnerToggle" style="background:none;border:none;color:#7a8299;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;text-decoration:underline;">👑 כניסה כבעלים עם סיסמה</button>
 
     <div id="adminPassWrap" style="display:none;width:100%;max-width:300px;flex-direction:column;gap:8px;">
@@ -1135,6 +1145,16 @@ async function buildLoginScreen() {
     setTimeout(() => document.getElementById('adminPassInput').focus(), 50);
   });
   document.getElementById('btnGoogleOwner').addEventListener('click', _doGoogleOwnerLogin);
+  document.getElementById('btnToggleGsiSetup').addEventListener('click', () => {
+    const inner = document.getElementById('gsiSetupInner');
+    const isOpen = inner.style.display === 'flex';
+    inner.style.display = isOpen ? 'none' : 'flex';
+    if (!isOpen) {
+      const saved = localStorage.getItem('tirewms_gdrive_client_id');
+      if (saved) document.getElementById('loginClientIdInput').value = saved;
+      setTimeout(() => document.getElementById('loginClientIdInput').focus(), 50);
+    }
+  });
   document.getElementById('btnPassOk').addEventListener('click', checkPass);
   document.getElementById('adminPassInput').addEventListener('keydown', e => { if(e.key==='Enter') checkPass(); });
   document.getElementById('totpInput').addEventListener('keydown', e => { if(e.key==='Enter') checkTOTP(); });
@@ -1224,6 +1244,15 @@ function checkPass() {
     }
   });
 }
+
+function _saveLoginClientId() {
+  const val = (document.getElementById('loginClientIdInput') || {}).value || '';
+  if (!val.trim()) return;
+  localStorage.setItem('tirewms_gdrive_client_id', val.trim());
+  const status = document.getElementById('gsiSetupStatus');
+  if (status) { status.style.display = 'block'; setTimeout(() => { status.style.display = 'none'; }, 2000); }
+}
+window._saveLoginClientId = _saveLoginClientId;
 
 async function _handleGSICredential(response) {
   const errEl = document.getElementById('googleOwnerErr');
