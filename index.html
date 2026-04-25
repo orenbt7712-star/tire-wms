@@ -45,7 +45,7 @@ if('serviceWorker' in navigator){
   });
   // כשה-SW החדש ממתין — רענן (לא אם אנחנו באמצע Google redirect)
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
-    if(!sessionStorage.getItem('_googleRedirectActive')) window.location.reload();
+    if(!localStorage.getItem('_googleRedirectActive')) window.location.reload();
   });
 }
 </script>
@@ -980,7 +980,9 @@ function onAuthReady(cb) {
 _enc.init(); // אתחל מפתח הצפנה לפני כל שימוש ב-localStorage
 
 // האם חוזרים מ-Google redirect? נקרא עכשיו (sync) לפני שהדגל נמחק
-const _fromGoogleRedirect = !!sessionStorage.getItem('_googleRedirectActive');
+// localStorage שורד navigation בין origins — sessionStorage לא שורד ב-Chrome Android
+const _redirectTs = parseInt(localStorage.getItem('_googleRedirectActive') || '0');
+const _fromGoogleRedirect = (Date.now() - _redirectTs) < 5 * 60 * 1000; // תקף 5 דקות
 let _ownerEnteredViaGoogle = false;
 let _anonAuthStarted = false;
 
@@ -990,8 +992,8 @@ onAuthStateChanged(auth, async (user) => {
   // Google user הגיע מ-redirect — המקרה שאנחנו מחכים לו
   if (_fromGoogleRedirect && user && !user.isAnonymous) {
     _ownerEnteredViaGoogle = true;
-    sessionStorage.removeItem('_googleRedirectActive');
-    sessionStorage.removeItem('_googleRedirectPending');
+    localStorage.removeItem('_googleRedirectActive');
+    localStorage.removeItem('_googleRedirectPending');
     const email = (user.email || '').toLowerCase();
     if (email === OWNER_EMAIL.toLowerCase()) {
       if (!_authReady) { _authReady = true; _authReadyCallbacks.forEach(cb => cb()); }
@@ -1020,8 +1022,8 @@ onAuthStateChanged(auth, async (user) => {
 if (_fromGoogleRedirect) {
   setTimeout(() => {
     if (!_authReady && !_ownerEnteredViaGoogle) {
-      sessionStorage.removeItem('_googleRedirectActive');
-      sessionStorage.removeItem('_googleRedirectPending');
+      localStorage.removeItem('_googleRedirectActive');
+      localStorage.removeItem('_googleRedirectPending');
       signInAnonymously(auth).catch(() => {}).finally(() => {
         if (!_authReady) { _authReady = true; _authReadyCallbacks.forEach(cb => cb()); }
       });
@@ -1273,8 +1275,8 @@ async function _doGoogleOwnerLogin() {
     const provider = new GoogleAuthProvider();
     const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
     if (isMobile) {
-      sessionStorage.setItem('_googleRedirectPending', '1');
-      sessionStorage.setItem('_googleRedirectActive', '1');
+      localStorage.setItem('_googleRedirectPending', '1');
+      localStorage.setItem('_googleRedirectActive', Date.now().toString());
       await signInWithRedirect(auth, provider);
       return; // הדף יועבר לגוגל ויחזור
     }
