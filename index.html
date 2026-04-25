@@ -14,6 +14,7 @@
 <link rel="icon" type="image/svg+xml" href="/icon.svg"/>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;700;900&display=swap" rel="stylesheet"/>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <link rel="stylesheet" href="style.css"/>
 
 <script>
@@ -1357,12 +1358,11 @@ async function openMfaSetup() {
       </div>`;
   } else {
     const { url } = await window._setupTOTP();
-    const qrUrl = `https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${encodeURIComponent(url)}`;
     overlay.innerHTML = `
       <div style="background:#191d28;border-radius:12px;padding:24px;width:320px;display:flex;flex-direction:column;gap:14px;align-items:center;">
         <div style="font-size:16px;font-weight:700;color:#eef0f6;">🔐 הגדרת Google Authenticator</div>
         <div style="font-size:12px;color:#7a8299;text-align:center;">1. הורד Google Authenticator מהחנות<br>2. לחץ "+" ← "סרוק QR"<br>3. סרוק את הקוד למטה</div>
-        <img src="${qrUrl}" style="width:180px;height:180px;border-radius:8px;background:#fff;padding:4px;" alt="QR Code"/>
+        <div id="mfaQrDiv" style="background:#fff;padding:8px;border-radius:8px;width:180px;height:180px;display:flex;align-items:center;justify-content:center;"></div>
         <div style="font-size:12px;color:#7a8299;text-align:center;">לאחר הסריקה הכנס קוד לאישור:</div>
         <input id="mfaConfirmCode" type="number" inputmode="numeric" placeholder="000000" maxlength="6"
           style="background:#0c0e14;border:1px solid #252b3b;border-radius:7px;color:#eef0f6;font-size:22px;padding:10px;width:100%;text-align:center;letter-spacing:6px;font-family:inherit;"/>
@@ -1370,6 +1370,9 @@ async function openMfaSetup() {
         <button onclick="confirmMfaSetup()" style="width:100%;padding:10px;background:#f5a623;border:none;border-radius:7px;color:#111;font-weight:700;cursor:pointer;font-family:inherit;">אשר והפעל</button>
         <button onclick="cancelMfaSetup()" style="width:100%;padding:10px;background:#252b3b;border:none;border-radius:7px;color:#eef0f6;cursor:pointer;font-family:inherit;">ביטול</button>
       </div>`;
+    document.body.appendChild(overlay);
+    new QRCode(document.getElementById('mfaQrDiv'), { text: url, width: 164, height: 164, colorDark: '#000', colorLight: '#fff' });
+    return;
   }
   document.body.appendChild(overlay);
 }
