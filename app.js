@@ -2197,12 +2197,11 @@ function onCK(e){
 
 function handleDown(cx,cy){
   const _cv=document.getElementById('mapCanvas');
-  const RULER=28, RULER_R=28;
+  const RULER=44, RULER_R=44;
   const CELL=mapScale;
 
   // ── כלי טקסט — קליק על הסרגל עורך תוויות ──
   if(mapTool==='text'){
-    console.log('[handleDown text]',{cx,cy,RULER,cond:cy<RULER && cx>=RULER});
     if(cy<RULER && cx>=RULER && (!_cv||cx<=_cv.width-RULER_R)){
       const col=Math.floor((cx-mapOffX)/CELL);
       _openLabelEditor(cx, cy+RULER+4, `תווית עמודה ${col+1}`, colLabels[col]||'', {type:'col',key:col});
@@ -2757,7 +2756,7 @@ function drawMap(){
   }
 
   // ── סרגל ציר (overlay קבוע — תמיד נראה) ──
-  const RULER = 28;
+  const RULER = 44;
   const labelStep = Math.max(1, Math.ceil(22 / CELL)); // דלג תוויות כשצפוף
 
   const rStartCol = Math.max(0, Math.floor(-mapOffX / CELL));
@@ -2772,7 +2771,7 @@ function drawMap(){
   // רקע סרגל שמאלי
   ctx.fillRect(0, RULER, RULER, cv.height - RULER);
 
-  const RULER_R = 28;
+  const RULER_R = 44;
 
   // רקע סרגל ימני
   ctx.fillStyle = 'rgba(8,10,16,0.97)';
@@ -3092,8 +3091,7 @@ function _openLabelEditor(sx, sy, title, existingText, ctx){
   const dlg=document.getElementById('mapLabelInput');
   const inp=document.getElementById('mapLabelText');
   const ttl=document.getElementById('mapLabelTitle');
-  console.log('[label]',{found:!!dlg,ctx,sx,sy});
-  if(!dlg||!inp){ console.warn('[label] dialog/input not found'); return; }
+  if(!dlg||!inp) return;
   if(ttl) ttl.textContent=title;
   inp.value=existingText||'';
   const w=220,h=120;
