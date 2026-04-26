@@ -3176,6 +3176,12 @@ function clearAllRulerLabels(){
   _scheduleAutoSave();drawMap();toast('🗑️ תוויות הסרגל ושמות הכלובים אופסו');
 }
 window.clearAllRulerLabels=clearAllRulerLabels;
+function clearCageNames(){
+  if(!confirm('למחוק את כל שמות הכלובים?'))return;
+  cages.forEach(g=>{ g.name=''; });
+  _scheduleAutoSave();drawMap();toast('🗑️ שמות הכלובים נמחקו');
+}
+window.clearCageNames=clearCageNames;
 function toggleMapMore(){
   const m=document.getElementById('mapMoreMenu');
   const btn=document.getElementById('btnMapMore');
