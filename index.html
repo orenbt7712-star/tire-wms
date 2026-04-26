@@ -1022,9 +1022,8 @@ function hashPass(p) {
 
 // ── Session חתום — מונע זיוף ב-localStorage ──
 async function genToken(admin) {
-  const day = Math.floor(Date.now() / 86400000);
   const passRef = window._ownerPassHash || ADMIN_PASS_HASH;
-  const raw = SESSION_SALT + passRef + String(admin) + String(day);
+  const raw = SESSION_SALT + passRef + String(admin);
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
   return Array.from(new Uint8Array(buf)).map(x => x.toString(16).padStart(2,'0')).join('');
 }
