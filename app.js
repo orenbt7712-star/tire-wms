@@ -2637,7 +2637,7 @@ function drawMap(){
     const fs=Math.min(15,pw/2.2);
     ctx.font=`bold ${fs}px Heebo`;
     ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText(g.name||'?',cx+pw/2,cy+ph/2-(g.floor?8:0));
+    ctx.fillText(g.name||'?',cx+pw/2,cy+ph/2);
 
     // קומה
     if(g.floor){
