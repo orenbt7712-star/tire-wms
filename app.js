@@ -2111,7 +2111,7 @@ function getWallIdx(wx,wy){
     if(len2===0) continue;
     const t=Math.max(0,Math.min(1,((wx-w.x1)*dx+(wy-w.y1)*dy)/len2));
     const d=Math.hypot(wx-(w.x1+t*dx),wy-(w.y1+t*dy));
-    if(d<0.35) return i;
+    if(d<0.5) return i;
   }
   return -1;
 }
@@ -2343,8 +2343,10 @@ function handleUp(){
     const[x1,y1]=drawStart,[x2,y2]=drawCurrent;
     if(Math.hypot(x2-x1,y2-y1)>0.3){
       walls.push({x1,y1,x2,y2});
+      _scheduleAutoSave();
     }
   }
+  if(dragCageId) _scheduleAutoSave();
   // סיום rubber-band — בחר כל הכלובים בתוך המלבן
   if(isRubberBand&&rubberStart&&rubberCurrent){
     const rx1=Math.min(rubberStart[0],rubberCurrent[0]);
@@ -2888,7 +2890,7 @@ function duplicateCage(){
   if(!g) return;
   pushHistory();
   const id=nextCageId++;
-  const copy={...g,id,x:g.x+1.2,y:g.y};
+  const copy={...g,id,x:g.x+1,y:g.y};
   cages.push(copy);
   selectedCageId=id; selectedCages=[id];
   drawMap();
