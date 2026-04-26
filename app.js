@@ -2429,8 +2429,8 @@ function drawMap(){
   const DETAIL = CELL >= 22; // רק בזום גבוה — רמת פירוט מלאה
   const SHOW_FLOOR_LABELS = CELL >= 34;
 
-  const startCol = Math.max(0, Math.floor(-mapOffX / CELL) - 1);
-  const startRow = Math.max(0, Math.floor(-mapOffY / CELL) - 1);
+  const startCol = Math.floor(-mapOffX / CELL) - 1;
+  const startRow = Math.floor(-mapOffY / CELL) - 1;
   const endCol   = startCol + Math.ceil(cv.width  / CELL) + 2;
   const endRow   = startRow + Math.ceil(cv.height / CELL) + 2;
 
