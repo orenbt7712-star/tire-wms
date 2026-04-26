@@ -3170,9 +3170,10 @@ function saveMapLayout(){
   toast('✅ '+(currentLang==='ar'?'تم حفظ الخريطة!':'מפה נשמרה!'));
 }
 function clearAllRulerLabels(){
-  if(!confirm('למחוק את כל תוויות הסרגל (עמודות ושורות)?'))return;
+  if(!confirm('למחוק את כל תוויות הסרגל ולאפס שמות כלובים?'))return;
   colLabels={};rowLabels={};
-  _scheduleAutoSave();drawMap();toast('🗑️ תוויות הסרגל נמחקו');
+  cages.forEach(g=>{ g.name=String(g.id); });
+  _scheduleAutoSave();drawMap();toast('🗑️ תוויות הסרגל ושמות הכלובים אופסו');
 }
 window.clearAllRulerLabels=clearAllRulerLabels;
 function toggleMapMore(){
