@@ -182,7 +182,7 @@ function switchView(n,el){
       }
       setTimeout(()=>{renderWarehouse();if(cages.length>0)whCenter();},50);
     }
-    if(n==='mapEditor'){ setTimeout(initMapEditor, 50); }
+    if(n==='mapEditor'){ stopWhBlink(); setTimeout(initMapEditor, 50); }
   } else {
     stopWhBlink();
     // מלאי / דשבורד — הצג הכל
