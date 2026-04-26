@@ -3171,6 +3171,24 @@ function clearAllRulerLabels(){
   _scheduleAutoSave();drawMap();toast('🗑️ תוויות הסרגל נמחקו');
 }
 window.clearAllRulerLabels=clearAllRulerLabels;
+function toggleMapMore(){
+  const m=document.getElementById('mapMoreMenu');
+  if(!m) return;
+  const open=m.style.display==='none'||m.style.display==='';
+  m.style.display=open?'flex':'none';
+  if(open) setTimeout(()=>document.addEventListener('click',_closeMapMoreOutside,{once:true}),10);
+}
+function closeMapMore(){
+  const m=document.getElementById('mapMoreMenu');
+  if(m) m.style.display='none';
+}
+function _closeMapMoreOutside(e){
+  const btn=document.getElementById('btnMapMore');
+  const menu=document.getElementById('mapMoreMenu');
+  if(menu&&btn&&!menu.contains(e.target)&&e.target!==btn) closeMapMore();
+}
+window.toggleMapMore=toggleMapMore;
+window.closeMapMore=closeMapMore;
 function clearMap(){
   if(!confirm('למחוק את כל המפה?'))return;
   cages=[];walls=[];nextCageId=1;selectedCageId=null;

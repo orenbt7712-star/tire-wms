@@ -244,9 +244,8 @@ if('serviceWorker' in navigator){
   <!-- MAP EDITOR VIEW -->
   <div class="view" id="viewMapEditor">
     <!-- Toolbar -->
-    <div style="background:var(--surface);border-bottom:1px solid var(--border);padding:8px 10px;display:flex;align-items:center;gap:6px;flex-shrink:0;overflow-x:auto;">
-      <div style="font-size:12px;font-weight:800;flex-shrink:0;">✏️ מפת מחסן</div>
-      <div style="display:flex;gap:5px;flex-shrink:0;" id="mapTools">
+    <div style="background:var(--surface);border-bottom:1px solid var(--border);padding:6px 10px;display:flex;align-items:center;gap:5px;flex-shrink:0;overflow-x:auto;">
+      <div style="display:flex;gap:4px;flex-shrink:0;" id="mapTools">
         <button id="tool-wall" onclick="setMapTool('wall')" title="ציור קיר" style="background:var(--blue-dim);border:1px solid var(--blue);color:var(--blue);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🖊️ קיר</button>
         <button id="tool-pan" onclick="setMapTool('pan')" title="גלילת מפה (P)" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🖐 גלול</button>
         <button id="tool-cage" onclick="setMapTool('cage')" title="הוסף כלוב" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">📦 כלוב</button>
@@ -254,22 +253,28 @@ if('serviceWorker' in navigator){
         <button id="tool-row" onclick="setMapTool('row')" title="שורה" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">📏 שורה</button>
         <button id="tool-erase" onclick="setMapTool('erase')" title="מחק" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🗑️ מחק</button>
         <button id="tool-text" onclick="setMapTool('text')" title="טקסט על המפה" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🔤 טקסט</button>
-        <div style="width:1px;background:var(--border);margin:2px 4px;"></div>
-        <button onclick="rotateSelection(90)" title="סובב בחירה 90° שמאלה (אם אין בחירה — הכל)" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">↺ 90°</button>
-        <button onclick="rotateSelection(180)" title="סובב בחירה 180°" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">⟲ 180°</button>
-        <button onclick="rotateSelection(270)" title="סובב בחירה 90° ימינה" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">↻ 90°</button>
-        <button onclick="deleteSelection()" title="מחק את הבחירה (גם Delete במקלדת)" style="background:var(--red-dim);border:1px solid var(--red);color:var(--red);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🗑️ מחק בחירה</button>
       </div>
-      <div style="display:flex;gap:5px;flex-shrink:0;margin-right:auto;">
+      <div style="display:flex;gap:4px;flex-shrink:0;margin-right:auto;">
         <button onclick="zoomIn()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 10px;font-size:14px;font-weight:700;cursor:pointer;">＋</button>
         <button onclick="zoomOut()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 10px;font-size:14px;font-weight:700;cursor:pointer;">－</button>
         <button onclick="centerMap()" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;">⊙</button>
         <button onclick="undoMap()" title="בטל (Ctrl+Z)" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;">↩️</button>
         <button id="btnRedo" onclick="redoMap()" title="חזור (Ctrl+Y)" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;">↪️</button>
         <button onclick="saveMapLayout()" style="background:var(--accent);border:none;color:#111;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">💾</button>
-        <button onclick="generateWarehouseLayout()" title="ייצר מפת מחסן אוטומטית" style="background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;">🏭</button>
-        <button onclick="clearAllRulerLabels()" title="מחק את כל תוויות הסרגל" style="background:var(--red-dim);border:1px solid var(--red);color:var(--red);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;">מחק תוויות</button>
-        <button onclick="clearMap()" style="background:var(--red-dim);border:1px solid var(--red);color:var(--red);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;">✕</button>
+        <div style="position:relative;">
+          <button onclick="toggleMapMore()" id="btnMapMore" title="עוד פעולות" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 11px;font-size:16px;font-weight:700;cursor:pointer;line-height:1;">⋯</button>
+          <div id="mapMoreMenu" style="display:none;position:absolute;left:0;top:calc(100% + 4px);background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:6px;z-index:999;min-width:190px;box-shadow:0 4px 20px rgba(0,0,0,0.6);flex-direction:column;gap:2px;">
+            <button onclick="rotateSelection(90);closeMapMore()" style="background:none;border:none;color:var(--text);border-radius:7px;padding:10px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;text-align:right;width:100%;">↺ סובב 90° שמאל</button>
+            <button onclick="rotateSelection(180);closeMapMore()" style="background:none;border:none;color:var(--text);border-radius:7px;padding:10px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;text-align:right;width:100%;">⟲ סובב 180°</button>
+            <button onclick="rotateSelection(270);closeMapMore()" style="background:none;border:none;color:var(--text);border-radius:7px;padding:10px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;text-align:right;width:100%;">↻ סובב 90° ימין</button>
+            <div style="height:1px;background:var(--border);margin:3px 0;"></div>
+            <button onclick="deleteSelection();closeMapMore()" style="background:none;border:none;color:var(--red);border-radius:7px;padding:10px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;text-align:right;width:100%;">🗑️ מחק בחירה</button>
+            <div style="height:1px;background:var(--border);margin:3px 0;"></div>
+            <button onclick="generateWarehouseLayout();closeMapMore()" style="background:none;border:none;color:var(--text);border-radius:7px;padding:10px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;text-align:right;width:100%;">🏭 ייצר מפה אוטומטי</button>
+            <button onclick="clearAllRulerLabels();closeMapMore()" style="background:none;border:none;color:var(--red);border-radius:7px;padding:10px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;text-align:right;width:100%;">🏷 מחק תוויות סרגל</button>
+            <button onclick="clearMap();closeMapMore()" style="background:none;border:none;color:var(--red);border-radius:7px;padding:10px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;text-align:right;width:100%;">✕ נקה מפה הכל</button>
+          </div>
+        </div>
       </div>
     </div>
     <div style="padding:5px 10px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;flex-shrink:0;overflow-x:auto;">
