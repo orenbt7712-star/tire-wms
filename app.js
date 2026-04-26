@@ -175,6 +175,10 @@ function switchView(n,el){
       if(cages.length===0){
         const saved=localStorage.getItem('tirewms_map2');
         if(saved){ try{ const d=JSON.parse(saved); cages=d.cages||[]; walls=d.walls||[]; nextCageId=d.nextId||1; }catch(e){} }
+        // נקה כלובים עודפים שנוצרו ע"י autoExpandCages (ללא section/p1/p2, y>30)
+        const _before=cages.length;
+        cages=cages.filter(g=>g.section||g.p1||g.p2||g.rahavaRow||(g.y!=null&&g.y<=30));
+        if(cages.length<_before){ nextCageId=Math.max(1,...cages.map(g=>g.id+1)); localStorage.setItem('tirewms_map2',JSON.stringify({cages,walls,nextId:nextCageId,colLabels,rowLabels,mapLabels,nextLabelId})); }
         const _savedVer=localStorage.getItem('tirewms_map_ver');
         if(cages.length===0||_savedVer===null||_savedVer!==_MAP_VER){
           generateWarehouseLayout(true); return;
@@ -2862,44 +2866,8 @@ function redoMap(){
   drawMap();toast('↪️ חזרה');
 }
 
-// ── הרחבה אוטומטית של שורות כלובים כשמזמין החוצה ──
-function autoExpandCages(){
-  if(cages.length===0) return;
-  const cv=document.getElementById('mapCanvas');
-  if(!cv) return;
-
-  // תחתית הקנבס הנראית (world Y)
-  const visMaxY=Math.ceil((cv.height-mapOffY)/mapScale);
-  const cageMaxY=Math.max(...cages.map(g=>g.y));
-  if(visMaxY<=cageMaxY+1) return; // אין שורות חדשות לאזור
-
-  // הגבל הרחבה ל-30 שורות בפעם אחת
-  const newMaxY=Math.min(visMaxY, cageMaxY+30);
-
-  // מבנה עמודות: X-ים ייחודיים מהשורה הכי מאוכלסת (=template)
-  const rowMap={};
-  cages.forEach(g=>{
-    if(!rowMap[g.y]) rowMap[g.y]=[];
-    rowMap[g.y].push(g.x);
-  });
-  const templateRow=Object.values(rowMap).reduce((a,b)=>b.length>a.length?b:a,[]);
-  if(templateRow.length===0) return;
-  const colXs=[...new Set(templateRow)].sort((a,b)=>a-b);
-
-  const occupied=new Set(cages.map(g=>`${g.x},${g.y}`));
-  let added=0;
-  for(let y=cageMaxY+1;y<=newMaxY;y++){
-    for(const x of colXs){
-      if(!occupied.has(`${x},${y}`)){
-        const id=nextCageId++;
-        cages.push({id,name:String(id),floor:'1',x,y,rot:false});
-        occupied.add(`${x},${y}`);
-        added++;
-      }
-    }
-  }
-  if(added>0) _scheduleAutoSave();
-}
+// ── הרחבה אוטומטית — מושבתת (גרמה לכלובים עודפים שנשמרו) ──
+function autoExpandCages(){ }
 
 function _scheduleAutoSave(){
   clearTimeout(_autoSaveTimer);
