@@ -2776,7 +2776,6 @@ function drawMap(){
   ctx.fillRect(cv.width - RULER_R, RULER, RULER_R, cv.height - RULER);
 
   // ── עמודות (סרגל עליון) — tick + תווית מותאמת אישית ──
-  ctx.font = 'bold 11px Heebo';
   ctx.textBaseline = 'middle';
   for(let col = rStartCol; col <= rEndCol; col++){
     if(col % labelStep !== 0) continue;
@@ -2790,11 +2789,10 @@ function drawMap(){
     ctx.lineTo(mapOffX + col * CELL + 0.5, RULER);
     ctx.stroke();
     const lbl = colLabels[col];
-    if(lbl){ ctx.fillStyle='#f5a623'; ctx.textAlign='center'; ctx.fillText(lbl, centerX, RULER/2); }
+    if(lbl){ ctx.font='bold 13px Heebo'; ctx.fillStyle='#f5a623'; ctx.textAlign='center'; ctx.fillText(lbl, centerX, RULER/2); }
   }
 
   // ── שורות (סרגל שמאל + ימין) — tick + תווית מותאמת אישית ──
-  ctx.font = 'bold 11px Heebo';
   ctx.textBaseline = 'middle';
   for(let row = rStartRow; row <= rEndRow; row++){
     if(row < 0) continue;
@@ -2811,7 +2809,7 @@ function drawMap(){
     ctx.stroke();
     const lbl = rowLabels[row];
     if(lbl){
-      ctx.fillStyle='#7ac8ff'; ctx.textAlign='center';
+      ctx.font='bold 13px Heebo'; ctx.fillStyle='#7ac8ff'; ctx.textAlign='center';
       ctx.fillText(lbl, RULER/2, centerY);
       ctx.fillText(lbl, cv.width-RULER_R/2, centerY);
     }
@@ -3110,12 +3108,15 @@ function confirmMapLabel(){
     if(type==='col'){
       if(text){
         colLabels[key]=text;
+        cages.forEach(g=>{ if(Math.floor(g.x)===key) g.name=text; });
         const num=parseInt(text,10);
         if(!isNaN(num)&&String(num)===text){
           const maxCol=cages.length?Math.max(...cages.map(g=>Math.floor(g.x))):key;
           for(let c=key+1;c<=maxCol;c++){
             if(colLabels[c]!==undefined) break;
-            colLabels[c]=String(num+(c-key));
+            const lbl=String(num+(c-key));
+            colLabels[c]=lbl;
+            cages.forEach(g=>{ if(Math.floor(g.x)===c) g.name=lbl; });
           }
         }
       } else delete colLabels[key];
@@ -3123,12 +3124,15 @@ function confirmMapLabel(){
     else if(type==='row'){
       if(text){
         rowLabels[key]=text;
+        cages.forEach(g=>{ if(Math.floor(g.y)===key) g.name=text; });
         const num=parseInt(text,10);
         if(!isNaN(num)&&String(num)===text){
           const maxRow=cages.length?Math.max(...cages.map(g=>Math.floor(g.y))):key;
           for(let r=key+1;r<=maxRow;r++){
             if(rowLabels[r]!==undefined) break;
-            rowLabels[r]=String(num+(r-key));
+            const lbl=String(num+(r-key));
+            rowLabels[r]=lbl;
+            cages.forEach(g=>{ if(Math.floor(g.y)===r) g.name=lbl; });
           }
         }
       } else delete rowLabels[key];
