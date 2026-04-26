@@ -2202,6 +2202,7 @@ function handleDown(cx,cy){
 
   // ── כלי טקסט — קליק על הסרגל עורך תוויות ──
   if(mapTool==='text'){
+    console.log('[handleDown text]',{cx,cy,RULER,cond:cy<RULER && cx>=RULER});
     if(cy<RULER && cx>=RULER && (!_cv||cx<=_cv.width-RULER_R)){
       const col=Math.floor((cx-mapOffX)/CELL);
       _openLabelEditor(cx, cy+RULER+4, `תווית עמודה ${col+1}`, colLabels[col]||'', {type:'col',key:col});
@@ -3091,7 +3092,8 @@ function _openLabelEditor(sx, sy, title, existingText, ctx){
   const dlg=document.getElementById('mapLabelInput');
   const inp=document.getElementById('mapLabelText');
   const ttl=document.getElementById('mapLabelTitle');
-  if(!dlg||!inp) return;
+  console.log('[label]',{found:!!dlg,ctx,sx,sy});
+  if(!dlg||!inp){ console.warn('[label] dialog/input not found'); return; }
   if(ttl) ttl.textContent=title;
   inp.value=existingText||'';
   const w=220,h=120;
