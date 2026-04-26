@@ -1873,7 +1873,7 @@ let _multiDragOffsets=[]; // [{id,ox,oy}] relative offsets for multi-drag
 let _autoSaveTimer=null;
 let _rowClickWx=0, _rowClickWy=0;
 let _axisZoom=null; // {type:'x'|'y', startCX, startCY, startScale, startOffX, startOffY}
-let _touchStartCX=0,_touchStartCY=0,_touchStartTime=0,_touchIsPanning=false;
+let _touchStartCX=0,_touchStartCY=0,_touchStartTime=0,_touchIsPanning=false,_isTouchEvent=false;
 
 let _alignTimeout=null;
 
@@ -2111,7 +2111,7 @@ function getWallIdx(wx,wy){
     if(len2===0) continue;
     const t=Math.max(0,Math.min(1,((wx-w.x1)*dx+(wy-w.y1)*dy)/len2));
     const d=Math.hypot(wx-(w.x1+t*dx),wy-(w.y1+t*dy));
-    if(d<0.5) return i;
+    if(d<(_isTouchEvent?0.6:0.5)) return i;
   }
   return -1;
 }
@@ -2167,11 +2167,13 @@ function onTE(e){
   }
   // קשקוש קצר = לחיצה
   if(Date.now()-_touchStartTime<300 && mapTool!=='pan'){
+    _isTouchEvent=true;
     handleDown(_touchStartCX,_touchStartCY);
     handleUp();
+    _isTouchEvent=false;
   }
 }
-function onMD(e){ const cv=document.getElementById('mapCanvas'); handleDown(...getPos(e,cv)); }
+function onMD(e){ _isTouchEvent=false; const cv=document.getElementById('mapCanvas'); handleDown(...getPos(e,cv)); }
 function onMV(e){ const cv=document.getElementById('mapCanvas'); handleMove(...getPos(e,cv)); }
 function onMU(e){ handleUp(); }
 function onCK(e){
@@ -2391,15 +2393,18 @@ function drawMapThrottled(){
 window.drawMapThrottled=drawMapThrottled;
 
 // cache פריטים לפי col+floor — מתעדכן רק כשהנתונים משתנים
-let _dmItemKeyCount=null;
+let _dmItemKeyCount=null, _dmTotalCount=null;
 function _dmBuildItemCache(){
   _dmItemKeyCount=new Map();
+  _dmTotalCount=new Map();
   (window.items||[]).forEach(it=>{
     const k=`${it.col}__${it.floor||'1'}`;
     _dmItemKeyCount.set(k,(_dmItemKeyCount.get(k)||0)+1);
+    const n=String(it.col);
+    _dmTotalCount.set(n,(_dmTotalCount.get(n)||0)+1);
   });
 }
-function _dmInvalidate(){ _dmItemKeyCount=null; }
+function _dmInvalidate(){ _dmItemKeyCount=null; _dmTotalCount=null; }
 window._dmInvalidate=_dmInvalidate;
 
 function drawMap(){
@@ -2565,7 +2570,7 @@ function drawMap(){
     // clip — אל תצייר כלובים מחוץ לוויאפורט
     if(cx+pw<0||cx>cv.width||cy+ph<0||cy>cv.height) return;
     const isSel=g.id===selectedCageId;
-    const cnt=iCount.get(`${g.name}__${g.floor}`)||0;
+    const cnt=(_dmTotalCount?_dmTotalCount.get(String(g.name)):0)||0;
     const hasItems=cnt>0;
     const isBlink=whBlinkCols.size>0&&whBlinkCols.has(String(g.name));
     const blinkOn=isBlink&&Math.floor(Date.now()/350)%2===0;
@@ -2644,9 +2649,9 @@ function drawMap(){
       ctx.fillText(cnt,cx+pw-6,cy+6);
     }
 
-    // מיקום כלוב בגריד (פינה תחתון-שמאל)
+    // מידות כלוב (פינה תחתון-שמאל)
     ctx.fillStyle='rgba(100,110,140,0.6)';ctx.font='7px Heebo';ctx.textAlign='left';ctx.textBaseline='bottom';
-    if(pw>32) ctx.fillText(`${g.x+1},${g.y+1}`,cx+2,cy+ph-1);
+    if(pw>32){ const dim=g.rot?'0.6מ×1.2מ':'1.2מ×0.6מ'; ctx.fillText(dim,cx+2,cy+ph-1); }
   });
 
 
@@ -2669,6 +2674,27 @@ function drawMap(){
       ctx.setLineDash([]);
     }
   });
+
+  // ── מצפן צפון (פינה ימנית-עליונה, מתחת למיני-מפה) ──
+  {
+    const CX=cv.width-14, CY=cages.length>0?88:14;
+    const CR=11;
+    ctx.globalAlpha=0.85;
+    ctx.fillStyle='rgba(8,10,16,0.82)';
+    ctx.beginPath();ctx.arc(CX,CY,CR+3,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='rgba(245,166,35,0.4)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.arc(CX,CY,CR+3,0,Math.PI*2);ctx.stroke();
+    // חץ צפון (אדום)
+    ctx.fillStyle='#e85d3f';
+    ctx.beginPath();ctx.moveTo(CX,CY-CR);ctx.lineTo(CX-4,CY+2);ctx.lineTo(CX+4,CY+2);ctx.closePath();ctx.fill();
+    // חץ דרום (אפור)
+    ctx.fillStyle='rgba(120,130,160,0.7)';
+    ctx.beginPath();ctx.moveTo(CX,CY+CR);ctx.lineTo(CX-4,CY-2);ctx.lineTo(CX+4,CY-2);ctx.closePath();ctx.fill();
+    // N
+    ctx.fillStyle='#eef0f6';ctx.font='bold 8px Heebo';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('N',CX,CY-CR-7);
+    ctx.globalAlpha=1;
+  }
 
   // ── Rubber-band selection overlay ──
   if(isRubberBand&&rubberStart&&rubberCurrent){
@@ -2705,7 +2731,7 @@ function drawMap(){
       const mw=Math.max(mmS,2),mh=Math.max(mmS,2);
       const mx=g.x*mmS+mmOX,my=g.y*mmS+mmOY;
       const iS=g.id===selectedCageId||selectedCages.includes(g.id);
-      const hI=(iCount.get(`${g.name}__${g.floor}`)||0)>0;
+      const hI=(_dmTotalCount?_dmTotalCount.get(String(g.name)):0)>0;
       ctx.fillStyle=iS?'#f5a623':hI?'#3ecf8e':'#2a4070';
       ctx.fillRect(mx,my,mw,mh);
     });
@@ -3024,7 +3050,7 @@ function saveCageEdit(){
     g.pn2=document.getElementById('cageEditPn2').value;
     g.p2=document.getElementById('cageEditP2').value;
   }
-  closeCageEdit();drawMap();
+  closeCageEdit();drawMap();_scheduleAutoSave();
 }
 function rotateCage(){
   const g=cages.find(c=>c.id===selectedCageId);
@@ -3086,6 +3112,7 @@ function deleteSelection(){
 window.deleteSelection = deleteSelection;
 function deleteCage(){
   if(!confirm('למחוק כלוב זה?'))return;
+  pushHistory();
   cages=cages.filter(c=>c.id!==selectedCageId);
   selectedCageId=null;closeCageEdit();drawMap();
 }
