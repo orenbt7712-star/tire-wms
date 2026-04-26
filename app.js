@@ -3173,10 +3173,18 @@ function clearAllRulerLabels(){
 window.clearAllRulerLabels=clearAllRulerLabels;
 function toggleMapMore(){
   const m=document.getElementById('mapMoreMenu');
-  if(!m) return;
+  const btn=document.getElementById('btnMapMore');
+  if(!m||!btn) return;
   const open=m.style.display==='none'||m.style.display==='';
-  m.style.display=open?'flex':'none';
-  if(open) setTimeout(()=>document.addEventListener('click',_closeMapMoreOutside,{once:true}),10);
+  if(open){
+    const r=btn.getBoundingClientRect();
+    m.style.top=(r.bottom+4)+'px';
+    m.style.left=Math.max(4,r.right-190)+'px';
+    m.style.display='flex';
+    setTimeout(()=>document.addEventListener('click',_closeMapMoreOutside,{once:true}),10);
+  } else {
+    m.style.display='none';
+  }
 }
 function closeMapMore(){
   const m=document.getElementById('mapMoreMenu');
