@@ -3165,6 +3165,12 @@ function saveMapLayout(){
   if(document.getElementById('viewWarehouse')?.classList.contains('active')) renderWarehouse();
   toast('✅ '+(currentLang==='ar'?'تم حفظ الخريطة!':'מפה נשמרה!'));
 }
+function clearAllRulerLabels(){
+  if(!confirm('למחוק את כל תוויות הסרגל (עמודות ושורות)?'))return;
+  colLabels={};rowLabels={};
+  _scheduleAutoSave();drawMap();toast('🗑️ תוויות הסרגל נמחקו');
+}
+window.clearAllRulerLabels=clearAllRulerLabels;
 function clearMap(){
   if(!confirm('למחוק את כל המפה?'))return;
   cages=[];walls=[];nextCageId=1;selectedCageId=null;
