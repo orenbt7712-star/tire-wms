@@ -2151,7 +2151,9 @@ function onTM(e){
   }
   const[cx,cy]=getPos(e,cv);
   // אם זז יותר מ-8 פיקסלים — הפוך לגלילה (כלים שאינם כלוב/קיר)
-  if(!_touchIsPanning && mapTool!=='wall' && mapTool!=='cage'){
+  // בכלי טקסט, קליק על הסרגל (28px מהשוליים) לא הופך לגלילה
+  const inRuler=mapTool==='text'&&(_touchStartCY<28||_touchStartCX<28||_touchStartCX>cv.clientWidth-28);
+  if(!_touchIsPanning && mapTool!=='wall' && mapTool!=='cage' && !inRuler){
     const moved=Math.hypot(cx-_touchStartCX,cy-_touchStartCY);
     if(moved>8){
       _touchIsPanning=true;
