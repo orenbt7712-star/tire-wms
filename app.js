@@ -3107,8 +3107,32 @@ function confirmMapLabel(){
   const text=(inp?.value||'').trim();
   if(_pendingLabelCtx){
     const{type,key}=_pendingLabelCtx;
-    if(type==='col'){ if(text) colLabels[key]=text; else delete colLabels[key]; }
-    else if(type==='row'){ if(text) rowLabels[key]=text; else delete rowLabels[key]; }
+    if(type==='col'){
+      if(text){
+        colLabels[key]=text;
+        const num=parseInt(text,10);
+        if(!isNaN(num)&&String(num)===text){
+          const maxCol=cages.length?Math.max(...cages.map(g=>Math.floor(g.x))):key;
+          for(let c=key+1;c<=maxCol;c++){
+            if(colLabels[c]!==undefined) break;
+            colLabels[c]=String(num+(c-key));
+          }
+        }
+      } else delete colLabels[key];
+    }
+    else if(type==='row'){
+      if(text){
+        rowLabels[key]=text;
+        const num=parseInt(text,10);
+        if(!isNaN(num)&&String(num)===text){
+          const maxRow=cages.length?Math.max(...cages.map(g=>Math.floor(g.y))):key;
+          for(let r=key+1;r<=maxRow;r++){
+            if(rowLabels[r]!==undefined) break;
+            rowLabels[r]=String(num+(r-key));
+          }
+        }
+      } else delete rowLabels[key];
+    }
     else if(type==='map-new'){ if(text) mapLabels.push({id:nextLabelId++,wx:key.wx,wy:key.wy,text,color:key.color||'#ffffff',fontSize:16}); }
     else if(type==='map-edit'){ const l=mapLabels.find(x=>x.id===key.id); if(l){ if(text) l.text=text; else mapLabels=mapLabels.filter(x=>x.id!==key.id); } }
     _scheduleAutoSave(); drawMap();
