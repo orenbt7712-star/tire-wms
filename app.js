@@ -3100,11 +3100,20 @@ function _openLabelEditor(sx, sy, title, existingText, ctx){
   dlg.style.display='block';
   // show/hide direction buttons
   const dirRow=document.getElementById('mapLabelDirRow');
-  ['lblDirRight','lblDirLeft','lblDirDown','lblDirUp'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+  const dirCol=document.getElementById('mapLabelDirCol');
+  const dirRowBtns=document.getElementById('mapLabelDirRowBtns');
   if(dirRow){
-    if(ctx.type==='col'){dirRow.style.display='flex';['lblDirRight','lblDirLeft'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='';});}
-    else if(ctx.type==='row'){dirRow.style.display='flex';['lblDirDown','lblDirUp'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='';});}
-    else dirRow.style.display='none';
+    if(ctx.type==='col'){
+      dirRow.style.display='flex';
+      if(dirCol) dirCol.style.display='flex';
+      if(dirRowBtns) dirRowBtns.style.display='none';
+    } else if(ctx.type==='row'){
+      dirRow.style.display='flex';
+      if(dirCol) dirCol.style.display='none';
+      if(dirRowBtns) dirRowBtns.style.display='flex';
+    } else {
+      dirRow.style.display='none';
+    }
   }
   setTimeout(()=>{inp.focus();inp.select();},50);
 }

@@ -309,11 +309,13 @@ if('serviceWorker' in navigator){
       </div>
       <div id="mapLabelDirRow" style="display:none;flex-direction:column;gap:4px;margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">
         <div style="font-size:11px;color:var(--muted);margin-bottom:2px;">כיוון המילוי האוטומטי:</div>
-        <div style="display:flex;gap:4px;">
-          <button id="lblDirRight" onclick="confirmMapLabelDir('right')" style="flex:1;display:none;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">→ שמאל לימין</button>
-          <button id="lblDirLeft"  onclick="confirmMapLabelDir('left')"  style="flex:1;display:none;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">← ימין לשמאל</button>
-          <button id="lblDirDown"  onclick="confirmMapLabelDir('down')"  style="flex:1;display:none;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">↓ מלמעלה למטה</button>
-          <button id="lblDirUp"    onclick="confirmMapLabelDir('up')"    style="flex:1;display:none;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">↑ מלמטה למעלה</button>
+        <div id="mapLabelDirCol" style="display:none;gap:4px;">
+          <button onclick="confirmMapLabelDir('right')" style="flex:1;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">→ שמאל לימין</button>
+          <button onclick="confirmMapLabelDir('left')"  style="flex:1;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">← ימין לשמאל</button>
+        </div>
+        <div id="mapLabelDirRowBtns" style="display:none;gap:4px;">
+          <button onclick="confirmMapLabelDir('down')" style="flex:1;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">↓ מלמעלה למטה</button>
+          <button onclick="confirmMapLabelDir('up')"   style="flex:1;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">↑ מלמטה למעלה</button>
         </div>
       </div>
     </div>
