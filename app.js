@@ -1139,7 +1139,7 @@ function renderMiniMap(){
       ctx.fillStyle=isTarget?'#ffd700':'#7a8299';
       ctx.font=`bold ${Math.min(10,sc/2.5)}px Heebo`;
       ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(g.name||'?',px+sc/2,py+sc/2);
+      ctx.fillText(g.name||'',px+sc/2,py+sc/2);
     }
   });
 }
@@ -2637,7 +2637,7 @@ function drawMap(){
     const fs=Math.min(15,pw/2.2);
     ctx.font=`bold ${fs}px Heebo`;
     ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText(g.name||'?',cx+pw/2,cy+ph/2);
+    ctx.fillText(g.name||'',cx+pw/2,cy+ph/2);
 
     // קומה
     if(g.floor){
