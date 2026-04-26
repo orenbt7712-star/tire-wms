@@ -3098,6 +3098,14 @@ function _openLabelEditor(sx, sy, title, existingText, ctx){
   top=Math.max(4,Math.min(window.innerHeight-h-4,top));
   dlg.style.left=left+'px'; dlg.style.top=top+'px';
   dlg.style.display='block';
+  // show/hide direction buttons
+  const dirRow=document.getElementById('mapLabelDirRow');
+  ['lblDirRight','lblDirLeft','lblDirDown','lblDirUp'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+  if(dirRow){
+    if(ctx.type==='col'){dirRow.style.display='flex';['lblDirRight','lblDirLeft'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='';});}
+    else if(ctx.type==='row'){dirRow.style.display='flex';['lblDirDown','lblDirUp'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='';});}
+    else dirRow.style.display='none';
+  }
   setTimeout(()=>{inp.focus();inp.select();},50);
 }
 function confirmMapLabel(){
@@ -3111,10 +3119,14 @@ function confirmMapLabel(){
         cages.forEach(g=>{ if(Math.floor(g.x)===key) g.name=text; });
         const num=parseInt(text,10);
         if(!isNaN(num)&&String(num)===text){
-          const maxCol=cages.length?Math.max(...cages.map(g=>Math.floor(g.x))):key;
-          for(let c=key+1;c<=maxCol;c++){
+          const dir=window._labelFillDir||'right';
+          const step=dir==='left'?-1:1;
+          const xs=cages.map(g=>Math.floor(g.x));
+          const limit=dir==='left'?Math.min(...xs):Math.max(...xs);
+          let n=num+1;
+          for(let c=key+step;dir==='left'?c>=limit:c<=limit;c+=step){
             if(colLabels[c]!==undefined) break;
-            const lbl=String(num+(c-key));
+            const lbl=String(n++);
             colLabels[c]=lbl;
             cages.forEach(g=>{ if(Math.floor(g.x)===c) g.name=lbl; });
           }
@@ -3127,10 +3139,14 @@ function confirmMapLabel(){
         cages.forEach(g=>{ if(Math.floor(g.y)===key) g.name=text; });
         const num=parseInt(text,10);
         if(!isNaN(num)&&String(num)===text){
-          const maxRow=cages.length?Math.max(...cages.map(g=>Math.floor(g.y))):key;
-          for(let r=key+1;r<=maxRow;r++){
+          const dir=window._labelFillDir||'down';
+          const step=dir==='up'?-1:1;
+          const ys=cages.map(g=>Math.floor(g.y));
+          const limit=dir==='up'?Math.min(...ys):Math.max(...ys);
+          let n=num+1;
+          for(let r=key+step;dir==='up'?r>=limit:r<=limit;r+=step){
             if(rowLabels[r]!==undefined) break;
-            const lbl=String(num+(r-key));
+            const lbl=String(n++);
             rowLabels[r]=lbl;
             cages.forEach(g=>{ if(Math.floor(g.y)===r) g.name=lbl; });
           }
@@ -3162,6 +3178,8 @@ function cancelMapLabel(){
 window.confirmMapLabel=confirmMapLabel;
 window.deleteMapLabel=deleteMapLabel;
 window.cancelMapLabel=cancelMapLabel;
+function confirmMapLabelDir(dir){ window._labelFillDir=dir; confirmMapLabel(); window._labelFillDir=null; }
+window.confirmMapLabelDir=confirmMapLabelDir;
 
 function saveMapLayout(){
   localStorage.setItem('tirewms_map2',JSON.stringify({cages,walls,nextId:nextCageId,colLabels,rowLabels,mapLabels,nextLabelId}));
