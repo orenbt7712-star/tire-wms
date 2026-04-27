@@ -18,6 +18,24 @@
 <link rel="stylesheet" href="style.css"/>
 
 <script>
+// Force-logout handler — רץ לפני כל קוד אחר
+(function(){
+  if(location.search.indexOf('logout=')!==-1){
+    try{
+      // נקה את ה-session ואת המפתח שמפענח אותו
+      localStorage.removeItem('tirewms_session');
+      // הסר IndexedDB של מפתח ההצפנה (אם קיים) — מבטיח שלא נוכל לפענח session ישנה
+      if(window.indexedDB) indexedDB.deleteDatabase('tirewms_keystore');
+      // סמן שמתחילים ניקוי
+      sessionStorage.setItem('_justLoggedOut','1');
+      // הסר את הפרמטר מה-URL כדי שלא ניקה שוב בריענון
+      if(window.history && history.replaceState){
+        history.replaceState(null,'',location.pathname);
+      }
+    }catch(e){console.warn('logout cleanup failed:',e);}
+  }
+})();
+
 // Service Worker — עדכון אוטומטי
 // פולבק אם Firebase לא נטען
 window.addEventListener('load', function(){
