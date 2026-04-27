@@ -2216,12 +2216,15 @@ function handleDown(cx,cy){
       return;
     }
     if(cx>=RULER && cy>=RULER && (!_cv||cx<=_cv.width-RULER_R)){
+      const col=Math.floor((cx-mapOffX)/CELL);
+      const row=Math.floor((cy-mapOffY)/CELL);
       const wx=(cx-mapOffX)/CELL, wy=(cy-mapOffY)/CELL;
       const existing=mapLabels.find(l=>Math.hypot(l.wx-wx,l.wy-wy)<1.5);
       if(existing){
-        _openLabelEditor(cx, cy+10, 'ערוך טקסט (רוקן למחיקה)', existing.text, {type:'map-edit',key:{id:existing.id}});
+        _openLabelEditor(cx, cy+10, 'ערוך טקסט', existing.text, {type:'map-edit',key:{id:existing.id}});
       } else {
-        _openLabelEditor(cx, cy+10, 'טקסט חדש על המפה', '', {type:'map-new',key:{wx,wy,color:'#ffffff'}});
+        _openLabelEditor(cx, cy+10, 'הקלד מספר + בחר כיוון — או טקסט חופשי ← ✓', '',
+          {type:'auto', col, row, wx, wy});
       }
       return;
     }
@@ -3112,17 +3115,26 @@ function _openLabelEditor(sx, sy, title, existingText, ctx){
   const dirRow=document.getElementById('mapLabelDirRow');
   const dirCol=document.getElementById('mapLabelDirCol');
   const dirRowBtns=document.getElementById('mapLabelDirRowBtns');
+  const dirAll=document.getElementById('mapLabelDirAll');
   if(dirRow){
     if(ctx.type==='col'){
       dirRow.style.display='flex';
       if(dirCol) dirCol.style.display='flex';
       if(dirRowBtns) dirRowBtns.style.display='none';
+      if(dirAll) dirAll.style.display='none';
     } else if(ctx.type==='row'){
       dirRow.style.display='flex';
       if(dirCol) dirCol.style.display='none';
       if(dirRowBtns) dirRowBtns.style.display='flex';
+      if(dirAll) dirAll.style.display='none';
+    } else if(ctx.type==='auto'){
+      dirRow.style.display='flex';
+      if(dirCol) dirCol.style.display='none';
+      if(dirRowBtns) dirRowBtns.style.display='none';
+      if(dirAll) dirAll.style.display='flex';
     } else {
       dirRow.style.display='none';
+      if(dirAll) dirAll.style.display='none';
     }
   }
   setTimeout(()=>{inp.focus();inp.select();},50);
@@ -3174,6 +3186,7 @@ function confirmMapLabel(){
     }
     else if(type==='map-new'){ if(text) mapLabels.push({id:nextLabelId++,wx:key.wx,wy:key.wy,text,color:key.color||'#ffffff',fontSize:16}); }
     else if(type==='map-edit'){ const l=mapLabels.find(x=>x.id===key.id); if(l){ if(text) l.text=text; else mapLabels=mapLabels.filter(x=>x.id!==key.id); } }
+    else if(type==='auto'){ if(text) mapLabels.push({id:nextLabelId++,wx:key.wx,wy:key.wy,text,color:'#ffffff',fontSize:16}); }
     _scheduleAutoSave(); drawMap();
   }
   document.getElementById('mapLabelInput').style.display='none';
@@ -3197,7 +3210,18 @@ function cancelMapLabel(){
 window.confirmMapLabel=confirmMapLabel;
 window.deleteMapLabel=deleteMapLabel;
 window.cancelMapLabel=cancelMapLabel;
-function confirmMapLabelDir(dir){ window._labelFillDir=dir; confirmMapLabel(); window._labelFillDir=null; }
+function confirmMapLabelDir(dir){
+  window._labelFillDir=dir;
+  if(_pendingLabelCtx && _pendingLabelCtx.type==='auto'){
+    if(dir==='right'||dir==='left'){
+      _pendingLabelCtx={type:'col',key:_pendingLabelCtx.col};
+    } else {
+      _pendingLabelCtx={type:'row',key:_pendingLabelCtx.row};
+    }
+  }
+  confirmMapLabel();
+  window._labelFillDir=null;
+}
 window.confirmMapLabelDir=confirmMapLabelDir;
 
 function saveMapLayout(){
