@@ -351,10 +351,13 @@ function viewRow(it){
   const isPending=it.status==='pending_done';
   const canBulk=window.isOwnerMode||window.isAdminMode;
   const cbCell=canBulk?`<td style="padding:6px 4px;" onclick="event.stopPropagation()"><input type="checkbox" class="bulk-cb row-cb" data-id="${it.id}" onchange="toggleBulkRow(this,${it.id})"${selectedIds.has(it.id)?' checked':''}></td>`:'';
-  return `<tr id="tr-${it.id}" class="tr-anim${isPending?' pending-row':''}${selectedIds.has(it.id)?' bulk-checked':''}" onclick="showItemLocation(${it.id})" style="cursor:pointer;">
+  const dotAge=it.dotYear?(new Date().getFullYear()-it.dotYear):0;
+  const isDotOld=dotAge>=4;
+  const dotBadge=it.dotYear?`<span style="font-size:10px;color:${isDotOld?'var(--red,#e85d3f)':'var(--muted)'};font-weight:${isDotOld?'900':'400'};" title="תאריך ייצור DOT">${isDotOld?'⚠️ ':''}DOT ${it.dotWeek||'?'}/${it.dotYear}</span>`:'';
+  return `<tr id="tr-${it.id}" class="tr-anim${isPending?' pending-row':''}${selectedIds.has(it.id)?' bulk-checked':''}" onclick="showItemLocation(${it.id})" style="cursor:pointer;${isDotOld?'box-shadow:inset 0 0 0 2px var(--red,#e85d3f);':''}" title="${isDotOld?`⚠️ צמיג ישן — ייצור ${it.dotYear} (${dotAge} שנים)`:''}">
     ${cbCell}
     <td style="text-align:center;"><span style="font-family:monospace;font-size:12px;color:var(--muted);">${escHTML(it.itemCode||'')}</span></td>
-    <td style="text-align:center;"><span style="font-weight:700;">${escHTML(it.brand)}</span>${it.model?`<br><span style="font-size:10px;color:var(--muted)">${escHTML(it.model)}</span>`:''}</td>
+    <td style="text-align:center;"><span style="font-weight:700;">${escHTML(it.brand)}</span>${it.model?`<br><span style="font-size:10px;color:var(--muted)">${escHTML(it.model)}</span>`:''}${dotBadge?`<br>${dotBadge}`:''}</td>
     <td style="text-align:center;">${(()=>{const q=window._getInvQty?window._getInvQty(it.itemCode||'',it):null;return q!=null?`<span style="font-weight:700;color:${q===0?'var(--muted)':q>=100?'var(--green,#4caf50)':'var(--text)'}">${q}</span>`:``;})()}</td>
     <td><div class="locbadge">
       ${it.pn1?`<span><span class="lp" style="color:var(--accent);">פ1</span> ${escHTML(it.pn1)}</span><span style="color:var(--border2)">·</span>`:''}
@@ -587,7 +590,9 @@ function addItem(){
   if(!co.trim()&&!agr&&!rahava){toast('❌ נא להזין עמודה (מיקום במחסן)');return;}
   if(!fl){toast('❌ נא לבחור קומה');return;}
 
-  const newItem={id:nextId++,w,p,d,brand:b,model:m,itemCode,barcode,col:co,floor:fl,p1,p2,pn1,pn2,agr,rahava};
+  const newItem={id:nextId++,w,p,d,brand:b,model:m,itemCode,barcode,col:co,floor:fl,p1,p2,pn1,pn2,agr,rahava,
+    dotWeek:window._parsedDot?.week||null, dotYear:window._parsedDot?.year||null};
+  window._parsedDot=null;
 
   // בדוק כפילות מיקום — כל צמיג באותו כלוב+קומה
   if(co.trim()){
@@ -1628,10 +1633,12 @@ function parseBarcodeData(code){
 
   // חפש תאריך ייצור — 4 ספרות אחרונות של DOT (WWYY)
   const dateMatch = raw.match(/(\d{2})(\d{2})$/);
+  window._parsedDot = null;
   if(dateMatch){
     const week = +dateMatch[1], year = +('20'+dateMatch[2]);
     if(week>=1&&week<=53&&year>=2000&&year<=2030){
       detectedYear = `שבוע ${week} / ${year}`;
+      window._parsedDot = {week, year};
     }
   }
 
