@@ -433,6 +433,8 @@ function showItemLocation(id){
     `<span style="font-family:monospace;color:var(--accent);font-size:18px;">${sz(it)}</span> &nbsp; ${escHTML(it.brand)}`;
 
   document.getElementById('locPanelBody').innerHTML=`
+    ${it.col&&cages.some(g=>String(g.name)===String(it.col)&&String(g.floor||'1')===String(it.floor||'1'))?`
+    <button onclick="showWhPath(${id})" style="width:100%;background:rgba(255,247,0,0.08);border:2px solid #fff700;color:#fff700;border-radius:12px;padding:12px;font-size:15px;font-weight:900;cursor:pointer;font-family:inherit;margin-bottom:14px;letter-spacing:0.5px;">🗺️ הצג מסלול למחסן</button>`:''}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
       ${it.pn1?`
       <div style="background:var(--accent-dim);border:2px solid var(--accent);border-radius:14px;padding:16px;text-align:center;">
@@ -4573,6 +4575,76 @@ function setWhFloor(f){
   renderWarehouse();
 }
 
+let _whNavPath=null;
+
+function _whAstar(obs,sx,sy,ex,ey){
+  const K=(x,y)=>x*10000+y, H=(x,y)=>Math.abs(x-ex)+Math.abs(y-ey);
+  const DIRS=[[0,1],[0,-1],[1,0],[-1,0]];
+  const openMap=new Map(), closed=new Set();
+  const open=[];
+  const s={g:0,f:H(sx,sy),x:sx,y:sy,p:null};
+  openMap.set(K(sx,sy),s); open.push(s);
+  let iter=0;
+  while(open.length&&iter++<8000){
+    let bi=0; for(let i=1;i<open.length;i++) if(open[i].f<open[bi].f) bi=i;
+    const cur=open.splice(bi,1)[0];
+    const ck=K(cur.x,cur.y);
+    if(closed.has(ck)) continue;
+    closed.add(ck); openMap.delete(ck);
+    if(cur.x===ex&&cur.y===ey){
+      const path=[]; let c=cur; while(c){path.unshift([c.x,c.y]);c=c.p;} return path;
+    }
+    for(const [dx,dy] of DIRS){
+      const nx=cur.x+dx, ny=cur.y+dy, nk=K(nx,ny);
+      if(closed.has(nk)||obs.has(nk)) continue;
+      const ng=cur.g+1;
+      const ex2=openMap.get(nk);
+      if(!ex2||ex2.g>ng){
+        const node={g:ng,f:ng+H(nx,ny),x:nx,y:ny,p:cur};
+        openMap.set(nk,node); open.push(node);
+      }
+    }
+  }
+  return null;
+}
+
+function _computeWhNav(itemId){
+  const it=items.find(x=>x.id===itemId);
+  if(!it){_whNavPath=null;return false;}
+  const fl=String(it.floor||'1');
+  const tg=cages.find(g=>String(g.name)===String(it.col)&&String(g.floor||'1')===fl);
+  if(!tg){_whNavPath=null;return false;}
+  const K=(x,y)=>Math.floor(x)*10000+Math.floor(y);
+  const obs=new Set();
+  cages.forEach(g=>{ if(g.id!==tg.id) obs.add(K(g.x,g.y)); });
+  const xs=cages.map(g=>g.x), ys=cages.map(g=>g.y);
+  const minX=Math.floor(Math.min(...xs)), maxX=Math.ceil(Math.max(...xs));
+  const minY=Math.floor(Math.min(...ys)), maxY=Math.ceil(Math.max(...ys));
+  const midY=Math.round((minY+maxY)/2);
+  const gx=minX-2, gy=midY;
+  const tx=Math.floor(tg.x), ty=Math.floor(tg.y);
+  const path=_whAstar(obs,gx,gy,tx,ty)||[[gx,gy],[tx,ty]];
+  _whNavPath={path,gx,gy,tid:tg.id};
+  // גלול לכלוב
+  const cv=document.getElementById('whCanvas');
+  if(cv){
+    const px=whOffX+(tx+0.5)*whScale, py=whOffY+(ty+0.5)*whScale;
+    const vcx=cv.width/2, vcy=cv.height/2;
+    if(Math.abs(px-vcx)>cv.width*0.32||Math.abs(py-vcy)>cv.height*0.32){
+      whOffX+=(vcx-px)*0.75; whOffY+=(vcy-py)*0.75;
+    }
+  }
+  return true;
+}
+
+window.showWhPath=function(itemId){
+  _computeWhNav(itemId);
+  const nb=document.getElementById('nav-warehouse');
+  if(nb) switchView('warehouse',nb);
+  closeLocationPanel();
+  setTimeout(renderWarehouse,80);
+};
+
 function renderWarehouse(){
   const cv=document.getElementById('whCanvas');
   const wrap=document.getElementById('whMapWrap');
@@ -4658,6 +4730,41 @@ function renderWarehouse(){
     if(!has&&g.floor==='1'){ const _rsz=resv[String(g.name)]; if(_rsz&&pw>20){ ctx.fillStyle='rgba(74,158,255,0.18)'; const rr=3; ctx.beginPath();ctx.moveTo(px+rr,py);ctx.lineTo(px+pw-rr,py);ctx.arcTo(px+pw,py,px+pw,py+rr,rr);ctx.lineTo(px+pw,py+pw-rr);ctx.arcTo(px+pw,py+pw,px+pw-rr,py+pw,rr);ctx.lineTo(px+rr,py+pw);ctx.arcTo(px,py+pw,px,py+pw-rr,rr);ctx.lineTo(px,py+rr);ctx.arcTo(px,py,px+rr,py,rr);ctx.closePath();ctx.fill(); ctx.fillStyle='#4a9eff';ctx.font=`bold ${Math.min(9,pw/3.5)}px Heebo`;ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillText(_rsz,px+pw/2,py+pw-3); } }
     ctx.globalAlpha=1;
   });
+
+  // ══ מסלול ניווט A* ══
+  if(_whNavPath&&_whNavPath.path&&_whNavPath.path.length>=2){
+    const p=_whNavPath.path;
+    ctx.save();
+    ctx.globalAlpha=0.88;
+    ctx.shadowColor='#fff700'; ctx.shadowBlur=18;
+    ctx.strokeStyle='#fff700';
+    ctx.lineWidth=Math.max(2.5,whScale*0.2);
+    ctx.lineCap='round'; ctx.lineJoin='round';
+    ctx.setLineDash([whScale*0.38,whScale*0.16]);
+    ctx.beginPath();
+    p.forEach(([wx,wy],i)=>{
+      const ppx=whOffX+(wx+0.5)*whScale, ppy=whOffY+(wy+0.5)*whScale;
+      i===0?ctx.moveTo(ppx,ppy):ctx.lineTo(ppx,ppy);
+    });
+    ctx.stroke(); ctx.setLineDash([]); ctx.shadowBlur=0;
+    // כניסה — עיגול ירוק
+    const[sx2,sy2]=p[0];
+    const spx=whOffX+(sx2+0.5)*whScale, spy=whOffY+(sy2+0.5)*whScale;
+    const r0=Math.max(5,whScale*0.3);
+    ctx.fillStyle='#00e676'; ctx.shadowColor='#00e676'; ctx.shadowBlur=12;
+    ctx.beginPath(); ctx.arc(spx,spy,r0,0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur=0; ctx.fillStyle='#00e676';
+    ctx.font=`bold ${Math.max(9,whScale*0.42)}px Heebo`;
+    ctx.textAlign='center'; ctx.textBaseline='bottom';
+    ctx.fillText('🚪 כניסה',spx,spy-r0-2);
+    // יעד — עיגול אדום
+    const[ex2,ey2]=p[p.length-1];
+    const epx=whOffX+(ex2+0.5)*whScale, epy=whOffY+(ey2+0.5)*whScale;
+    ctx.fillStyle='#ff4444'; ctx.shadowColor='#ff4444'; ctx.shadowBlur=12;
+    ctx.beginPath(); ctx.arc(epx,epy,r0,0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur=0;
+    ctx.restore();
+  }
 
   // ══ מספרי שורות ועמודות (ציר — מה-cache) ══
   const _axFs=Math.max(7,Math.min(12,whScale*0.55));
