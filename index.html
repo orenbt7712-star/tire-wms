@@ -2310,5 +2310,10 @@ window.buildLoginScreen = buildLoginScreen;
     </div>
   </div>
 </div>
+<div id="cageFloorTooltip" style="display:none;position:fixed;z-index:5100;background:var(--surface);border:1px solid var(--accent);border-radius:10px;padding:5px 8px;box-shadow:0 4px 18px rgba(0,0,0,.75);gap:6px;align-items:center;pointer-events:auto;">
+  <button onclick="changeCageFloor(-1)" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:5px 12px;font-size:15px;cursor:pointer;font-family:inherit;" title="קומה למטה">🔽</button>
+  <span id="cageFloorLabel" style="font-size:12px;color:var(--muted);font-weight:700;min-width:36px;text-align:center;"></span>
+  <button onclick="changeCageFloor(1)" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:5px 12px;font-size:15px;cursor:pointer;font-family:inherit;" title="קומה למעלה">🔼</button>
+</div>
 </body>
 </html>

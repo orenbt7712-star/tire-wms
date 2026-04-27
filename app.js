@@ -2049,6 +2049,7 @@ function setMapTool(t){
   const cursor=t==='pan'?'grab':t==='move'?'grab':t==='select'?'default':t==='erase'?'cell':'crosshair';
   const canvas=document.getElementById('mapCanvas');
   if(canvas) canvas.style.cursor=cursor;
+  if(t!=='move'&&t!=='select'){const tip=document.getElementById('cageFloorTooltip');if(tip)tip.style.display='none';}
 }
 
 function initMapEditor(){
@@ -2857,6 +2858,8 @@ function drawMap(){
   ctx.font = '9px Heebo';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText('↕', cv.width - RULER_R / 2, RULER / 2);
+  // עדכן מיקום tooltip קומה אחרי כל ציור (pan/zoom)
+  if(selectedCageId) _updateFloorTooltip();
 }
 
 function pushHistory(){
@@ -3015,6 +3018,35 @@ function addCage(){
   toast('📦 לחץ על המפה למיקום הכלוב');
 }
 
+function _updateFloorTooltip(){
+  const g=selectedCageId?cages.find(c=>c.id===selectedCageId):null;
+  const tip=document.getElementById('cageFloorTooltip');
+  if(!tip) return;
+  if(!g||(mapTool!=='move'&&mapTool!=='select')){tip.style.display='none';return;}
+  const cv=document.getElementById('mapCanvas');
+  if(!cv){tip.style.display='none';return;}
+  const r=cv.getBoundingClientRect();
+  const[cx,cy]=w2c(g.x,g.y);
+  const tipW=130,tipH=42;
+  let left=r.left+cx+mapScale/2-tipW/2;
+  let top=r.top+cy-tipH-10;
+  if(top<4) top=r.top+cy+mapScale+10;
+  tip.style.left=Math.max(4,Math.min(window.innerWidth-tipW-4,left))+'px';
+  tip.style.top=Math.max(4,Math.min(window.innerHeight-tipH-4,top))+'px';
+  tip.style.display='flex';
+  const lbl=document.getElementById('cageFloorLabel');
+  if(lbl) lbl.textContent='קו׳'+(g.floor||'1');
+}
+function changeCageFloor(delta){
+  const g=selectedCageId?cages.find(c=>c.id===selectedCageId):null;
+  if(!g) return;
+  const floors=['1','2','3'];
+  const next=Math.max(0,Math.min(floors.length-1,floors.indexOf(String(g.floor||'1'))+delta));
+  g.floor=floors[next];
+  const flEl=document.getElementById('cageEditFloor');
+  if(flEl) flEl.value=g.floor;
+  _scheduleAutoSave(); drawMap(); _updateFloorTooltip();
+}
 function openCageEdit(g){
   document.getElementById('cageEditName').value=g.name||'';
   document.getElementById('cageEditFloor').value=g.floor||'1';
@@ -3023,8 +3055,13 @@ function openCageEdit(g){
   document.getElementById('cageEditPn2').value=g.pn2||'';
   document.getElementById('cageEditP2').value=g.p2||'';
   document.getElementById('cageEditPanel').style.display='block';
+  _updateFloorTooltip();
 }
-function closeCageEdit(){document.getElementById('cageEditPanel').style.display='none';}
+function closeCageEdit(){
+  document.getElementById('cageEditPanel').style.display='none';
+  const tip=document.getElementById('cageFloorTooltip');
+  if(tip) tip.style.display='none';
+}
 function saveCageEdit(){
   const g=cages.find(c=>c.id===selectedCageId);
   if(g){
