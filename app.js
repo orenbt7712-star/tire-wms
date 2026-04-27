@@ -2027,7 +2027,7 @@ function centerMap(){
 
 function setMapTool(t){
   mapTool=t;
-  ['wall','pan','cage','move','erase','row','text'].forEach(n=>{
+  ['wall','pan','cage','move','select','erase','row','text'].forEach(n=>{
     const b=document.getElementById('tool-'+n);
     if(!b) return;
     const on=n===t;
@@ -2036,10 +2036,10 @@ function setMapTool(t){
     b.style.color=on?'#111':'var(--muted)';
     b.style.fontWeight=on?'900':'600';
   });
-  const hints={wall:'🖊️ גרור לציור קיר | W',pan:'🖐 גרור להזזת המפה | P',cage:'📦 לחץ למיקום כלוב | C',move:'✋ גרור כלוב | Delete למחיקה | M',erase:'🗑️ לחץ למחיקה',row:'📏 לחץ להוספת שורת כלובים',text:'🔤 לחץ על הסרגל לעריכת מספרים | לחץ על המפה לטקסט חופשי'};
+  const hints={wall:'🖊️ גרור לציור קיר | W',pan:'🖐 גרור להזזת המפה | P',cage:'📦 לחץ למיקום כלוב | C',move:'✋ גרור כלוב | Delete למחיקה | M',select:'⬚ גרור לבחירת אזור | לאחר בחירה עבור ל-הזז לגרירה | S',erase:'🗑️ לחץ למחיקה',row:'📏 לחץ להוספת שורת כלובים',text:'🔤 לחץ על המפה — הקלד מספר + כיוון או טקסט חופשי'};
   const h=document.getElementById('mapHint');
   if(h) h.textContent=hints[t]||'';
-  const cursor=t==='pan'?'grab':t==='move'?'grab':t==='erase'?'cell':'crosshair';
+  const cursor=t==='pan'?'grab':t==='move'?'grab':t==='select'?'default':t==='erase'?'cell':'crosshair';
   const canvas=document.getElementById('mapCanvas');
   if(canvas) canvas.style.cursor=cursor;
 }
@@ -2155,7 +2155,7 @@ function onTM(e){
   const[cx,cy]=getPos(e,cv);
   // אם זז יותר מ-10 פיקסלים — הפוך לגלילה (כלים שאינם כלוב/קיר)
   const inRuler=_touchStartCY<44||_touchStartCX<44||_touchStartCX>cv.clientWidth-44;
-  if(!_touchIsPanning && mapTool!=='wall' && mapTool!=='cage' && !inRuler){
+  if(!_touchIsPanning && mapTool!=='wall' && mapTool!=='cage' && mapTool!=='select' && !inRuler){
     const moved=Math.hypot(cx-_touchStartCX,cy-_touchStartCY);
     if(moved>10){
       _touchIsPanning=true;
@@ -2263,7 +2263,7 @@ function handleDown(cx,cy){
     selectedCageId=id; selectedCages=[id];
     drawMap();
     openCageEdit(g);
-  } else if(mapTool==='move'){
+  } else if(mapTool==='move'||mapTool==='select'){
     const g=getCageAt(wx,wy);
     if(g){
       // If clicking a cage already in multi-select → drag all; else single-select
@@ -2323,10 +2323,10 @@ function handleMove(cx,cy){
   if(mapTool==='wall'&&isDrawing){
     drawCurrent=[wx,wy];
     drawMapThrottled();
-  } else if(mapTool==='move'&&isRubberBand){
+  } else if((mapTool==='move'||mapTool==='select')&&isRubberBand){
     rubberCurrent=[wx,wy];
     drawMapThrottled();
-  } else if(mapTool==='move'&&dragCageId){
+  } else if((mapTool==='move'||mapTool==='select')&&dragCageId){
     const g=cages.find(c=>c.id===dragCageId);
     if(g){
       // מגנט אמיתי: הכלוב נדבק למשבצת שמתחת לסמן
@@ -2956,6 +2956,7 @@ function onMapKey(e){
     case 'p': case 'P': if(!e.ctrlKey&&!e.metaKey) setMapTool('pan'); break;
     case 'c': case 'C': if(!e.ctrlKey&&!e.metaKey) setMapTool('cage'); break;
     case 'm': case 'M': if(!e.ctrlKey&&!e.metaKey) setMapTool('move'); break;
+    case 's': case 'S': if(!e.ctrlKey&&!e.metaKey) setMapTool('select'); break;
     case 'r': case 'R':
       if(e.ctrlKey||e.metaKey){ e.preventDefault(); redoMap(); }
       else rotateCage();
