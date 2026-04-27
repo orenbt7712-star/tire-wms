@@ -2203,18 +2203,8 @@ function handleDown(cx,cy){
   const RULER=44, RULER_R=44;
   const CELL=mapScale;
 
-  // ── כלי טקסט — קליק על הסרגל עורך תוויות ──
+  // ── כלי טקסט — קליק על המפה פותח חלון עם כפתורי כיוון ──
   if(mapTool==='text'){
-    if(cy<RULER && cx>=RULER && (!_cv||cx<=_cv.width-RULER_R)){
-      const col=Math.floor((cx-mapOffX)/CELL);
-      _openLabelEditor(cx, cy+RULER+4, `תווית עמודה ${col+1}`, colLabels[col]||'', {type:'col',key:col});
-      return;
-    }
-    if((cx<RULER||(_cv&&cx>_cv.width-RULER_R)) && cy>=RULER){
-      const row=Math.floor((cy-mapOffY)/CELL);
-      _openLabelEditor(cx<RULER?RULER+4:_cv.width-RULER_R-224, cy, `תווית שורה ${row+1}`, rowLabels[row]||'', {type:'row',key:row});
-      return;
-    }
     if(cx>=RULER && cy>=RULER && (!_cv||cx<=_cv.width-RULER_R)){
       const col=Math.floor((cx-mapOffX)/CELL);
       const row=Math.floor((cy-mapOffY)/CELL);
