@@ -3092,6 +3092,19 @@ function addCage(){
   setMapTool('cage');
   toast('📦 לחץ על המפה למיקום הכלוב');
 }
+function addCageAtCenter(){
+  const cv=document.getElementById('mapCanvas');
+  if(!cv) return;
+  pushHistory();
+  const[wx,wy]=c2w(cv.width/2,cv.height/2);
+  const id=nextCageId++;
+  const g={id,name:String(id),floor:'1',x:Math.max(0,Math.floor(wx)),y:Math.max(0,Math.floor(wy)),rot:false};
+  cages.push(g);
+  selectedCageId=id; selectedCages=[id];
+  drawMap();
+  openCageEdit(g);
+}
+window.addCageAtCenter=addCageAtCenter;
 
 function _updateFloorTooltip(){
   const g=selectedCageId?cages.find(c=>c.id===selectedCageId):null;
