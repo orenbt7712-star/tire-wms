@@ -2446,8 +2446,8 @@ function drawMap(){
   // 3 פסי קומות — רק אם מספיק מזווח
   if(DETAIL){
     const SLOT=CELL/3;
-    const floorColors=['rgba(74,158,255,0.30)','rgba(62,207,142,0.30)','rgba(245,166,35,0.30)'];
-    const floorBorders=['rgba(74,158,255,0.50)','rgba(62,207,142,0.50)','rgba(245,166,35,0.50)'];
+    const floorColors=['rgba(74,158,255,0.04)','rgba(62,207,142,0.04)','rgba(245,166,35,0.04)'];
+    const floorBorders=['rgba(74,158,255,0.10)','rgba(62,207,142,0.10)','rgba(245,166,35,0.10)'];
     const floorLabels=['rgba(30,100,210,0.85)','rgba(20,150,90,0.85)','rgba(180,100,0,0.85)'];
     // מלא כל צבע בנפרד
     for(let f=0; f<3; f++){
@@ -2591,13 +2591,18 @@ function drawMap(){
     const floorMatch = mapFloorFilter===0 || String(g.floor)===String(mapFloorFilter);
     ctx.globalAlpha = floorMatch ? 1 : 0.25;
 
-    // רקע
+    // רקע — צבע לפי קומה
+    const _fClr={'1':['rgba(50,120,255,0.65)','rgba(30,80,180,0.80)'],
+                 '2':['rgba(40,200,120,0.65)','rgba(20,140,80,0.80)'],
+                 '3':['rgba(245,150,30,0.65)','rgba(190,110,10,0.80)']};
+    const _fc=_fClr[String(g.floor||'1')]||_fClr['1'];
     const grad=ctx.createLinearGradient(cx,cy,cx,cy+ph);
-    if(isSel){grad.addColorStop(0,'#2a3e12');grad.addColorStop(1,'#1a2a0a');}
-    else if(hasItems){grad.addColorStop(0,'#0d2010');grad.addColorStop(1,'#081408');}
-    else{grad.addColorStop(0,'#1e2438');grad.addColorStop(1,'#151928');}
+    grad.addColorStop(0,_fc[0]);
+    grad.addColorStop(1,_fc[1]);
     ctx.fillStyle=grad;
-    ctx.strokeStyle=isSel?'#f5a623':isMultiSel2?'#7ac8ff':hasItems?'#3ecf8e':'#2a3045';
+    const _fStroke={'1':'#4a9eff','2':'#3ecf8e','3':'#f5a623'};
+    const _baseStroke=_fStroke[String(g.floor||'1')]||'#4a9eff';
+    ctx.strokeStyle=isSel?'#ffffff':isMultiSel2?'#ffffff':_baseStroke;
     ctx.lineWidth=isSel?2.5:1.5;
 
     const r=6;
