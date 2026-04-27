@@ -1967,6 +1967,7 @@ async function processOfflineQueue() {
     try {
       if (op.type === 'set') await setDoc(doc(db, 'tires', String(op.id)), op.data);
       if (op.type === 'del') await deleteDoc(doc(db, 'tires', String(op.id)));
+      if (op.type === 'map-layout') await setDoc(doc(db, 'map', 'layout'), op.data);
       done.push(op);
     } catch(e) { break; }
   }
@@ -2023,6 +2024,29 @@ window._deleteItem = async function(id) {
     q.push({type: 'del', id});
     await saveOfflineQueue(q);
     window._toast && window._toast('⚠️ מחיקה נכשלה — תסונכרן כשיחזור חיבור');
+  }
+};
+
+window._saveMapLayout = async function(mapData) {
+  const op = {type: 'map-layout', id: 'layout', data: mapData};
+  if (!navigator.onLine) {
+    const q = await getOfflineQueue();
+    const filtered = q.filter(o => o.type !== 'map-layout');
+    filtered.push(op);
+    await saveOfflineQueue(filtered);
+    window._toast && window._toast('📵 מפה נשמרה מקומית — תסונכרן כשיחזור אינטרנט');
+    return;
+  }
+  await new Promise(resolve => onAuthReady(resolve));
+  try {
+    await setDoc(doc(db, 'map', 'layout'), mapData);
+    window._toast && window._toast('✅ מפה נשמרה!');
+  } catch(e) {
+    const q = await getOfflineQueue();
+    const filtered = q.filter(o => o.type !== 'map-layout');
+    filtered.push(op);
+    await saveOfflineQueue(filtered);
+    window._toast && window._toast('⚠️ שמירת מפה נכשלה — תסונכרן כשיחזור חיבור');
   }
 };
 

@@ -3223,10 +3223,11 @@ function confirmMapLabelDir(dir){
 window.confirmMapLabelDir=confirmMapLabelDir;
 
 function saveMapLayout(){
-  localStorage.setItem('tirewms_map2',JSON.stringify({cages,walls,nextId:nextCageId,colLabels,rowLabels,mapLabels,nextLabelId}));
-  // סנכרן עם תצוגת המחסן
+  const mapData={cages,walls,nextId:nextCageId,colLabels,rowLabels,mapLabels,nextLabelId};
+  localStorage.setItem('tirewms_map2',JSON.stringify(mapData));
+  if(window._saveMapLayout) window._saveMapLayout(mapData);
+  else toast('✅ '+(currentLang==='ar'?'تم حفظ الخريطة!':'מפה נשמרה!'));
   if(document.getElementById('viewWarehouse')?.classList.contains('active')) renderWarehouse();
-  toast('✅ '+(currentLang==='ar'?'تم حفظ الخريطة!':'מפה נשמרה!'));
 }
 function clearAllRulerLabels(){
   if(!confirm('למחוק את כל תוויות הסרגל ולאפס שמות כלובים?'))return;
