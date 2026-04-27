@@ -2054,7 +2054,7 @@ function initMapEditor(){
     colLabels=d.colLabels||{}; rowLabels=d.rowLabels||{};
     mapLabels=d.mapLabels||[]; nextLabelId=d.nextLabelId||1;
   }catch(e){} }
-  resizeCanvas(); drawMap(); setMapTool('wall');
+  resizeCanvas(); drawMap(); setMapTool('pan');
 
   // Remove old listeners
   const newCanvas = canvas.cloneNode(true);
