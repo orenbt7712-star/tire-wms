@@ -104,6 +104,10 @@ function floorColor(f){
 function floorClass(f){ return 'floor-'+(f||1); }
 
 function toast(m){
+  if(typeof m==='string'){
+    if(m.startsWith('✅')) playSuccessSound();
+    else if(m.startsWith('❌')||m.startsWith('⚠️')) playErrorSound();
+  }
   const el=document.getElementById('toast');
   if(!el) return;
   if(el.classList.contains('show')){
@@ -115,6 +119,37 @@ function toast(m){
   }
 }
 window._toast = toast;
+
+let _audioCtx=null;
+function _ac(){ if(!_audioCtx) _audioCtx=new(window.AudioContext||window.webkitAudioContext)(); return _audioCtx; }
+function playSuccessSound(){
+  try{
+    const ac=_ac(),t=ac.currentTime;
+    [[523.25,0,0.08],[659.25,0.1,0.11]].forEach(([fr,dl,dur])=>{
+      const o=ac.createOscillator(),g=ac.createGain();
+      o.connect(g);g.connect(ac.destination);
+      o.type='sine';o.frequency.value=fr;
+      g.gain.setValueAtTime(0.18,t+dl);
+      g.gain.exponentialRampToValueAtTime(0.001,t+dl+dur);
+      o.start(t+dl);o.stop(t+dl+dur+0.02);
+    });
+  }catch(e){}
+}
+function playErrorSound(){
+  try{
+    const ac=_ac(),t=ac.currentTime;
+    const o=ac.createOscillator(),g=ac.createGain();
+    o.connect(g);g.connect(ac.destination);
+    o.type='sawtooth';
+    o.frequency.setValueAtTime(300,t);
+    o.frequency.exponentialRampToValueAtTime(140,t+0.18);
+    g.gain.setValueAtTime(0.15,t);
+    g.gain.exponentialRampToValueAtTime(0.001,t+0.22);
+    o.start(t);o.stop(t+0.24);
+  }catch(e){}
+}
+window.playSuccessSound=playSuccessSound;
+window.playErrorSound=playErrorSound;
 
 function escHTML(s){
   if(s==null) return '';
