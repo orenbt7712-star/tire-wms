@@ -2446,9 +2446,9 @@ function drawMap(){
   // 3 פסי קומות — רק אם מספיק מזווח
   if(DETAIL){
     const SLOT=CELL/3;
-    const floorColors=['rgba(74,158,255,0.07)','rgba(62,207,142,0.07)','rgba(245,166,35,0.07)'];
-    const floorBorders=['rgba(74,158,255,0.25)','rgba(62,207,142,0.25)','rgba(245,166,35,0.25)'];
-    const floorLabels=['rgba(74,158,255,0.4)','rgba(62,207,142,0.4)','rgba(245,166,35,0.4)'];
+    const floorColors=['rgba(74,158,255,0.30)','rgba(62,207,142,0.30)','rgba(245,166,35,0.30)'];
+    const floorBorders=['rgba(74,158,255,0.50)','rgba(62,207,142,0.50)','rgba(245,166,35,0.50)'];
+    const floorLabels=['rgba(30,100,210,0.85)','rgba(20,150,90,0.85)','rgba(180,100,0,0.85)'];
     // מלא כל צבע בנפרד
     for(let f=0; f<3; f++){
       ctx.fillStyle=floorColors[f];
@@ -2471,16 +2471,16 @@ function drawMap(){
       }
       ctx.stroke();
     }
-    // תוויות קומה — רק בזום גבוה מאוד
+    // תוויות קומה — ממורכזות בתוך כל פס
     if(SHOW_FLOOR_LABELS){
-      ctx.textAlign='right'; ctx.textBaseline='middle';
-      ctx.font=`${Math.min(8,SLOT*0.45)}px Heebo`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.font=`bold ${Math.min(11,SLOT*0.55)}px Heebo`;
       for(let f=0; f<3; f++){
         ctx.fillStyle=floorLabels[f];
         for(let row=startRow; row<=endRow; row++){
           for(let col=startCol; col<=endCol; col++){
             const px=mapOffX+col*CELL, py=mapOffY+row*CELL+f*SLOT;
-            ctx.fillText(f+1,px+CELL-3,py+SLOT/2);
+            ctx.fillText(f+1, px+CELL/2, py+SLOT/2);
           }
         }
       }
