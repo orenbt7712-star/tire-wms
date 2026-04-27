@@ -558,7 +558,7 @@ if('serviceWorker' in navigator){
         onblur="setTimeout(()=>{const d=document.getElementById('blockedBrandDrop');if(d)d.style.display='none'},200)"/>
     </div>
 
-    <button onclick="if(window._logout){closeAccessPanel();window._logout();}" style="width:100%;background:var(--card);border:1px solid var(--border);color:var(--red,#e85d3f);border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:6px;">🚪 יציאה</button>
+    <button onclick="(function(){try{if(window._clearSessionRole)window._clearSessionRole();}catch(e){}localStorage.removeItem('tirewms_session');location.reload();})()" style="width:100%;background:var(--card);border:1px solid var(--border);color:var(--red,#e85d3f);border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:6px;">🚪 יציאה</button>
     <button id="closeAccessBtn" onclick="closeAccessPanel()" style="width:100%;background:var(--accent);border:none;color:#111;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:6px;">סגור</button>
   </div>
 </div>
