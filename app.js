@@ -2153,12 +2153,11 @@ function onTM(e){
     autoExpandCages(); drawMap(); return;
   }
   const[cx,cy]=getPos(e,cv);
-  // אם זז יותר מ-8 פיקסלים — הפוך לגלילה (כלים שאינם כלוב/קיר)
-  // בכלי טקסט, קליק על הסרגל (28px מהשוליים) לא הופך לגלילה
+  // אם זז יותר מ-10 פיקסלים — הפוך לגלילה (כלים שאינם כלוב/קיר)
   const inRuler=_touchStartCY<44||_touchStartCX<44||_touchStartCX>cv.clientWidth-44;
   if(!_touchIsPanning && mapTool!=='wall' && mapTool!=='cage' && !inRuler){
     const moved=Math.hypot(cx-_touchStartCX,cy-_touchStartCY);
-    if(moved>8){
+    if(moved>10){
       _touchIsPanning=true;
       isPanning=true; panStartX=_touchStartCX; panStartY=_touchStartCY;
       panOffStartX=mapOffX; panOffStartY=mapOffY;
@@ -2170,12 +2169,21 @@ function onTM(e){
 function onTE(e){
   e.preventDefault();
   pinchDist=null;
-  if(_touchIsPanning){
+  const cv=document.getElementById('mapCanvas');
+  let endCX=_touchStartCX, endCY=_touchStartCY;
+  if(e.changedTouches && e.changedTouches.length){
+    const r=cv.getBoundingClientRect();
+    endCX=e.changedTouches[0].clientX-r.left;
+    endCY=e.changedTouches[0].clientY-r.top;
+  }
+  const totalMoved=Math.hypot(endCX-_touchStartCX, endCY-_touchStartCY);
+  if(_touchIsPanning && totalMoved>=10){
     _touchIsPanning=false; isPanning=false;
     drawMap(); return;
   }
-  // קשקוש קצר = לחיצה
-  if(Date.now()-_touchStartTime<300 && mapTool!=='pan'){
+  // טאפ — האצבע זזה פחות מ-10px, בטל גרירה שהופעלה בטעות
+  _touchIsPanning=false; isPanning=false;
+  if(mapTool!=='pan'){
     _isTouchEvent=true;
     handleDown(_touchStartCX,_touchStartCY);
     handleUp();
