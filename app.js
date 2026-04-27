@@ -2132,11 +2132,14 @@ function onTS(e){
   const[cx,cy]=getPos(e,cv);
   _touchStartCX=cx; _touchStartCY=cy; _touchStartTime=Date.now();
   _touchIsPanning=false;
-  // כלי גלילה — מיד מתחיל גלילה
+  // כלי גלילה — מיד מתחיל גלילה, אבל לא בסרגל (הסרגל תמיד פותח עורך)
   if(mapTool==='pan'){
-    isPanning=true; panStartX=cx; panStartY=cy;
-    panOffStartX=mapOffX; panOffStartY=mapOffY;
-    _touchIsPanning=true;
+    const _inR=cy<44||cx<44||(cv&&cx>cv.clientWidth-44);
+    if(!_inR){
+      isPanning=true; panStartX=cx; panStartY=cy;
+      panOffStartX=mapOffX; panOffStartY=mapOffY;
+      _touchIsPanning=true;
+    }
   }
 }
 function onTM(e){
@@ -2152,7 +2155,7 @@ function onTM(e){
   const[cx,cy]=getPos(e,cv);
   // אם זז יותר מ-8 פיקסלים — הפוך לגלילה (כלים שאינם כלוב/קיר)
   // בכלי טקסט, קליק על הסרגל (28px מהשוליים) לא הופך לגלילה
-  const inRuler=mapTool==='text'&&(_touchStartCY<28||_touchStartCX<28||_touchStartCX>cv.clientWidth-28);
+  const inRuler=_touchStartCY<44||_touchStartCX<44||_touchStartCX>cv.clientWidth-44;
   if(!_touchIsPanning && mapTool!=='wall' && mapTool!=='cage' && !inRuler){
     const moved=Math.hypot(cx-_touchStartCX,cy-_touchStartCY);
     if(moved>8){
