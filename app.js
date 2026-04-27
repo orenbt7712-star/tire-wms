@@ -2137,6 +2137,8 @@ function initMapEditor(){
     colLabels=d.colLabels||{}; rowLabels=d.rowLabels||{};
     mapLabels=d.mapLabels||[]; nextLabelId=d.nextLabelId||1;
   }catch(e){} }
+  const _dups=_deduplicateCages();
+  if(_dups>0){ _scheduleAutoSave(); toast(`⚠️ הוסרו ${_dups} כלובים כפולים מהמפה`); }
   resizeCanvas(); drawMap(); setMapTool('pan');
 
   // Remove old listeners
@@ -2339,9 +2341,12 @@ function handleDown(cx,cy){
     pushHistory();
     isDrawing=true; drawStart=[wx,wy]; drawCurrent=[wx,wy];
   } else if(mapTool==='cage'){
+    const nx=Math.max(0,Math.floor(wx)), ny=Math.max(0,Math.floor(wy));
+    const occ=_cageOccupied(nx,ny,'1');
+    if(occ){ toast(`❌ יש כלוב "${occ.name}" במיקום זה`); return; }
     pushHistory();
     const id=nextCageId++;
-    const g={id,name:String(id),floor:'1',x:Math.max(0,Math.floor(wx)),y:Math.max(0,Math.floor(wy)),rot:false};
+    const g={id,name:String(id),floor:'1',x:nx,y:ny,rot:false};
     cages.push(g);
     selectedCageId=id; selectedCages=[id];
     drawMap();
@@ -2976,9 +2981,11 @@ function duplicateCage(){
   if(!selectedCageId){toast('בחר כלוב תחילה');return;}
   const g=cages.find(c=>c.id===selectedCageId);
   if(!g) return;
+  const nx=g.x+1, ny=g.y;
+  if(_cageOccupied(nx,ny,g.floor||'1')){ toast('❌ יש כלוב בעמדה הסמוכה — הזז ידנית'); return; }
   pushHistory();
   const id=nextCageId++;
-  const copy={...g,id,x:g.x+1,y:g.y};
+  const copy={...g,id,x:nx,y:ny};
   cages.push(copy);
   selectedCageId=id; selectedCages=[id];
   drawMap();
@@ -3001,17 +3008,21 @@ function confirmRowPanel(){
   pushHistory();
   const baseX=Math.max(0,Math.floor(_rowClickWx));
   const baseY=Math.max(0,Math.floor(_rowClickWy));
+  let added=0, skipped=0;
   for(let i=0;i<num;i++){
     const id=nextCageId++;
     let x=baseX, y=baseY;
-    if(dir==='hr') x=baseX+i;                     // אופקי ימין
-    else if(dir==='hl') x=Math.max(0,baseX-i);    // אופקי שמאל
-    else if(dir==='v')  y=baseY+i;                // אנכי
+    if(dir==='hr') x=baseX+i;
+    else if(dir==='hl') x=Math.max(0,baseX-i);
+    else if(dir==='v')  y=baseY+i;
+    if(_cageOccupied(x,y,fl)){ skipped++; continue; }
     cages.push({id,name:String(startNum+i),floor:fl,x,y,rot:false});
+    added++;
   }
   closeRowPanel();
   drawMap();
-  toast(`✅ נוספה שורה של ${num} כלובים (${startNum}–${startNum+num-1})`);
+  if(skipped>0) toast(`✅ נוספו ${added} כלובים — ${skipped} דולגו (תפוסים)`);
+  else toast(`✅ נוספה שורה של ${added} כלובים (${startNum}–${startNum+added-1})`);
 }
 
 function onWheel(e){
@@ -3088,6 +3099,19 @@ function onMapKeyUp(e){
   }
 }
 
+function _cageOccupied(x,y,floor,excludeId){
+  return cages.find(g=>g.id!==excludeId&&g.x===x&&g.y===y&&String(g.floor||'1')===String(floor||'1'));
+}
+function _deduplicateCages(){
+  const seen=new Set(), dupes=[];
+  cages.forEach(g=>{
+    const k=`${g.x}|${g.y}|${g.floor||'1'}`;
+    if(seen.has(k)) dupes.push(g.id); else seen.add(k);
+  });
+  if(!dupes.length) return 0;
+  cages=cages.filter(g=>!dupes.includes(g.id));
+  return dupes.length;
+}
 function addCage(){
   setMapTool('cage');
   toast('📦 לחץ על המפה למיקום הכלוב');
@@ -3095,10 +3119,15 @@ function addCage(){
 function addCageAtCenter(){
   const cv=document.getElementById('mapCanvas');
   if(!cv) return;
-  pushHistory();
   const[wx,wy]=c2w(cv.width/2,cv.height/2);
+  const nx=Math.max(0,Math.floor(wx)), ny=Math.max(0,Math.floor(wy));
+  if(_cageOccupied(nx,ny,'1')){
+    toast('❌ יש כלוב במיקום זה — הזז מעט את המפה ונסה שוב');
+    return;
+  }
+  pushHistory();
   const id=nextCageId++;
-  const g={id,name:String(id),floor:'1',x:Math.max(0,Math.floor(wx)),y:Math.max(0,Math.floor(wy)),rot:false};
+  const g={id,name:String(id),floor:'1',x:nx,y:ny,rot:false};
   cages.push(g);
   selectedCageId=id; selectedCages=[id];
   drawMap();
@@ -3153,8 +3182,11 @@ function closeCageEdit(){
 function saveCageEdit(){
   const g=cages.find(c=>c.id===selectedCageId);
   if(g){
+    const newFloor=document.getElementById('cageEditFloor').value||'1';
+    const conflict=_cageOccupied(g.x,g.y,newFloor,g.id);
+    if(conflict){ toast(`❌ יש כלוב "${conflict.name}" בקומה ${newFloor} במיקום זה`); return; }
     g.name=document.getElementById('cageEditName').value;
-    g.floor=document.getElementById('cageEditFloor').value;
+    g.floor=newFloor;
     g.pn1=document.getElementById('cageEditPn1').value;
     g.p1=document.getElementById('cageEditP1').value;
     g.pn2=document.getElementById('cageEditPn2').value;
