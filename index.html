@@ -558,7 +558,7 @@ if('serviceWorker' in navigator){
         onblur="setTimeout(()=>{const d=document.getElementById('blockedBrandDrop');if(d)d.style.display='none'},200)"/>
     </div>
 
-    <button onclick="(async function(){if(!confirm('להתנתק?'))return;try{if(window._clearSessionRole)await window._clearSessionRole();}catch(e){}try{if(window.google?.accounts?.id)google.accounts.id.disableAutoSelect();}catch(e){}localStorage.removeItem('tirewms_session');localStorage.removeItem('tirewms_gdrive_token');sessionStorage.clear();try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs)await r.unregister();}catch(e){}alert('התנתקת. הדף ייטען מחדש.');location.reload();})()" style="width:100%;background:var(--card);border:1px solid var(--border);color:var(--red,#e85d3f);border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:6px;">🚪 יציאה (התנתק כבעלים)</button>
+    <button onclick="(async function(){if(!confirm('להתנתק כבעלים?'))return;try{if(window.google?.accounts?.id){google.accounts.id.disableAutoSelect();google.accounts.id.cancel();}}catch(e){}try{if(window._clearSessionRole)await window._clearSessionRole();}catch(e){}localStorage.removeItem('tirewms_session');localStorage.removeItem('tirewms_gdrive_token');sessionStorage.clear();sessionStorage.setItem('_justLoggedOut','1');try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs)await r.unregister();}catch(e){}location.replace(location.pathname+'?logout='+Date.now());})()" style="width:100%;background:var(--card);border:1px solid var(--border);color:var(--red,#e85d3f);border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:6px;">🚪 יציאה (התנתק כבעלים)</button>
     <button id="closeAccessBtn" onclick="closeAccessPanel()" style="width:100%;background:var(--accent);border:none;color:#111;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:6px;">סגור</button>
   </div>
 </div>
@@ -1250,6 +1250,12 @@ function _saveLoginClientId() {
 window._saveLoginClientId = _saveLoginClientId;
 
 async function _handleGSICredential(response) {
+  // אם רגע הותנתקנו — תתעלם מ-credential אוטומטיים של Google One Tap
+  if (sessionStorage.getItem('_justLoggedOut') === '1') {
+    sessionStorage.removeItem('_justLoggedOut');
+    console.log('[auth] ignored auto-login after logout');
+    return;
+  }
   const errEl = document.getElementById('googleOwnerErr');
   try {
     const payload = JSON.parse(atob(response.credential.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
@@ -1297,6 +1303,16 @@ function enterApp(admin, workerName) {
   } else if (_isAdmin) {
     document.body.classList.add('is-admin-worker');
   }
+
+  // Debug indicator: מציג תפקיד נוכחי בפינה השמאלית התחתונה
+  let _roleInd = document.getElementById('_roleInd');
+  if (!_roleInd) {
+    _roleInd = document.createElement('div');
+    _roleInd.id = '_roleInd';
+    _roleInd.style.cssText = 'position:fixed;bottom:60px;left:8px;z-index:9000;font-size:10px;color:#7a8299;background:rgba(0,0,0,.5);padding:2px 6px;border-radius:4px;pointer-events:none;';
+    document.body.appendChild(_roleInd);
+  }
+  _roleInd.textContent = _isOwner ? '👑 בעלים' : (_isAdmin ? '🔧 מנהל' : '👁️ עובד');
 
 
   if (!admin) {
