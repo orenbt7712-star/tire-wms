@@ -2029,26 +2029,28 @@ window._deleteItem = async function(id) {
   }
 };
 
-window._saveMapLayout = async function(mapData) {
+let _lastMapWrite = 0;
+window._saveMapLayout = async function(mapData, silent=false) {
   const op = {type: 'map-layout', id: 'layout', data: mapData};
   if (!navigator.onLine) {
     const q = await getOfflineQueue();
     const filtered = q.filter(o => o.type !== 'map-layout');
     filtered.push(op);
     await saveOfflineQueue(filtered);
-    window._toast && window._toast('📵 מפה נשמרה מקומית — תסונכרן כשיחזור אינטרנט');
+    if(!silent) window._toast && window._toast('📵 מפה נשמרה מקומית — תסונכרן כשיחזור אינטרנט');
     return;
   }
   await new Promise(resolve => onAuthReady(resolve));
   try {
+    _lastMapWrite = Date.now();
     await setDoc(doc(db, 'map', 'layout'), mapData);
-    window._toast && window._toast('✅ מפה נשמרה!');
+    if(!silent) window._toast && window._toast('✅ מפה נשמרה!');
   } catch(e) {
     const q = await getOfflineQueue();
     const filtered = q.filter(o => o.type !== 'map-layout');
     filtered.push(op);
     await saveOfflineQueue(filtered);
-    window._toast && window._toast('⚠️ שמירת מפה נכשלה — תסונכרן כשיחזור חיבור');
+    if(!silent) window._toast && window._toast('⚠️ שמירת מפה נכשלה — תסונכרן כשיחזור חיבור');
   }
 };
 
@@ -2231,16 +2233,16 @@ buildLoginScreen();
 setTimeout(processOfflineQueue, 3000);
 setStatus('🔄 מתחבר...');
 onAuthReady(() => {
-  // טען מפה מ-Firestore — מבטיח סנכרון בין מכשירים
-  (async () => {
-    try {
-      const mapSnap = await getDoc(doc(db, 'map', 'layout'));
-      if (mapSnap.exists()) {
-        localStorage.setItem('tirewms_map2', JSON.stringify(mapSnap.data()));
-        localStorage.setItem('tirewms_map_ver', 'layout-2026-v6');
-      }
-    } catch(e) {}
-  })();
+  // סנכרון real-time של המפה מ-Firestore — כל שינוי ממכשיר אחר מגיע אוטומטית
+  onSnapshot(doc(db, 'map', 'layout'), (snap) => {
+    if (!snap.exists()) return;
+    // דלג אם אנחנו עצמנו כתבנו לפני פחות מ-5 שניות (מונע לולאה)
+    if (Date.now() - _lastMapWrite < 5000) return;
+    const remote = snap.data();
+    localStorage.setItem('tirewms_map2', JSON.stringify(remote));
+    localStorage.setItem('tirewms_map_ver', 'layout-2026-v6');
+    if (window._updateMapFromRemote) window._updateMapFromRemote(remote);
+  }, () => {}); // שגיאת רשת — התעלם בשקט
 
   onSnapshot(itemsCol, snapshot => {
     const newItems = snapshot.docs.filter(d => d.id !== 'workers-config').map(d => d.data());

@@ -2967,11 +2967,27 @@ function autoExpandCages(){ }
 function _scheduleAutoSave(){
   clearTimeout(_autoSaveTimer);
   _autoSaveTimer=setTimeout(()=>{
-    localStorage.setItem('tirewms_map2',JSON.stringify({cages,walls,nextId:nextCageId,colLabels,rowLabels,mapLabels,nextLabelId}));
+    const mapData={cages,walls,nextId:nextCageId,colLabels,rowLabels,mapLabels,nextLabelId};
+    localStorage.setItem('tirewms_map2',JSON.stringify(mapData));
+    localStorage.setItem('tirewms_map_ver','layout-2026-v6');
     const h=document.getElementById('mapHint');
     if(h){ const old=h.textContent; h.textContent='💾 נשמר אוטומטית'; setTimeout(()=>{if(h.textContent==='💾 נשמר אוטומטית')h.textContent=old;},1500); }
+    if(window._saveMapLayout) window._saveMapLayout(mapData, true); // silent — ללא toast
   },2000);
 }
+window._updateMapFromRemote=function(remote){
+  if(!remote||!remote.cages) return;
+  cages=remote.cages.map(g=>({...g,x:Math.round(g.x),y:Math.round(g.y)}));
+  walls=remote.walls||walls;
+  nextCageId=remote.nextId||nextCageId;
+  colLabels=remote.colLabels||colLabels;
+  rowLabels=remote.rowLabels||rowLabels;
+  mapLabels=remote.mapLabels||mapLabels;
+  const whEl=document.getElementById('viewWarehouse');
+  const meEl=document.getElementById('viewMapEditor');
+  if(whEl&&whEl.classList.contains('active')){ if(typeof renderWarehouse==='function') renderWarehouse(); }
+  else if(meEl&&meEl.classList.contains('active')){ if(typeof drawMap==='function') drawMap(); }
+};
 
 function duplicateCage(){
   if(!selectedCageId){toast('בחר כלוב תחילה');return;}
