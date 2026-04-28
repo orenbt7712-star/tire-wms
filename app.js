@@ -2773,6 +2773,19 @@ function drawMap(){
       ctx.fillText('קו׳'+g.floor,cx+pw/2,cy+ph/2+8);
     }
 
+    // שורה ימין (p1) ושורה שמאל (p2) — כמו שמוצג במפת המחסן
+    const rowFs=Math.max(7,Math.min(10,pw/4));
+    if(g.p1&&pw>24){
+      ctx.fillStyle='#3ecf8e';ctx.font=`bold ${rowFs}px Heebo`;
+      ctx.textAlign='left';ctx.textBaseline='top';
+      ctx.fillText(g.p1,cx+2,cy+2);
+    }
+    if(g.p2&&pw>24){
+      ctx.fillStyle='#b48df0';ctx.font=`bold ${rowFs}px Heebo`;
+      ctx.textAlign='right';ctx.textBaseline='top';
+      ctx.fillText(g.p2,cx+pw-2,cy+2);
+    }
+
     // badge פריטים
     if(hasItems){
       ctx.fillStyle='#3ecf8e';
