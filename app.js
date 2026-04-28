@@ -3148,6 +3148,27 @@ function addCageAtCenter(){
   openCageEdit(g);
 }
 window.addCageAtCenter=addCageAtCenter;
+function addAllFloorsAtCenter(){
+  const cv=document.getElementById('mapCanvas');
+  if(!cv) return;
+  const[wx,wy]=c2w(cv.width/2,cv.height/2);
+  const nx=Math.max(0,Math.floor(wx)), ny=Math.max(0,Math.floor(wy));
+  const toAdd=['1','2','3'].filter(fl=>!_cageOccupied(nx,ny,fl));
+  if(!toAdd.length){ toast('❌ כל 3 הקומות תפוסות — הזז מעט את המפה ונסה שוב'); return; }
+  pushHistory();
+  let first=null;
+  toAdd.forEach(fl=>{
+    const id=nextCageId++;
+    const g={id,name:String(id),floor:fl,x:nx,y:ny,rot:false};
+    cages.push(g);
+    if(!first) first=g;
+  });
+  selectedCageId=first.id; selectedCages=toAdd.map((_,i)=>cages[cages.length-toAdd.length+i].id);
+  drawMap();
+  openCageEdit(first);
+  toast(`✅ נוספו ${toAdd.length} כלובים (קומות ${toAdd.join(', ')})`);
+}
+window.addAllFloorsAtCenter=addAllFloorsAtCenter;
 
 function _updateFloorTooltip(){
   const g=selectedCageId?cages.find(c=>c.id===selectedCageId):null;
