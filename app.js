@@ -2357,7 +2357,8 @@ function handleDown(cx,cy){
       if(!fl){ toast('❌ כל 3 הקומות תפוסות במיקום זה'); return; }
       pushHistory();
       const id=nextCageId++;
-      const g={id,name:String(id),floor:fl,x:nx,y:ny,rot:false};
+      const nm=_colNameAt(nx)||String(id);
+      const g={id,name:nm,floor:fl,x:nx,y:ny,rot:false};
       cages.push(g);
       selectedCageId=id; selectedCages=[id];
       drawMap(); openCageEdit(g);
@@ -3060,7 +3061,15 @@ function confirmRowPanel(){
     else if(dir==='hl') x=Math.max(0,baseX-i);
     else if(dir==='v')  y=baseY+i;
     if(_cageOccupied(x,y,fl)){ skipped++; continue; }
-    cages.push({id,name:String(startNum+i),floor:fl,x,y,rot:false});
+    const gx=Math.floor(x);
+    // לכיוון אנכי (v) כל הכלובים חולקים אותה עמודה — שמור שם קיים אם יש
+    const nm = dir==='v'
+      ? (_colNameAt(gx)||String(startNum))
+      : (_colNameAt(gx)||String(startNum+i));
+    cages.push({id,name:nm,floor:fl,x,y,rot:false});
+    // סנכרן colLabels + כלובים קיימים באותה עמודה
+    colLabels[gx]=nm;
+    cages.filter(c=>c.id!==id&&Math.floor(c.x)===gx).forEach(c=>{ c.name=nm; });
     added++;
   }
   closeRowPanel();
@@ -3146,14 +3155,20 @@ function onMapKeyUp(e){
 function _cageOccupied(x,y,floor,excludeId){
   return cages.find(g=>g.id!==excludeId&&g.x===x&&g.y===y&&String(g.floor||'1')===String(floor||'1'));
 }
+function _colNameAt(x){
+  if(colLabels[x]!==undefined) return String(colLabels[x]);
+  const ex=cages.find(g=>Math.floor(g.x)===x);
+  return ex ? ex.name : null;
+}
 function _paintCageAt(nx,ny){
   const key=`${nx}|${ny}`;
   if(_cagePaintSet.has(key)) return;
   _cagePaintSet.add(key);
   const fl=_firstFreeFloor(nx,ny);
-  if(!fl) return; // כל 3 קומות תפוסות — דלג
+  if(!fl) return;
   const id=nextCageId++;
-  cages.push({id,name:String(id),floor:fl,x:nx,y:ny,rot:false});
+  const nm=_colNameAt(nx)||String(id);
+  cages.push({id,name:nm,floor:fl,x:nx,y:ny,rot:false});
 }
 function _firstFreeFloor(x,y,excludeId){
   for(const fl of ['1','2','3']){ if(!_cageOccupied(x,y,fl,excludeId)) return fl; }
@@ -3182,7 +3197,8 @@ function addCageAtCenter(){
   if(!fl){ toast('❌ כל 3 הקומות תפוסות — הזז מעט את המפה ונסה שוב'); return; }
   pushHistory();
   const id=nextCageId++;
-  const g={id,name:String(id),floor:fl,x:nx,y:ny,rot:false};
+  const nm=_colNameAt(nx)||String(id);
+  const g={id,name:nm,floor:fl,x:nx,y:ny,rot:false};
   cages.push(g);
   selectedCageId=id; selectedCages=[id];
   drawMap();
@@ -3197,10 +3213,11 @@ function addAllFloorsAtCenter(){
   const toAdd=['1','2','3'].filter(fl=>!_cageOccupied(nx,ny,fl));
   if(!toAdd.length){ toast('❌ כל 3 הקומות תפוסות — הזז מעט את המפה ונסה שוב'); return; }
   pushHistory();
+  const nm=_colNameAt(nx)||(String(nextCageId));
   let first=null;
   toAdd.forEach(fl=>{
     const id=nextCageId++;
-    const g={id,name:String(id),floor:fl,x:nx,y:ny,rot:false};
+    const g={id,name:nm,floor:fl,x:nx,y:ny,rot:false};
     cages.push(g);
     if(!first) first=g;
   });
@@ -3261,7 +3278,15 @@ function saveCageEdit(){
     const newFloor=document.getElementById('cageEditFloor').value||'1';
     const conflict=_cageOccupied(g.x,g.y,newFloor,g.id);
     if(conflict){ toast(`❌ יש כלוב "${conflict.name}" בקומה ${newFloor} במיקום זה`); return; }
-    g.name=document.getElementById('cageEditName').value;
+    const newName=(document.getElementById('cageEditName').value||'').trim();
+    if(newName && newName!==g.name){
+      // סנכרן את כל הכלובים באותה עמודה + תווית סרגל
+      const gx=Math.floor(g.x);
+      cages.filter(c=>Math.floor(c.x)===gx).forEach(c=>{ c.name=newName; });
+      colLabels[gx]=newName;
+    } else if(!newName){
+      g.name=newName; // מחיקת שם — רק הכלוב הזה
+    }
     g.floor=newFloor;
     g.pn1=document.getElementById('cageEditPn1').value;
     g.p1=document.getElementById('cageEditP1').value;
