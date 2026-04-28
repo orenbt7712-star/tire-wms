@@ -2799,6 +2799,25 @@ function drawMap(){
     if(pw>32){ const dim=g.rot?'0.6מ×1.2מ':'1.2מ×0.6מ'; ctx.fillText(dim,cx+2,cy+ph-1); }
   });
 
+  // ── תוויות שורה (ש1, ש2...) בצד שמאל — כמו במחסן ──
+  {
+    const rowLeftMap={};
+    visibleCages.forEach(g=>{
+      const rn=g.p1||g.p2; if(!rn||String(g.floor||'1')!=='1'||g.rot) return;
+      const k=`${Math.floor(g.y)}__${rn}`;
+      if(rowLeftMap[k]===undefined||g.x<rowLeftMap[k]) rowLeftMap[k]=g.x;
+    });
+    const rowFs=Math.max(8,Math.min(11,CELL*0.22));
+    ctx.fillStyle='rgba(160,190,255,0.9)';
+    ctx.font=`bold ${rowFs}px Heebo`;
+    ctx.textAlign='right'; ctx.textBaseline='middle';
+    Object.entries(rowLeftMap).forEach(([k,minX])=>{
+      const[yStr,rn]=k.split('__');
+      const[lx,ly]=w2c(minX,parseInt(yStr)+0.5);
+      if(ly<44||ly>cv.height-2) return;
+      ctx.fillText('ש'+rn,lx-3,ly);
+    });
+  }
 
   // ── תוויות טקסט על המפה ──
   mapLabels.forEach(lbl=>{
@@ -3018,6 +3037,7 @@ function _scheduleAutoSave(){
     localStorage.setItem('tirewms_map_ver','layout-2026-v6');
     const h=document.getElementById('mapHint');
     if(h){ const old=h.textContent; h.textContent='💾 נשמר אוטומטית'; setTimeout(()=>{if(h.textContent==='💾 נשמר אוטומטית')h.textContent=old;},1500); }
+    if(typeof _whInvalidate==='function') _whInvalidate();
     if(window._saveMapLayout) window._saveMapLayout(mapData, true); // silent — ללא toast
   },2000);
 }
