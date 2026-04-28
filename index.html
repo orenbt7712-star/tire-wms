@@ -2231,6 +2231,17 @@ buildLoginScreen();
 setTimeout(processOfflineQueue, 3000);
 setStatus('🔄 מתחבר...');
 onAuthReady(() => {
+  // טען מפה מ-Firestore — מבטיח סנכרון בין מכשירים
+  (async () => {
+    try {
+      const mapSnap = await getDoc(doc(db, 'map', 'layout'));
+      if (mapSnap.exists()) {
+        localStorage.setItem('tirewms_map2', JSON.stringify(mapSnap.data()));
+        localStorage.setItem('tirewms_map_ver', 'layout-2026-v6');
+      }
+    } catch(e) {}
+  })();
+
   onSnapshot(itemsCol, snapshot => {
     const newItems = snapshot.docs.filter(d => d.id !== 'workers-config').map(d => d.data());
     const newNextId = newItems.length > 0 ? Math.max(...newItems.map(i => i.id)) + 1 : 1;

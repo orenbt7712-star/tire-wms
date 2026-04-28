@@ -210,10 +210,6 @@ function switchView(n,el){
       if(cages.length===0){
         const saved=localStorage.getItem('tirewms_map2');
         if(saved){ try{ const d=JSON.parse(saved); cages=d.cages||[]; walls=d.walls||[]; nextCageId=d.nextId||1; }catch(e){} }
-        // נקה כלובים עודפים שנוצרו ע"י autoExpandCages (ללא section/p1/p2, y>30)
-        const _before=cages.length;
-        cages=cages.filter(g=>g.section||g.p1||g.p2||g.rahavaRow||(g.y!=null&&g.y<=30));
-        if(cages.length<_before){ nextCageId=Math.max(1,...cages.map(g=>g.id+1)); localStorage.setItem('tirewms_map2',JSON.stringify({cages,walls,nextId:nextCageId,colLabels,rowLabels,mapLabels,nextLabelId})); }
         const _savedVer=localStorage.getItem('tirewms_map_ver');
         if(cages.length===0||_savedVer===null||_savedVer!==_MAP_VER){
           generateWarehouseLayout(true); return;
@@ -3390,6 +3386,7 @@ window.confirmMapLabelDir=confirmMapLabelDir;
 function saveMapLayout(){
   const mapData={cages,walls,nextId:nextCageId,colLabels,rowLabels,mapLabels,nextLabelId};
   localStorage.setItem('tirewms_map2',JSON.stringify(mapData));
+  localStorage.setItem('tirewms_map_ver','layout-2026-v6');
   if(window._saveMapLayout) window._saveMapLayout(mapData);
   else toast('✅ '+(currentLang==='ar'?'تم حفظ الخريطة!':'מפה נשמרה!'));
   if(document.getElementById('viewWarehouse')?.classList.contains('active')) renderWarehouse();
