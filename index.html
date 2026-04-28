@@ -2236,10 +2236,30 @@ setStatus('🔄 מתחבר...');
 onAuthReady(() => {
   // סנכרון real-time של המפה מ-Firestore — כל שינוי ממכשיר אחר מגיע אוטומטית
   onSnapshot(doc(db, 'map', 'layout'), (snap) => {
-    if (!snap.exists()) return;
+    if (!snap.exists()) {
+      // Firestore ריק — דחוף את הנתונים המקומיים אם קיימים
+      const localStr = localStorage.getItem('tirewms_map2');
+      const localVer = localStorage.getItem('tirewms_map_ver');
+      if (localStr && localVer === 'layout-2026-v6' && window._saveMapLayout) {
+        try {
+          const localData = JSON.parse(localStr);
+          if (localData.cages && localData.cages.length > 0) {
+            window._saveMapLayout({...localData, savedAt: localData.savedAt || Date.now()}, true);
+          }
+        } catch(e) {}
+      }
+      return;
+    }
     // דלג אם אנחנו עצמנו כתבנו לפני פחות מ-5 שניות (מונע לולאה)
     if (Date.now() - _lastMapWrite < 5000) return;
     const remote = snap.data();
+    // קבל רק אם Firestore חדש יותר מהנתונים המקומיים
+    if (remote.savedAt) {
+      try {
+        const local = JSON.parse(localStorage.getItem('tirewms_map2') || '{}');
+        if (local.savedAt && local.savedAt >= remote.savedAt) return;
+      } catch(e) {}
+    }
     localStorage.setItem('tirewms_map2', JSON.stringify(remote));
     localStorage.setItem('tirewms_map_ver', 'layout-2026-v6');
     if (window._updateMapFromRemote) window._updateMapFromRemote(remote);

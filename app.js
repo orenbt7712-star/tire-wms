@@ -2129,12 +2129,14 @@ function initMapEditor(){
   const canvas=document.getElementById('mapCanvas');
   const wrap=document.getElementById('mapEditorWrap');
   if(!canvas||!wrap) return;
-  const saved=localStorage.getItem('tirewms_map2');
-  if(saved){ try{ const d=JSON.parse(saved); walls=d.walls||[]; nextCageId=d.nextId||1;
-    cages=(d.cages||[]).map(g=>({...g,x:Math.round(g.x),y:Math.round(g.y)}));
-    colLabels=d.colLabels||{}; rowLabels=d.rowLabels||{};
-    mapLabels=d.mapLabels||[]; nextLabelId=d.nextLabelId||1;
-  }catch(e){} }
+  if(cages.length===0){
+    const saved=localStorage.getItem('tirewms_map2');
+    if(saved){ try{ const d=JSON.parse(saved); walls=d.walls||[]; nextCageId=d.nextId||1;
+      cages=(d.cages||[]).map(g=>({...g,x:Math.round(g.x),y:Math.round(g.y)}));
+      colLabels=d.colLabels||{}; rowLabels=d.rowLabels||{};
+      mapLabels=d.mapLabels||[]; nextLabelId=d.nextLabelId||1;
+    }catch(e){} }
+  }
   const _dups=_deduplicateCages();
   if(_dups>0){ _scheduleAutoSave(); toast(`⚠️ הוסרו ${_dups} כלובים כפולים מהמפה`); }
   resizeCanvas(); drawMap(); setMapTool('pan');
@@ -3033,7 +3035,7 @@ function autoExpandCages(){ }
 function _scheduleAutoSave(){
   clearTimeout(_autoSaveTimer);
   _autoSaveTimer=setTimeout(()=>{
-    const mapData={cages,walls,nextId:nextCageId,colLabels,rowLabels,mapLabels,nextLabelId};
+    const mapData={cages,walls,nextId:nextCageId,colLabels,rowLabels,mapLabels,nextLabelId,savedAt:Date.now()};
     localStorage.setItem('tirewms_map2',JSON.stringify(mapData));
     localStorage.setItem('tirewms_map_ver','layout-2026-v6');
     const h=document.getElementById('mapHint');
@@ -3525,7 +3527,7 @@ function confirmMapLabelDir(dir){
 window.confirmMapLabelDir=confirmMapLabelDir;
 
 function saveMapLayout(){
-  const mapData={cages,walls,nextId:nextCageId,colLabels,rowLabels,mapLabels,nextLabelId};
+  const mapData={cages,walls,nextId:nextCageId,colLabels,rowLabels,mapLabels,nextLabelId,savedAt:Date.now()};
   localStorage.setItem('tirewms_map2',JSON.stringify(mapData));
   localStorage.setItem('tirewms_map_ver','layout-2026-v6');
   if(window._saveMapLayout) window._saveMapLayout(mapData);
