@@ -215,6 +215,7 @@ function switchView(n,el){
           generateWarehouseLayout(true); return;
         }
       }
+      if(typeof _whInvalidate==='function') _whInvalidate();
       setTimeout(()=>{renderWarehouse();if(cages.length>0)whCenter();},50);
     }
     if(n==='mapEditor'){ stopWhBlink(); setTimeout(initMapEditor, 50); }
@@ -3049,6 +3050,8 @@ window._updateMapFromRemote=function(remote){
   colLabels=remote.colLabels||colLabels;
   rowLabels=remote.rowLabels||rowLabels;
   mapLabels=remote.mapLabels||mapLabels;
+  if(remote.nextLabelId) nextLabelId=remote.nextLabelId;
+  if(typeof _whInvalidate==='function') _whInvalidate();
   const whEl=document.getElementById('viewWarehouse');
   const meEl=document.getElementById('viewMapEditor');
   if(whEl&&whEl.classList.contains('active')){ if(typeof renderWarehouse==='function') renderWarehouse(); }
