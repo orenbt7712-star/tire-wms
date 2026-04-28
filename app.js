@@ -1939,6 +1939,7 @@ function stopWhBlink(){
 let selectedCageId=null, nextCageId=1;
 let mapTool='wall';
 let isDrawing=false, drawStart=null, drawCurrent=null;
+let _isCagePainting=false, _cagePaintSet=new Set();
 let dragCageId=null, dragOffX=0, dragOffY=0;
 let mapScale=40, mapOffX=50, mapOffY=50;
 let pinchDist=null;
@@ -2213,7 +2214,9 @@ function onTS(e){
   const[cx,cy]=getPos(e,cv);
   _touchStartCX=cx; _touchStartCY=cy; _touchStartTime=Date.now();
   _touchIsPanning=false;
-  // כלי גלילה — מיד מתחיל גלילה, אבל לא בסרגל (הסרגל תמיד פותח עורך)
+  if(mapTool==='cage'){
+    _isTouchEvent=true; handleDown(cx,cy); _isTouchEvent=false;
+  }
   if(mapTool==='pan'){
     const _inR=cy<44||cx<44||(cv&&cx>cv.clientWidth-44);
     if(!_inR){
@@ -2265,10 +2268,15 @@ function onTE(e){
   // טאפ — האצבע זזה פחות מ-10px, בטל גרירה שהופעלה בטעות
   _touchIsPanning=false; isPanning=false;
   if(mapTool!=='pan'){
-    _isTouchEvent=true;
-    handleDown(_touchStartCX,_touchStartCY);
-    handleUp();
-    _isTouchEvent=false;
+    if(mapTool==='cage'){
+      // handleDown רץ כבר ב-onTS — פשוט סיים
+      handleUp();
+    } else {
+      _isTouchEvent=true;
+      handleDown(_touchStartCX,_touchStartCY);
+      handleUp();
+      _isTouchEvent=false;
+    }
   }
 }
 function onMD(e){ _isTouchEvent=false; const cv=document.getElementById('mapCanvas'); handleDown(...getPos(e,cv)); }
@@ -2338,15 +2346,22 @@ function handleDown(cx,cy){
     isDrawing=true; drawStart=[wx,wy]; drawCurrent=[wx,wy];
   } else if(mapTool==='cage'){
     const nx=Math.max(0,Math.floor(wx)), ny=Math.max(0,Math.floor(wy));
-    const fl=_firstFreeFloor(nx,ny);
-    if(!fl){ toast(`❌ כל 3 הקומות תפוסות במיקום זה`); return; }
-    pushHistory();
-    const id=nextCageId++;
-    const g={id,name:String(id),floor:fl,x:nx,y:ny,rot:false};
-    cages.push(g);
-    selectedCageId=id; selectedCages=[id];
-    drawMap();
-    openCageEdit(g);
+    if(_isTouchEvent){
+      // Touch: התחל מצב ציור — כלובים יתווספו בכל תא שהאצבע תעבור
+      _isCagePainting=true; _cagePaintSet=new Set();
+      pushHistory();
+      _paintCageAt(nx,ny); drawMap();
+    } else {
+      // עכבר: הוסף כלוב בודד + פתח עריכה
+      const fl=_firstFreeFloor(nx,ny);
+      if(!fl){ toast('❌ כל 3 הקומות תפוסות במיקום זה'); return; }
+      pushHistory();
+      const id=nextCageId++;
+      const g={id,name:String(id),floor:fl,x:nx,y:ny,rot:false};
+      cages.push(g);
+      selectedCageId=id; selectedCages=[id];
+      drawMap(); openCageEdit(g);
+    }
   } else if(mapTool==='move'||mapTool==='select'){
     const g=getCageAt(wx,wy);
     if(g){
@@ -2404,6 +2419,10 @@ function handleMove(cx,cy){
     drawMapThrottled(); return;
   }
   const[wx,wy]=c2w(cx,cy);
+  if(mapTool==='cage'&&_isCagePainting){
+    const nx=Math.max(0,Math.floor(wx)), ny=Math.max(0,Math.floor(wy));
+    _paintCageAt(nx,ny); drawMapThrottled(); return;
+  }
   if(mapTool==='wall'&&isDrawing){
     drawCurrent=[wx,wy];
     drawMapThrottled();
@@ -2435,6 +2454,19 @@ function handleMove(cx,cy){
 
 function handleUp(){
   if(isPanning){ isPanning=false; return; }
+  if(_isCagePainting){
+    _isCagePainting=false;
+    const count=_cagePaintSet.size; _cagePaintSet=new Set();
+    _scheduleAutoSave();
+    if(count>1){
+      toast(`✅ נוספו ${count} כלובים`);
+      selectedCageId=null; selectedCages=[]; drawMap(); return;
+    }
+    // טאפ בודד — פתח עריכה לכלוב שנוסף
+    const last=cages[cages.length-1];
+    if(last){ selectedCageId=last.id; selectedCages=[last.id]; drawMap(); openCageEdit(last); }
+    return;
+  }
   if(mapTool==='wall'&&isDrawing&&drawStart&&drawCurrent){
     const[x1,y1]=drawStart,[x2,y2]=drawCurrent;
     if(Math.hypot(x2-x1,y2-y1)>0.3){
@@ -3113,6 +3145,15 @@ function onMapKeyUp(e){
 
 function _cageOccupied(x,y,floor,excludeId){
   return cages.find(g=>g.id!==excludeId&&g.x===x&&g.y===y&&String(g.floor||'1')===String(floor||'1'));
+}
+function _paintCageAt(nx,ny){
+  const key=`${nx}|${ny}`;
+  if(_cagePaintSet.has(key)) return;
+  _cagePaintSet.add(key);
+  const fl=_firstFreeFloor(nx,ny);
+  if(!fl) return; // כל 3 קומות תפוסות — דלג
+  const id=nextCageId++;
+  cages.push({id,name:String(id),floor:fl,x:nx,y:ny,rot:false});
 }
 function _firstFreeFloor(x,y,excludeId){
   for(const fl of ['1','2','3']){ if(!_cageOccupied(x,y,fl,excludeId)) return fl; }
