@@ -2338,11 +2338,11 @@ function handleDown(cx,cy){
     isDrawing=true; drawStart=[wx,wy]; drawCurrent=[wx,wy];
   } else if(mapTool==='cage'){
     const nx=Math.max(0,Math.floor(wx)), ny=Math.max(0,Math.floor(wy));
-    const occ=_cageOccupied(nx,ny,'1');
-    if(occ){ toast(`❌ יש כלוב "${occ.name}" במיקום זה`); return; }
+    const fl=_firstFreeFloor(nx,ny);
+    if(!fl){ toast(`❌ כל 3 הקומות תפוסות במיקום זה`); return; }
     pushHistory();
     const id=nextCageId++;
-    const g={id,name:String(id),floor:'1',x:nx,y:ny,rot:false};
+    const g={id,name:String(id),floor:fl,x:nx,y:ny,rot:false};
     cages.push(g);
     selectedCageId=id; selectedCages=[id];
     drawMap();
@@ -3114,6 +3114,10 @@ function onMapKeyUp(e){
 function _cageOccupied(x,y,floor,excludeId){
   return cages.find(g=>g.id!==excludeId&&g.x===x&&g.y===y&&String(g.floor||'1')===String(floor||'1'));
 }
+function _firstFreeFloor(x,y,excludeId){
+  for(const fl of ['1','2','3']){ if(!_cageOccupied(x,y,fl,excludeId)) return fl; }
+  return null; // כל 3 קומות תפוסות
+}
 function _deduplicateCages(){
   const seen=new Set(), dupes=[];
   cages.forEach(g=>{
@@ -3133,13 +3137,11 @@ function addCageAtCenter(){
   if(!cv) return;
   const[wx,wy]=c2w(cv.width/2,cv.height/2);
   const nx=Math.max(0,Math.floor(wx)), ny=Math.max(0,Math.floor(wy));
-  if(_cageOccupied(nx,ny,'1')){
-    toast('❌ יש כלוב במיקום זה — הזז מעט את המפה ונסה שוב');
-    return;
-  }
+  const fl=_firstFreeFloor(nx,ny);
+  if(!fl){ toast('❌ כל 3 הקומות תפוסות — הזז מעט את המפה ונסה שוב'); return; }
   pushHistory();
   const id=nextCageId++;
-  const g={id,name:String(id),floor:'1',x:nx,y:ny,rot:false};
+  const g={id,name:String(id),floor:fl,x:nx,y:ny,rot:false};
   cages.push(g);
   selectedCageId=id; selectedCages=[id];
   drawMap();
