@@ -3972,6 +3972,23 @@ function openAccessPanel(){
   try { applySettings(); } catch(e) {}
   try { applyLang(); } catch(e) {}
   try { renderBlockedBrands(); } catch(e) {}
+  const mfaBtn = document.getElementById('mfaAccessBtn');
+  const mfaLabel = document.getElementById('mfaStatusLabel');
+  if(mfaBtn && typeof _ownerTotpSecret !== 'undefined'){
+    if(_ownerTotpSecret){
+      mfaBtn.textContent = '✓ פעיל';
+      mfaBtn.style.background = 'var(--green-dim,rgba(62,207,142,.15))';
+      mfaBtn.style.border = '1px solid var(--green,#3ecf8e)';
+      mfaBtn.style.color = 'var(--green,#3ecf8e)';
+      if(mfaLabel) mfaLabel.textContent = 'Google Authenticator פעיל';
+    } else {
+      mfaBtn.textContent = 'הגדר';
+      mfaBtn.style.background = 'var(--card2)';
+      mfaBtn.style.border = '1px solid var(--border)';
+      mfaBtn.style.color = 'var(--text)';
+      if(mfaLabel) mfaLabel.textContent = 'Google Authenticator';
+    }
+  }
 }
 function closeAccessPanel(){
   document.getElementById('accessPanel').style.display='none';

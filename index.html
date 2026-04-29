@@ -579,6 +579,22 @@ if('serviceWorker' in navigator){
         onblur="setTimeout(()=>{const d=document.getElementById('blockedBrandDrop');if(d)d.style.display='none'},200)"/>
     </div>
 
+    <!-- סיסמה + MFA — בעלים בלבד -->
+    <div class="owner-only" style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="font-weight:700;">🔑 שינוי סיסמה</div>
+        <div style="font-size:11px;color:var(--muted);">סיסמת הכניסה של הבעלים</div>
+      </div>
+      <button onclick="closeAccessPanel();openChangePass()" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">שנה</button>
+    </div>
+    <div class="owner-only" style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="font-weight:700;">🔐 אימות דו-שלבי</div>
+        <div id="mfaStatusLabel" style="font-size:11px;color:var(--muted);">Google Authenticator</div>
+      </div>
+      <button id="mfaAccessBtn" onclick="closeAccessPanel();openMfaSetup()" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">הגדר</button>
+    </div>
+
     <button onclick="(async function(){if(!confirm('להתנתק כבעלים?'))return;try{if(window.google?.accounts?.id){google.accounts.id.disableAutoSelect();google.accounts.id.cancel();}}catch(e){}try{if(window._clearSessionRole)await window._clearSessionRole();}catch(e){}localStorage.removeItem('tirewms_session');localStorage.removeItem('tirewms_gdrive_token');sessionStorage.clear();sessionStorage.setItem('_justLoggedOut','1');try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs)await r.unregister();}catch(e){}location.replace(location.pathname+'?logout='+Date.now());})()" style="width:100%;background:var(--card);border:1px solid var(--border);color:var(--red,#e85d3f);border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:6px;">🚪 יציאה (התנתק כבעלים)</button>
     <button id="closeAccessBtn" onclick="closeAccessPanel()" style="width:100%;background:var(--accent);border:none;color:#111;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:6px;">סגור</button>
   </div>
@@ -1365,8 +1381,6 @@ function enterApp(admin, workerName) {
   ub.innerHTML = `
     <span style="font-size:11px;color:${admin ? '#f5a623' : '#7a8299'};font-weight:700;white-space:nowrap;">${roleIcon} ${escHTML(displayName)}</span>
     ${_isOwner ? `<button id="btnWorkerMgmt" onclick="openWorkerMgmt()" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:12px;padding:5px 9px;cursor:pointer;font-family:inherit;white-space:nowrap;">👥 עובדים</button>` : ''}
-    ${_isOwner ? `<button onclick="openChangePass()" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:12px;padding:5px 9px;cursor:pointer;font-family:inherit;white-space:nowrap;">🔑 סיסמה</button>` : ''}
-    ${_isOwner ? `<button onclick="openMfaSetup()" style="background:none;border:1px solid ${_ownerTotpSecret ? '#3ecf8e' : '#252b3b'};border-radius:6px;color:${_ownerTotpSecret ? '#3ecf8e' : '#7a8299'};font-size:12px;padding:5px 9px;cursor:pointer;font-family:inherit;white-space:nowrap;">🔐 MFA${_ownerTotpSecret ? ' ✓' : ''}</button>` : ''}
     <button id="logoutBtn" style="background:none;border:1px solid #252b3b;border-radius:6px;color:#7a8299;font-size:12px;padding:5px 9px;cursor:pointer;font-family:inherit;white-space:nowrap;">🚪 יציאה</button>
   `;
   document.getElementById('logoutBtn').addEventListener('click', _logout);
