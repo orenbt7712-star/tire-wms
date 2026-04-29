@@ -3849,11 +3849,26 @@ function _saveBlockedBrands(){
   else localStorage.setItem('tirewms_blocked_brands', data);
 }
 function renderBlockedBrands(){
-  const el = document.getElementById('blockedBrandsList');
-  if(!el) return;
-  el.innerHTML = blockedBrands.length
-    ? blockedBrands.map(b=>`<span style="display:inline-flex;align-items:center;gap:4px;background:var(--red-dim);border:1px solid var(--red);color:var(--red);border-radius:20px;padding:4px 10px;font-size:12px;font-weight:700;">${b}<button onclick="removeBlockedBrand('${b}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:0 0 0 2px;">✕</button></span>`).join('')
-    : '<span style="font-size:12px;color:var(--muted);">אין מותגים חסומים</span>';
+  const chips = document.getElementById('blockedBrandsChips');
+  if(!chips) return;
+  const inp = document.getElementById('blockedBrandInput');
+  const q = (inp?.value||'').trim().toUpperCase();
+  const fromItems = items.map(i=>(i.brand||'').trim().toUpperCase()).filter(Boolean);
+  const all = [...new Set([...fromItems,...KNOWN_BRANDS])].sort();
+  const filtered = q ? all.filter(b=>b.includes(q)) : all;
+  chips.innerHTML = filtered.map(b=>{
+    const blocked = blockedBrands.includes(b);
+    return blocked
+      ? `<button onclick="toggleBlockedBrand('${escHTML(b)}')"
+           style="display:inline-flex;align-items:center;gap:5px;background:rgba(232,93,63,.18);border:1.5px solid #e85d3f;color:#e85d3f;border-radius:20px;padding:5px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;">
+           🚫 ${escHTML(b)}
+         </button>`
+      : `<button onclick="toggleBlockedBrand('${escHTML(b)}')"
+           style="display:inline-flex;align-items:center;background:var(--card2);border:1px solid var(--border);color:var(--muted);border-radius:20px;padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;">
+           ${escHTML(b)}
+         </button>`;
+  }).join('');
+  if(!filtered.length) chips.innerHTML='<span style="font-size:12px;color:var(--muted);">אין תוצאות</span>';
 }
 function addBlockedBrand(){
   const input = document.getElementById('blockedBrandInput');
@@ -3876,8 +3891,6 @@ function toggleBlockedBrand(brand){
   }
   _saveBlockedBrands();
   renderBlockedBrands();
-  const inp = document.getElementById('blockedBrandInput');
-  if(inp) showBlockedBrandDrop(inp);
 }
 function removeBlockedBrand(brand){
   blockedBrands = blockedBrands.filter(b=>b!==brand);
@@ -3885,33 +3898,9 @@ function removeBlockedBrand(brand){
   renderBlockedBrands();
   toast(`✅ ${brand} הוסר מהרשימה`);
 }
-function showBlockedBrandDrop(inp){
-  const drop = document.getElementById('blockedBrandDrop');
-  if(!drop) return;
-  const q = (inp.value||'').trim().toUpperCase();
-  const fromItems = items.map(i=>(i.brand||'').trim().toUpperCase()).filter(Boolean);
-  const allBrands = [...new Set([...fromItems,...KNOWN_BRANDS])].sort();
-  const filtered = q ? allBrands.filter(b=>b.includes(q)) : allBrands;
-  if(!filtered.length){ drop.style.display='none'; inp.style.borderRadius='8px'; return; }
-  drop.innerHTML = filtered.map(b=>{
-    const blocked = blockedBrands.includes(b);
-    const bg = blocked ? 'var(--red-dim,#3a1a1a)' : 'transparent';
-    const color = blocked ? 'var(--red,#ff6b6b)' : 'var(--text)';
-    return `<div data-bval="${escHTML(b)}"
-      onclick="toggleBlockedBrand('${escHTML(b)}')"
-      onmouseenter="this.style.background='var(--border2)'"
-      onmouseleave="this.style.background='${bg}'"
-      style="padding:10px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;background:${bg};color:${color};${blocked?'font-weight:700;':''}">
-      <span style="font-size:15px;width:18px;text-align:center;">${blocked?'🚫':'☐'}</span>${escHTML(b)}
-    </div>`;
-  }).join('');
-  drop.style.display = 'block';
-  inp.style.borderRadius = '8px 8px 0 0';
-}
 window.addBlockedBrand = addBlockedBrand;
 window.removeBlockedBrand = removeBlockedBrand;
 window.toggleBlockedBrand = toggleBlockedBrand;
-window.showBlockedBrandDrop = showBlockedBrandDrop;
 
 function applySettings(){
   document.body.classList.toggle('light-mode', themeMode==='light');

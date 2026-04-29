@@ -567,15 +567,13 @@ if('serviceWorker' in navigator){
 
     <!-- מותגים חסומים — בעלים בלבד -->
     <div class="owner-only" style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;">
-      <div style="font-weight:700;margin-bottom:6px;">🚫 מותגים חסומים מייבוא</div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">לחץ על מותג מהרשימה להוסיף/להסיר. המותגים החסומים יופיעו כאן:</div>
-      <div id="blockedBrandsList" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;min-height:24px;"></div>
-      <input id="blockedBrandInput" type="text" placeholder="🔍 חפש מותג מהרשימה..."
-        style="width:100%;box-sizing:border-box;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:Heebo,sans-serif;font-size:14px;padding:8px 10px;outline:none;"
+      <div style="font-weight:700;margin-bottom:4px;">🚫 מותגים חסומים מייבוא</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">לחץ על מותג לחסימה/שחרור. חסומים מסומנים באדום.</div>
+      <input id="blockedBrandInput" type="text" placeholder="🔍 סנן מותג..."
+        style="width:100%;box-sizing:border-box;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:Heebo,sans-serif;font-size:14px;padding:8px 10px;outline:none;margin-bottom:10px;"
         autocorrect="off" spellcheck="false"
-        oninput="showBlockedBrandDrop(this)"
-        onfocus="showBlockedBrandDrop(this)"/>
-      <div id="blockedBrandDrop" style="display:none;background:var(--card2);border:1px solid var(--accent);border-top:none;border-radius:0 0 8px 8px;max-height:200px;overflow-y:auto;"></div>
+        oninput="renderBlockedBrands()"/>
+      <div id="blockedBrandsChips" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
     </div>
 
     <!-- סיסמה + MFA — בעלים בלבד -->
