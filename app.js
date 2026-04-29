@@ -3889,31 +3889,16 @@ function showBlockedBrandDrop(inp){
   const drop = document.getElementById('blockedBrandDrop');
   if(!drop) return;
   const q = (inp.value||'').trim().toUpperCase();
-  const brands = [...new Set(items.map(i=>(i.brand||'').trim().toUpperCase()).filter(Boolean))].sort();
-  const filtered = q ? brands.filter(b=>b.includes(q)) : brands;
+  const allBrands = [...new Set((window.items||[]).map(i=>(i.brand||'').trim().toUpperCase()).filter(Boolean))].sort();
+  const filtered = q ? allBrands.filter(b=>b.includes(q)) : allBrands;
   if(!filtered.length){ drop.style.display='none'; return; }
-  const rect = inp.getBoundingClientRect();
-  const spaceBelow = window.innerHeight - rect.bottom - 8;
-  const spaceAbove = rect.top - 8;
-  const maxH = Math.min(220, spaceBelow > spaceAbove ? spaceBelow : spaceAbove);
-  drop.style.left = rect.left+'px';
-  drop.style.width = rect.width+'px';
-  drop.style.maxHeight = maxH+'px';
-  drop.style.borderRadius = spaceBelow > spaceAbove ? '0 0 8px 8px' : '8px 8px 0 0';
-  if(spaceBelow > spaceAbove){
-    drop.style.top = rect.bottom+'px';
-    drop.style.bottom = '';
-  } else {
-    drop.style.bottom = (window.innerHeight - rect.top)+'px';
-    drop.style.top = '';
-  }
   drop.innerHTML = filtered.map(b=>{
     const blocked = blockedBrands.includes(b);
     const bg = blocked ? 'var(--red-dim,#3a1a1a)' : '';
     const color = blocked ? 'var(--red,#ff6b6b)' : 'var(--text)';
     return `<div data-bval="${escHTML(b)}"
-      style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;background:${bg};color:${color};${blocked?'font-weight:700;':''}"
-      onmouseenter="this.style.background='var(--border2)'" onmouseleave="this.style.background='${bg}'">
+      onclick="toggleBlockedBrand('${escHTML(b)}')"
+      style="padding:10px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;background:${bg};color:${color};${blocked?'font-weight:700;':''}">
       <span style="font-size:15px;width:18px;text-align:center;">${blocked?'🚫':'☐'}</span>${escHTML(b)}
     </div>`;
   }).join('');
