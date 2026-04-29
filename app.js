@@ -3891,18 +3891,21 @@ function showBlockedBrandDrop(inp){
   const q = (inp.value||'').trim().toUpperCase();
   const allBrands = [...new Set((window.items||[]).map(i=>(i.brand||'').trim().toUpperCase()).filter(Boolean))].sort();
   const filtered = q ? allBrands.filter(b=>b.includes(q)) : allBrands;
-  if(!filtered.length){ drop.style.display='none'; return; }
+  if(!filtered.length){ drop.style.display='none'; inp.style.borderRadius='8px'; return; }
   drop.innerHTML = filtered.map(b=>{
     const blocked = blockedBrands.includes(b);
-    const bg = blocked ? 'var(--red-dim,#3a1a1a)' : '';
+    const bg = blocked ? 'var(--red-dim,#3a1a1a)' : 'transparent';
     const color = blocked ? 'var(--red,#ff6b6b)' : 'var(--text)';
     return `<div data-bval="${escHTML(b)}"
       onclick="toggleBlockedBrand('${escHTML(b)}')"
+      onmouseenter="this.style.background='var(--border2)'"
+      onmouseleave="this.style.background='${bg}'"
       style="padding:10px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;background:${bg};color:${color};${blocked?'font-weight:700;':''}">
       <span style="font-size:15px;width:18px;text-align:center;">${blocked?'🚫':'☐'}</span>${escHTML(b)}
     </div>`;
   }).join('');
   drop.style.display = 'block';
+  inp.style.borderRadius = '8px 8px 0 0';
 }
 window.addBlockedBrand = addBlockedBrand;
 window.removeBlockedBrand = removeBlockedBrand;
