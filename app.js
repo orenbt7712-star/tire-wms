@@ -3889,7 +3889,7 @@ function showBlockedBrandDrop(inp){
   const drop = document.getElementById('blockedBrandDrop');
   if(!drop) return;
   const q = (inp.value||'').trim().toUpperCase();
-  const allBrands = [...new Set((window.items||[]).map(i=>(i.brand||'').trim().toUpperCase()).filter(Boolean))].sort();
+  const allBrands = [...new Set((items||[]).map(i=>(i.brand||'').trim().toUpperCase()).filter(Boolean))].sort();
   const filtered = q ? allBrands.filter(b=>b.includes(q)) : allBrands;
   if(!filtered.length){ drop.style.display='none'; inp.style.borderRadius='8px'; return; }
   drop.innerHTML = filtered.map(b=>{
